@@ -1,0 +1,20 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "description": "contracts/ │ ├── README.md ├── PropertyNFT.sol ├── RentalNFT.sol ├── RentalAgreement.sol ├── RentalAgreementFactory.sol └── interfaces/",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.13",
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.7",
+    "@openzeppelin/contracts": "^5.6.1",
+    "ethers": "^6.17.0",
+    "hardhat": "^3.9.0"
+  }
+}
