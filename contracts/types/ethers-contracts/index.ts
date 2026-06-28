@@ -14,13 +14,13 @@ export { RentalAgreement__factory } from './factories/RentalAgreement__factory.j
 export { PropertyNFT__factory } from './factories/PropertyNFT__factory.js';
 export { RentalAgreementFactory__factory } from './factories/RentalAgreementFactory__factory.js';
 export { RentalNFT__factory } from './factories/RentalNFT__factory.js';
-export type { IPropertyNFT } from './interfaces/IPropertyNFT.js';
-export { IPropertyNFT__factory } from './factories/interfaces/IPropertyNFT__factory.js';
 export type { IRentalAgreement } from './interfaces/IRentalAgreement.js';
 export { IRentalAgreement__factory } from './factories/interfaces/IRentalAgreement__factory.js';
 export type { IRentalAgreementFactory } from './interfaces/IRentalAgreementFactory.js';
 export { IRentalAgreementFactory__factory } from './factories/interfaces/IRentalAgreementFactory__factory.js';
 export type { IRentalNFT } from './interfaces/IRentalNFT.js';
 export { IRentalNFT__factory } from './factories/interfaces/IRentalNFT__factory.js';
+export type { IPropertyNFT } from './interfaces/IPropertyNFT.js';
+export { IPropertyNFT__factory } from './factories/interfaces/IPropertyNFT__factory.js';
 export type { MockUSDC } from './mocks/MockUSDC.js';
 export { MockUSDC__factory } from './factories/mocks/MockUSDC__factory.js';

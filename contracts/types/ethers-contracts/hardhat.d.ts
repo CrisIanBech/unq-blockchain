@@ -14,40 +14,40 @@ declare module "@nomicfoundation/hardhat-ethers/types" {
 getContractFactory(name: 'PropertyNFT', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.PropertyNFT__factory>
 getContractFactory(name: 'RentalAgreementFactory', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.RentalAgreementFactory__factory>
 getContractFactory(name: 'RentalNFT', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.RentalNFT__factory>
-getContractFactory(name: 'IPropertyNFT', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.IPropertyNFT__factory>
 getContractFactory(name: 'IRentalAgreement', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.IRentalAgreement__factory>
 getContractFactory(name: 'IRentalAgreementFactory', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.IRentalAgreementFactory__factory>
 getContractFactory(name: 'IRentalNFT', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.IRentalNFT__factory>
+getContractFactory(name: 'IPropertyNFT', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.IPropertyNFT__factory>
 getContractFactory(name: 'MockUSDC', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.MockUSDC__factory>
 
   getContractAt(name: 'RentalAgreement', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.RentalAgreement>
 getContractAt(name: 'PropertyNFT', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.PropertyNFT>
 getContractAt(name: 'RentalAgreementFactory', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.RentalAgreementFactory>
 getContractAt(name: 'RentalNFT', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.RentalNFT>
-getContractAt(name: 'IPropertyNFT', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.IPropertyNFT>
 getContractAt(name: 'IRentalAgreement', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.IRentalAgreement>
 getContractAt(name: 'IRentalAgreementFactory', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.IRentalAgreementFactory>
 getContractAt(name: 'IRentalNFT', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.IRentalNFT>
+getContractAt(name: 'IPropertyNFT', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.IPropertyNFT>
 getContractAt(name: 'MockUSDC', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.MockUSDC>
 
   deployContract(name: 'RentalAgreement', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.RentalAgreement>
 deployContract(name: 'PropertyNFT', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.PropertyNFT>
 deployContract(name: 'RentalAgreementFactory', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.RentalAgreementFactory>
 deployContract(name: 'RentalNFT', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.RentalNFT>
-deployContract(name: 'IPropertyNFT', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IPropertyNFT>
 deployContract(name: 'IRentalAgreement', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IRentalAgreement>
 deployContract(name: 'IRentalAgreementFactory', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IRentalAgreementFactory>
 deployContract(name: 'IRentalNFT', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IRentalNFT>
+deployContract(name: 'IPropertyNFT', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IPropertyNFT>
 deployContract(name: 'MockUSDC', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockUSDC>
 
   deployContract(name: 'RentalAgreement', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.RentalAgreement>
 deployContract(name: 'PropertyNFT', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.PropertyNFT>
 deployContract(name: 'RentalAgreementFactory', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.RentalAgreementFactory>
 deployContract(name: 'RentalNFT', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.RentalNFT>
-deployContract(name: 'IPropertyNFT', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IPropertyNFT>
 deployContract(name: 'IRentalAgreement', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IRentalAgreement>
 deployContract(name: 'IRentalAgreementFactory', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IRentalAgreementFactory>
 deployContract(name: 'IRentalNFT', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IRentalNFT>
+deployContract(name: 'IPropertyNFT', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IPropertyNFT>
 deployContract(name: 'MockUSDC', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockUSDC>
 
     // default types
