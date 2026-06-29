@@ -1,4 +1,3 @@
-import { useState } from "react"
 import {
   Drawer,
   Box,
@@ -11,19 +10,23 @@ import {
   IconButton,
   Avatar,
   Stack,
+  CircularProgress,
 } from "@mui/material"
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded"
 import BedRoundedIcon from "@mui/icons-material/BedRounded"
 import BathtubRoundedIcon from "@mui/icons-material/BathtubRounded"
 import SquareFootRoundedIcon from "@mui/icons-material/SquareFootRounded"
 import RateReviewRoundedIcon from "@mui/icons-material/RateReviewRounded"
-import type { Listing } from "@/models/types"
+import type { Listing, Review } from "@/models/types"
 import { usdc, dateLabel, TYPE_LABEL } from "@/lib/format"
 import { ReviewItem } from "./review-item"
+import { useAccount } from "wagmi"
+import { useReviewSystem } from "@/hooks/use-review-system"
+import { useState, useEffect, useMemo } from "react"
 
-function avgRating(listing: Listing) {
-  if (!listing.reviews.length) return 0
-  return listing.reviews.reduce((s, r) => s + r.rating, 0) / listing.reviews.length
+function avgRating(reviews: Review[]) {
+  if (!reviews.length) return 0
+  return reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
 }
 
 interface ListingDetailProps {
@@ -47,13 +50,41 @@ export function ListingDetail({
   onRatingChange,
   onCommentChange,
 }: ListingDetailProps) {
-  if (!listing) return null
-  const avg = avgRating(listing)
+  const { isConnected } = useAccount()
+  const numericId = listing?.id ? parseInt(listing.id.replace(/\D/g, ""), 10) : 0
+  const onChainPropertyId = numericId > 0 ? BigInt(numericId) : 0n
+  const onChain = useReviewSystem(onChainPropertyId)
+
+  const [onChainReviews, setOnChainReviews] = useState<Review[]>([])
+
+  useEffect(() => {
+    if (!isConnected || !onChain.reviews.length) {
+      setOnChainReviews([])
+      return
+    }
+    const mapped: Review[] = onChain.reviews.map((r, i) => ({
+      id: `ocr-${i}`,
+      author: r.author,
+      rating: r.rating,
+      comment: r.comment,
+      date: new Date(Number(r.timestamp) * 1000).toISOString().slice(0, 10),
+    }))
+    setOnChainReviews(mapped)
+  }, [isConnected, onChain.reviews])
+
+  const displayReviews = isConnected ? onChainReviews : (listing?.reviews ?? [])
+  const avg = avgRating(displayReviews)
 
   function submitReview() {
     if (!listing || !rating || comment.trim().length < 3) return
-    onLeaveReview(listing.id, rating, comment.trim())
+    if (isConnected) {
+      onChain.postReview(rating, comment.trim())
+    } else {
+      onLeaveReview(listing.id, rating, comment.trim())
+    }
   }
+
+  const isSubmitting = onChain.isWriting || onChain.isConfirming
 
   return (
     <Drawer
@@ -63,7 +94,7 @@ export function ListingDetail({
       slotProps={{ paper: { sx: { width: { xs: "100%", sm: 440 }, bgcolor: "background.default" } } }}
     >
       <Box sx={{ position: "relative" }}>
-        <Box component="img" src={listing.imageUrl} alt={listing.name} sx={{ width: "100%", height: 220, objectFit: "cover" }} />
+        <Box component="img" src={listing?.imageUrl} alt={listing?.name} sx={{ width: "100%", height: 220, objectFit: "cover" }} />
         <IconButton
           onClick={onClose}
           aria-label="cerrar"
@@ -71,30 +102,35 @@ export function ListingDetail({
         >
           <CloseRoundedIcon />
         </IconButton>
-        <Chip label={TYPE_LABEL[listing.type]} sx={{ position: "absolute", top: 12, left: 12, bgcolor: "background.default", fontWeight: 600 }} />
+        {listing && <Chip label={TYPE_LABEL[listing.type]} sx={{ position: "absolute", top: 12, left: 12, bgcolor: "background.default", fontWeight: 600 }} />}
       </Box>
 
       <Box sx={{ p: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          {listing.name}
+          {listing?.name}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {listing.address}
+          {listing?.address}
         </Typography>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1.5 }}>
           <Rating value={avg} precision={0.5} readOnly size="small" />
           <Typography variant="body2" color="text.secondary">
-            {avg ? avg.toFixed(1) : "Sin reviews"} {listing.reviews.length ? `(${listing.reviews.length})` : ""}
+            {avg ? avg.toFixed(1) : "Sin reviews"} {displayReviews.length ? `(${displayReviews.length})` : ""}
           </Typography>
+          {isConnected && <Chip label="on-chain" size="small" color="primary" variant="outlined" />}
         </Box>
 
         <Box sx={{ display: "flex", gap: 2, mt: 2, flexWrap: "wrap" }}>
-          {listing.beds > 0 && (
+          {listing && listing.beds > 0 && (
             <Chip icon={<BedRoundedIcon />} label={`${listing.beds} amb.`} variant="outlined" />
           )}
-          <Chip icon={<BathtubRoundedIcon />} label={`${listing.baths} baño${listing.baths > 1 ? "s" : ""}`} variant="outlined" />
-          <Chip icon={<SquareFootRoundedIcon />} label={`${listing.m2} m²`} variant="outlined" />
+          {listing && (
+            <>
+              <Chip icon={<BathtubRoundedIcon />} label={`${listing.baths} baño${listing.baths > 1 ? "s" : ""}`} variant="outlined" />
+              <Chip icon={<SquareFootRoundedIcon />} label={`${listing.m2} m²`} variant="outlined" />
+            </>
+          )}
         </Box>
 
         <Box
@@ -111,7 +147,7 @@ export function ListingDetail({
         >
           <Typography variant="body2">Alquiler mensual</Typography>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            {usdc(listing.monthlyRent)}
+            {usdc(listing?.monthlyRent ?? 0)}
           </Typography>
         </Box>
 
@@ -120,7 +156,7 @@ export function ListingDetail({
           fullWidth 
           size="large" 
           sx={{ mt: 2 }}
-          onClick={() => onRequestContract?.(listing)}
+          onClick={() => listing && onRequestContract?.(listing)}
         >
           Solicitar contrato on-chain
         </Button>
@@ -131,39 +167,62 @@ export function ListingDetail({
           Reviews
         </Typography>
         <Stack spacing={1.5}>
-          {listing.reviews.length === 0 && (
+          {displayReviews.length === 0 && (
             <Typography variant="body2" color="text.secondary">
               Todavía no hay reviews para esta propiedad.
             </Typography>
           )}
-          {listing.reviews.map((r) => (
+          {displayReviews.map((r) => (
             <ReviewItem review={r} key={r.id} />
           ))}
         </Stack>
 
-        <Divider sx={{ my: 3 }} />
-
-        <Typography variant="subtitle1" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, fontWeight: 700 }}>
-          <RateReviewRoundedIcon fontSize="small" /> Dejar una review
-        </Typography>
-        <Rating value={rating} onChange={(_, v) => onRatingChange(v)} sx={{ mb: 1 }} />
-        <TextField
-          value={comment}
-          onChange={(e) => onCommentChange(e.target.value)}
-          placeholder="Contá tu experiencia como inquilino…"
-          multiline
-          rows={3}
-          fullWidth
-        />
-        <Button
-          variant="outlined"
-          fullWidth
-          sx={{ mt: 1.5 }}
-          disabled={!rating || comment.trim().length < 3}
-          onClick={submitReview}
-        >
-          Publicar review
-        </Button>
+        {isConnected && !onChain.canPostReview && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 3 }}>
+            Solo inquilinos con contrato activo pueden dejar review
+          </Typography>
+        )}
+        {(!isConnected || onChain.canPostReview) && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="subtitle1" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, fontWeight: 700 }}>
+              <RateReviewRoundedIcon fontSize="small" /> Dejar una review
+            </Typography>
+            {!isConnected && (
+              <Typography variant="caption" color="warning.main" sx={{ display: "block", mb: 1 }}>
+                Conectá tu wallet para publicar reviews on-chain
+              </Typography>
+            )}
+            <Rating value={rating} onChange={(_, v) => onRatingChange(v)} sx={{ mb: 1 }} />
+            <TextField
+              value={comment}
+              onChange={(e) => onCommentChange(e.target.value)}
+              placeholder="Contá tu experiencia como inquilino…"
+              multiline
+              rows={3}
+              fullWidth
+            />
+            <Button
+              variant="outlined"
+              fullWidth
+              sx={{ mt: 1.5 }}
+              disabled={!rating || comment.trim().length < 3 || isSubmitting}
+              onClick={submitReview}
+            >
+              {isSubmitting ? <CircularProgress size={20} /> : "Publicar review"}
+            </Button>
+            {onChain.isConfirmed && (
+              <Typography variant="caption" color="success.main" sx={{ mt: 1, display: "block" }}>
+                Review confirmada on-chain
+              </Typography>
+            )}
+            {onChain.writeError && (
+              <Typography variant="caption" color="error.main" sx={{ mt: 1, display: "block" }}>
+                Error: {(onChain.writeError as Error).message.slice(0, 100)}
+              </Typography>
+            )}
+          </>
+        )}
       </Box>
     </Drawer>
   )
