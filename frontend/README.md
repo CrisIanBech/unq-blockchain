@@ -65,20 +65,59 @@ El script de Node.js `frontend/scripts/sync-abi.js` lee los archivos generados p
 
 ---
 
-## Capa de Servicios (`frontend/app/lib/services/`)
+## Capa de Servicios de Dominio (`frontend/app/lib/services/`)
 
-El servicio **`BlockchainService`** (`blockchain-service.ts`) expone métodos asíncronos limpios de alto nivel que los stores de Zustand pueden invocar directamente:
+Los servicios de dominio exponen métodos asíncronos limpios de alto nivel que los stores de Zustand invocan sin importar ni conocer tipos de `ethers`:
 
 ```typescript
 // Ejemplo de uso en Zustand
-import { BlockchainService } from "../lib/services/blockchain-service";
+import { PropertiesService } from "../lib/services/properties-service";
+import { RentalsService } from "../lib/services/rentals-service";
 
-// Mintear NFT
-const txReceipt = await BlockchainService.mintPropertyNFT(walletAddress, metadataURI);
+// Mintear NFT de Propiedad
+const result = await PropertiesService.mintProperty(walletAddress, metadataURI);
+console.log(result.txHash); // Hash de transacción real de Sepolia
 
 // Pagar Renta (Maneja la aprobación de USDC y llamada al alquiler internamente)
-const txHash = await BlockchainService.payMonthlyRent(agreementAddress, rentAmount);
+const resultRent = await RentalsService.payRent(agreementAddress, rentAmount);
 
-// Retirar USDC
-const txHash = await BlockchainService.withdrawRent(agreementAddress);
+// Retirar USDC acumulados de renta
+const resultWithdraw = await RentalsService.withdrawRent(agreementAddress);
 ```
+
+---
+
+## Persistencia y Arquitectura con Backend (NestJS)
+
+Actualmente, el listado de propiedades se gestiona **en memoria (Zustand)**, por lo que recargar la página (`F5`) reinicia los datos a sus fixtures por defecto. Para llevar BlockRent a producción, se debe incorporar una capa de backend construida en **NestJS** y una base de datos relacional (ej. PostgreSQL):
+
+### 1. Rol de NestJS como Indexador Blockchain (Mempool & Event listener)
+En lugar de forzar al frontend a realizar pesadas llamadas de lectura a la blockchain para escanear todos los NFTs de un usuario, el backend de NestJS actuará como indexador local:
+*   **Servicio Indexador (Cron / Event Listener):** Usando librerías como `ethers` o `viem`, NestJS se conectará a la red Sepolia y se suscribirá a los eventos de los contratos inteligentes:
+    *   `Transfer(from, to, tokenId)` en el contrato de **`PropertyNFT`**.
+    *   `RentalAgreementCreated(propertyId, tenant, agreementAddress)` en el contrato de **`RentalAgreementFactory`**.
+    *   `RentPaid(agreementAddress, tenant, amount)` en los contratos de **`RentalAgreement`**.
+*   **Base de Datos Relacional:** Al detectar que se emite un evento `Transfer` hacia un usuario, NestJS guarda el `tokenId` (como `propertyId`), la dirección del dueño y los metadatos (URI) en la base de datos.
+
+### 2. Guardado de Información Cosmética
+La blockchain solo debe almacenar datos transaccionales críticos (gas optimization). El backend de NestJS expondrá una API REST para almacenar los datos cosméticos de la propiedad (descripción larga, fotos de alta resolución, comodidades) mapeados al `propertyId` del NFT.
+
+### 3. Flujo de Trabajo Frontend ↔ NestJS
+Cuando la arquitectura del backend esté integrada, el ciclo de vida del frontend será:
+
+1.  **Carga de Página (On Mount):**
+    Al conectar la wallet real en la UI, el frontend realiza una petición HTTP al backend:
+    ```bash
+    GET https://api.blockrent.com/properties?owner=0xTuWalletAddress
+    ```
+    El store de Zustand recibe el JSON indexado desde la base de datos de NestJS y actualiza `ownedProperties` de forma instantánea en lugar de usar los mocks.
+
+2.  **Carga de Nueva Propiedad (Minter):**
+    *   El usuario hace clic en *"Mintear y cargar"*.
+    *   El frontend llama a `PropertiesService.mintProperty(...)`, lo cual dispara la transacción de minteo de NFT en MetaMask.
+    *   Una vez confirmada on-chain y devuelto el `txHash`, el frontend realiza un envío al backend:
+        ```bash
+        POST https://api.blockrent.com/properties
+        Body: { tokenId, txHash, name, type, address, imageUrl }
+        ```
+    *   NestJS valida la transacción en Sepolia, registra la propiedad en la base de datos y la asocia a tu cuenta. Al recargar la página, se recuperará del backend de forma persistente.
