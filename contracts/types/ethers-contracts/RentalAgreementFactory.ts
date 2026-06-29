@@ -6,12 +6,14 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface RentalAgreementFactoryInterface extends Interface {
-    getFunction(nameOrSignature: "DEFAULT_ADMIN_ROLE" | "activeRentals" | "createRentalAgreement" | "getAgreementAt" | "getAgreementsCount" | "getRoleAdmin" | "grantRole" | "hasRole" | "isRegistered" | "propertyNFT" | "registerActiveRental" | "renounceRole" | "revokeRole" | "supportsInterface" | "unregisterActiveRental" | "usdcToken"): FunctionFragment;
+    getFunction(nameOrSignature: "DEFAULT_ADMIN_ROLE" | "activeRentals" | "agreementHistory" | "agreementOf" | "createRentalAgreement" | "getAgreementAt" | "getAgreementsCount" | "getRoleAdmin" | "grantRole" | "hasRole" | "isRegistered" | "latestAgreement" | "propertyNFT" | "registerActiveRental" | "renounceRole" | "rentalNFT" | "revokeRole" | "supportsInterface" | "unregisterActiveRental" | "usdcToken"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "RentalAgreementCreated" | "RoleAdminChanged" | "RoleGranted" | "RoleRevoked"): EventFragment;
 
     encodeFunctionData(functionFragment: 'DEFAULT_ADMIN_ROLE', values?: undefined): string;
 encodeFunctionData(functionFragment: 'activeRentals', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'agreementHistory', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'agreementOf', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'createRentalAgreement', values: [BigNumberish, AddressLike, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'getAgreementAt', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'getAgreementsCount', values?: undefined): string;
@@ -19,9 +21,11 @@ encodeFunctionData(functionFragment: 'getRoleAdmin', values: [BytesLike]): strin
 encodeFunctionData(functionFragment: 'grantRole', values: [BytesLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'hasRole', values: [BytesLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'isRegistered', values: [AddressLike]): string;
+encodeFunctionData(functionFragment: 'latestAgreement', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'propertyNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'registerActiveRental', values: [BigNumberish, AddressLike]): string;
 encodeFunctionData(functionFragment: 'renounceRole', values: [BytesLike, AddressLike]): string;
+encodeFunctionData(functionFragment: 'rentalNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'revokeRole', values: [BytesLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'supportsInterface', values: [BytesLike]): string;
 encodeFunctionData(functionFragment: 'unregisterActiveRental', values: [BigNumberish]): string;
@@ -29,6 +33,8 @@ encodeFunctionData(functionFragment: 'usdcToken', values?: undefined): string;
 
     decodeFunctionResult(functionFragment: 'DEFAULT_ADMIN_ROLE', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'activeRentals', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'agreementHistory', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'agreementOf', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'createRentalAgreement', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'getAgreementAt', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'getAgreementsCount', data: BytesLike): Result;
@@ -36,9 +42,11 @@ decodeFunctionResult(functionFragment: 'getRoleAdmin', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'grantRole', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'hasRole', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'isRegistered', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'latestAgreement', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'propertyNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'registerActiveRental', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'renounceRole', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'rentalNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'revokeRole', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'supportsInterface', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'unregisterActiveRental', data: BytesLike): Result;
@@ -144,6 +152,22 @@ decodeFunctionResult(functionFragment: 'usdcToken', data: BytesLike): Result;
     
 
     
+    agreementHistory: TypedContractMethod<
+      [propertyId: BigNumberish, ],
+      [string[]],
+      'view'
+    >
+    
+
+    
+    agreementOf: TypedContractMethod<
+      [propertyId: BigNumberish, ],
+      [string],
+      'view'
+    >
+    
+
+    
     createRentalAgreement: TypedContractMethod<
       [propertyId: BigNumberish, tenant: AddressLike, baseRent: BigNumberish, securityDeposit: BigNumberish, inflationBps: BigNumberish, lateFeeBps: BigNumberish, gracePeriod: BigNumberish, duration: BigNumberish, deadline: BigNumberish, ],
       [string],
@@ -200,6 +224,14 @@ decodeFunctionResult(functionFragment: 'usdcToken', data: BytesLike): Result;
     
 
     
+    latestAgreement: TypedContractMethod<
+      [propertyId: BigNumberish, ],
+      [string],
+      'view'
+    >
+    
+
+    
     propertyNFT: TypedContractMethod<
       [],
       [string],
@@ -220,6 +252,14 @@ decodeFunctionResult(functionFragment: 'usdcToken', data: BytesLike): Result;
       [role: BytesLike, callerConfirmation: AddressLike, ],
       [void],
       'nonpayable'
+    >
+    
+
+    
+    rentalNFT: TypedContractMethod<
+      [],
+      [string],
+      'view'
     >
     
 
@@ -268,6 +308,16 @@ getFunction(nameOrSignature: 'activeRentals'): TypedContractMethod<
       [string],
       'view'
     >;
+getFunction(nameOrSignature: 'agreementHistory'): TypedContractMethod<
+      [propertyId: BigNumberish, ],
+      [string[]],
+      'view'
+    >;
+getFunction(nameOrSignature: 'agreementOf'): TypedContractMethod<
+      [propertyId: BigNumberish, ],
+      [string],
+      'view'
+    >;
 getFunction(nameOrSignature: 'createRentalAgreement'): TypedContractMethod<
       [propertyId: BigNumberish, tenant: AddressLike, baseRent: BigNumberish, securityDeposit: BigNumberish, inflationBps: BigNumberish, lateFeeBps: BigNumberish, gracePeriod: BigNumberish, duration: BigNumberish, deadline: BigNumberish, ],
       [string],
@@ -303,6 +353,11 @@ getFunction(nameOrSignature: 'isRegistered'): TypedContractMethod<
       [boolean],
       'view'
     >;
+getFunction(nameOrSignature: 'latestAgreement'): TypedContractMethod<
+      [propertyId: BigNumberish, ],
+      [string],
+      'view'
+    >;
 getFunction(nameOrSignature: 'propertyNFT'): TypedContractMethod<
       [],
       [string],
@@ -317,6 +372,11 @@ getFunction(nameOrSignature: 'renounceRole'): TypedContractMethod<
       [role: BytesLike, callerConfirmation: AddressLike, ],
       [void],
       'nonpayable'
+    >;
+getFunction(nameOrSignature: 'rentalNFT'): TypedContractMethod<
+      [],
+      [string],
+      'view'
     >;
 getFunction(nameOrSignature: 'revokeRole'): TypedContractMethod<
       [role: BytesLike, account: AddressLike, ],

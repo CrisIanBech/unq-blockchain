@@ -6,22 +6,23 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface RentalNFTInterface extends Interface {
-    getFunction(nameOrSignature: "approve" | "balanceOf" | "burn" | "controller" | "getApproved" | "isApprovedForAll" | "mint" | "name" | "ownerOf" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "setUser" | "supportsInterface" | "symbol" | "tokenURI" | "transferFrom" | "userExpires" | "userOf"): FunctionFragment;
+    getFunction(nameOrSignature: "approve" | "balanceOf" | "getApproved" | "isApprovedForAll" | "mint" | "name" | "owner" | "ownerOf" | "propertyNFT" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "setPropertyNFT" | "setUser" | "supportsInterface" | "symbol" | "tokenURI" | "transferFrom" | "userExpires" | "userOf"): FunctionFragment;
 
-    getEvent(nameOrSignatureOrTopic: "Approval" | "ApprovalForAll" | "RentalNFTBurned" | "RentalNFTMinted" | "Transfer" | "UpdateUser"): EventFragment;
+    getEvent(nameOrSignatureOrTopic: "Approval" | "ApprovalForAll" | "RentalNFTCreated" | "Transfer" | "UpdateUser"): EventFragment;
 
     encodeFunctionData(functionFragment: 'approve', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'balanceOf', values: [AddressLike]): string;
-encodeFunctionData(functionFragment: 'burn', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'controller', values?: undefined): string;
 encodeFunctionData(functionFragment: 'getApproved', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'isApprovedForAll', values: [AddressLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'mint', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'name', values?: undefined): string;
+encodeFunctionData(functionFragment: 'owner', values?: undefined): string;
 encodeFunctionData(functionFragment: 'ownerOf', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'propertyNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256)', values: [AddressLike, AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', values: [AddressLike, AddressLike, BigNumberish, BytesLike]): string;
 encodeFunctionData(functionFragment: 'setApprovalForAll', values: [AddressLike, boolean]): string;
+encodeFunctionData(functionFragment: 'setPropertyNFT', values: [AddressLike]): string;
 encodeFunctionData(functionFragment: 'setUser', values: [BigNumberish, AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'supportsInterface', values: [BytesLike]): string;
 encodeFunctionData(functionFragment: 'symbol', values?: undefined): string;
@@ -32,16 +33,17 @@ encodeFunctionData(functionFragment: 'userOf', values: [BigNumberish]): string;
 
     decodeFunctionResult(functionFragment: 'approve', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'balanceOf', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'burn', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'controller', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'getApproved', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'isApprovedForAll', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'mint', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'name', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'owner', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'ownerOf', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'propertyNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256)', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'setApprovalForAll', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'setPropertyNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'setUser', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'supportsInterface', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'symbol', data: BytesLike): Result;
@@ -76,22 +78,10 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
 
   
 
-    export namespace RentalNFTBurnedEvent {
-      export type InputTuple = [tokenId: BigNumberish];
-      export type OutputTuple = [tokenId: bigint];
-      export interface OutputObject {tokenId: bigint };
-      export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
-      export type Filter = TypedDeferredTopicFilter<Event>
-      export type Log = TypedEventLog<Event>
-      export type LogDescription = TypedLogDescription<Event>
-    }
-
-  
-
-    export namespace RentalNFTMintedEvent {
-      export type InputTuple = [tokenId: BigNumberish, owner: AddressLike];
-      export type OutputTuple = [tokenId: bigint, owner: string];
-      export interface OutputObject {tokenId: bigint, owner: string };
+    export namespace RentalNFTCreatedEvent {
+      export type InputTuple = [propertyId: BigNumberish, rentalTokenId: BigNumberish];
+      export type OutputTuple = [propertyId: bigint, rentalTokenId: bigint];
+      export interface OutputObject {propertyId: bigint, rentalTokenId: bigint };
       export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
       export type Filter = TypedDeferredTopicFilter<Event>
       export type Log = TypedEventLog<Event>
@@ -174,22 +164,6 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
     
 
     
-    burn: TypedContractMethod<
-      [tokenId: BigNumberish, ],
-      [void],
-      'nonpayable'
-    >
-    
-
-    
-    controller: TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >
-    
-
-    
     getApproved: TypedContractMethod<
       [tokenId: BigNumberish, ],
       [string],
@@ -222,8 +196,24 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
     
 
     
+    owner: TypedContractMethod<
+      [],
+      [string],
+      'view'
+    >
+    
+
+    
     ownerOf: TypedContractMethod<
       [tokenId: BigNumberish, ],
+      [string],
+      'view'
+    >
+    
+
+    
+    propertyNFT: TypedContractMethod<
+      [],
       [string],
       'view'
     >
@@ -239,15 +229,23 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
 
     
     "safeTransferFrom(address,address,uint256,bytes)": TypedContractMethod<
-      [from: AddressLike, to: AddressLike, tokenId: BigNumberish, data: BytesLike, ],
+      [arg0: AddressLike, arg1: AddressLike, arg2: BigNumberish, arg3: BytesLike, ],
       [void],
-      'nonpayable'
+      'view'
     >
     
 
     
     setApprovalForAll: TypedContractMethod<
       [operator: AddressLike, approved: boolean, ],
+      [void],
+      'nonpayable'
+    >
+    
+
+    
+    setPropertyNFT: TypedContractMethod<
+      [_propertyNFT: AddressLike, ],
       [void],
       'nonpayable'
     >
@@ -287,9 +285,9 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
 
     
     transferFrom: TypedContractMethod<
-      [from: AddressLike, to: AddressLike, tokenId: BigNumberish, ],
+      [arg0: AddressLike, arg1: AddressLike, arg2: BigNumberish, ],
       [void],
-      'nonpayable'
+      'view'
     >
     
 
@@ -322,16 +320,6 @@ getFunction(nameOrSignature: 'balanceOf'): TypedContractMethod<
       [bigint],
       'view'
     >;
-getFunction(nameOrSignature: 'burn'): TypedContractMethod<
-      [tokenId: BigNumberish, ],
-      [void],
-      'nonpayable'
-    >;
-getFunction(nameOrSignature: 'controller'): TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >;
 getFunction(nameOrSignature: 'getApproved'): TypedContractMethod<
       [tokenId: BigNumberish, ],
       [string],
@@ -352,8 +340,18 @@ getFunction(nameOrSignature: 'name'): TypedContractMethod<
       [string],
       'view'
     >;
+getFunction(nameOrSignature: 'owner'): TypedContractMethod<
+      [],
+      [string],
+      'view'
+    >;
 getFunction(nameOrSignature: 'ownerOf'): TypedContractMethod<
       [tokenId: BigNumberish, ],
+      [string],
+      'view'
+    >;
+getFunction(nameOrSignature: 'propertyNFT'): TypedContractMethod<
+      [],
       [string],
       'view'
     >;
@@ -363,12 +361,17 @@ getFunction(nameOrSignature: 'safeTransferFrom(address,address,uint256)'): Typed
       'nonpayable'
     >;
 getFunction(nameOrSignature: 'safeTransferFrom(address,address,uint256,bytes)'): TypedContractMethod<
-      [from: AddressLike, to: AddressLike, tokenId: BigNumberish, data: BytesLike, ],
+      [arg0: AddressLike, arg1: AddressLike, arg2: BigNumberish, arg3: BytesLike, ],
       [void],
-      'nonpayable'
+      'view'
     >;
 getFunction(nameOrSignature: 'setApprovalForAll'): TypedContractMethod<
       [operator: AddressLike, approved: boolean, ],
+      [void],
+      'nonpayable'
+    >;
+getFunction(nameOrSignature: 'setPropertyNFT'): TypedContractMethod<
+      [_propertyNFT: AddressLike, ],
       [void],
       'nonpayable'
     >;
@@ -393,9 +396,9 @@ getFunction(nameOrSignature: 'tokenURI'): TypedContractMethod<
       'view'
     >;
 getFunction(nameOrSignature: 'transferFrom'): TypedContractMethod<
-      [from: AddressLike, to: AddressLike, tokenId: BigNumberish, ],
+      [arg0: AddressLike, arg1: AddressLike, arg2: BigNumberish, ],
       [void],
-      'nonpayable'
+      'view'
     >;
 getFunction(nameOrSignature: 'userExpires'): TypedContractMethod<
       [tokenId: BigNumberish, ],
@@ -410,8 +413,7 @@ getFunction(nameOrSignature: 'userOf'): TypedContractMethod<
 
     getEvent(key: 'Approval'): TypedContractEvent<ApprovalEvent.InputTuple, ApprovalEvent.OutputTuple, ApprovalEvent.OutputObject>;
 getEvent(key: 'ApprovalForAll'): TypedContractEvent<ApprovalForAllEvent.InputTuple, ApprovalForAllEvent.OutputTuple, ApprovalForAllEvent.OutputObject>;
-getEvent(key: 'RentalNFTBurned'): TypedContractEvent<RentalNFTBurnedEvent.InputTuple, RentalNFTBurnedEvent.OutputTuple, RentalNFTBurnedEvent.OutputObject>;
-getEvent(key: 'RentalNFTMinted'): TypedContractEvent<RentalNFTMintedEvent.InputTuple, RentalNFTMintedEvent.OutputTuple, RentalNFTMintedEvent.OutputObject>;
+getEvent(key: 'RentalNFTCreated'): TypedContractEvent<RentalNFTCreatedEvent.InputTuple, RentalNFTCreatedEvent.OutputTuple, RentalNFTCreatedEvent.OutputObject>;
 getEvent(key: 'Transfer'): TypedContractEvent<TransferEvent.InputTuple, TransferEvent.OutputTuple, TransferEvent.OutputObject>;
 getEvent(key: 'UpdateUser'): TypedContractEvent<UpdateUserEvent.InputTuple, UpdateUserEvent.OutputTuple, UpdateUserEvent.OutputObject>;
 
@@ -425,12 +427,8 @@ getEvent(key: 'UpdateUser'): TypedContractEvent<UpdateUserEvent.InputTuple, Upda
       ApprovalForAll: TypedContractEvent<ApprovalForAllEvent.InputTuple, ApprovalForAllEvent.OutputTuple, ApprovalForAllEvent.OutputObject>;
     
 
-      'RentalNFTBurned(uint256)': TypedContractEvent<RentalNFTBurnedEvent.InputTuple, RentalNFTBurnedEvent.OutputTuple, RentalNFTBurnedEvent.OutputObject>;
-      RentalNFTBurned: TypedContractEvent<RentalNFTBurnedEvent.InputTuple, RentalNFTBurnedEvent.OutputTuple, RentalNFTBurnedEvent.OutputObject>;
-    
-
-      'RentalNFTMinted(uint256,address)': TypedContractEvent<RentalNFTMintedEvent.InputTuple, RentalNFTMintedEvent.OutputTuple, RentalNFTMintedEvent.OutputObject>;
-      RentalNFTMinted: TypedContractEvent<RentalNFTMintedEvent.InputTuple, RentalNFTMintedEvent.OutputTuple, RentalNFTMintedEvent.OutputObject>;
+      'RentalNFTCreated(uint256,uint256)': TypedContractEvent<RentalNFTCreatedEvent.InputTuple, RentalNFTCreatedEvent.OutputTuple, RentalNFTCreatedEvent.OutputObject>;
+      RentalNFTCreated: TypedContractEvent<RentalNFTCreatedEvent.InputTuple, RentalNFTCreatedEvent.OutputTuple, RentalNFTCreatedEvent.OutputObject>;
     
 
       'Transfer(address,address,uint256)': TypedContractEvent<TransferEvent.InputTuple, TransferEvent.OutputTuple, TransferEvent.OutputObject>;

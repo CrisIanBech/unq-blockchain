@@ -13,19 +13,24 @@ import "./RentalAgreement.sol";
 contract RentalAgreementFactory is IRentalAgreementFactory, AccessControl {
     address public immutable override propertyNFT;
     address public immutable override usdcToken;
+    address public immutable override rentalNFT;
 
     mapping(uint256 => address) public override activeRentals;
     mapping(address => bool) public override isRegistered;
     address[] private _registeredAgreements;
 
+    // Track all agreements created for each property ID
+    mapping(uint256 => address[]) private _propertyHistory;
+
     error UnauthorizedAgreement();
     error PropertyAlreadyRented();
     error NotPropertyOwner();
 
-    constructor(address _propertyNFT, address _usdcToken) {
+    constructor(address _propertyNFT, address _usdcToken, address _rentalNFT) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         propertyNFT = _propertyNFT;
         usdcToken = _usdcToken;
+        rentalNFT = _rentalNFT;
     }
 
     /**
@@ -58,6 +63,7 @@ contract RentalAgreementFactory is IRentalAgreementFactory, AccessControl {
             propertyId,
             tenant,
             usdcToken,
+            rentalNFT,
             baseRent,
             securityDeposit,
             inflationBps,
@@ -72,6 +78,7 @@ contract RentalAgreementFactory is IRentalAgreementFactory, AccessControl {
         address agreementAddress = address(agreement);
         isRegistered[agreementAddress] = true;
         _registeredAgreements.push(agreementAddress);
+        _propertyHistory[propertyId].push(agreementAddress);
 
         emit RentalAgreementCreated(
             agreementAddress,
@@ -105,6 +112,29 @@ contract RentalAgreementFactory is IRentalAgreementFactory, AccessControl {
         if (activeRentals[propertyId] != msg.sender) revert UnauthorizedAgreement();
 
         activeRentals[propertyId] = address(0);
+    }
+
+    /**
+     * @notice Maps a property ID to its active RentalAgreement contract (alias of activeRentals).
+     */
+    function agreementOf(uint256 propertyId) external view override returns (address) {
+        return activeRentals[propertyId];
+    }
+
+    /**
+     * @notice Returns the history of all agreements created for a specific property.
+     */
+    function agreementHistory(uint256 propertyId) external view override returns (address[] memory) {
+        return _propertyHistory[propertyId];
+    }
+
+    /**
+     * @notice Returns the latest agreement created for a property (active or inactive).
+     */
+    function latestAgreement(uint256 propertyId) external view override returns (address) {
+        uint256 len = _propertyHistory[propertyId].length;
+        if (len == 0) return address(0);
+        return _propertyHistory[propertyId][len - 1];
     }
 
     /**

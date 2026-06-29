@@ -6,7 +6,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface IPropertyNFTInterface extends Interface {
-    getFunction(nameOrSignature: "approve" | "balanceOf" | "getApproved" | "isApprovedForAll" | "mint" | "ownerOf" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "supportsInterface" | "transferFrom"): FunctionFragment;
+    getFunction(nameOrSignature: "approve" | "balanceOf" | "getApproved" | "isApprovedForAll" | "mint" | "ownerOf" | "rentalNFT" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "supportsInterface" | "transferFrom"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "Approval" | "ApprovalForAll" | "Transfer"): EventFragment;
 
@@ -16,6 +16,7 @@ encodeFunctionData(functionFragment: 'getApproved', values: [BigNumberish]): str
 encodeFunctionData(functionFragment: 'isApprovedForAll', values: [AddressLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'mint', values: [AddressLike, string]): string;
 encodeFunctionData(functionFragment: 'ownerOf', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'rentalNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256)', values: [AddressLike, AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', values: [AddressLike, AddressLike, BigNumberish, BytesLike]): string;
 encodeFunctionData(functionFragment: 'setApprovalForAll', values: [AddressLike, boolean]): string;
@@ -28,6 +29,7 @@ decodeFunctionResult(functionFragment: 'getApproved', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'isApprovedForAll', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'mint', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'ownerOf', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'rentalNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256)', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'setApprovalForAll', data: BytesLike): Result;
@@ -154,6 +156,14 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
     
 
     
+    rentalNFT: TypedContractMethod<
+      [],
+      [string],
+      'view'
+    >
+    
+
+    
     "safeTransferFrom(address,address,uint256)": TypedContractMethod<
       [from: AddressLike, to: AddressLike, tokenId: BigNumberish, ],
       [void],
@@ -223,6 +233,11 @@ getFunction(nameOrSignature: 'mint'): TypedContractMethod<
     >;
 getFunction(nameOrSignature: 'ownerOf'): TypedContractMethod<
       [tokenId: BigNumberish, ],
+      [string],
+      'view'
+    >;
+getFunction(nameOrSignature: 'rentalNFT'): TypedContractMethod<
+      [],
       [string],
       'view'
     >;

@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IRentalAgreement.sol";
 import "./interfaces/IRentalAgreementFactory.sol";
-import "./RentalNFT.sol";
+import "./interfaces/IRentalNFT.sol";
 
 /**
  * @title RentalAgreement
@@ -62,9 +62,8 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
     event AgreementPending();
     event LandlordApproved(address indexed landlord);
     event TenantApproved(address indexed tenant);
-    event AgreementActivated(address indexed rentalNFTAddress);
+    event AgreementActivated(address indexed agreementAddress, uint256 indexed propertyId);
     event AgreementExpired();
-    event RentalNFTDeployed(address indexed nftAddress);
     event RentPaid(uint256 indexed monthIndex, uint256 amount, uint256 lateFeeApplied);
     event DepositLocked(uint256 amount);
     event DepositReleased(uint256 amount);
@@ -94,6 +93,7 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
         uint256 _propertyId,
         address _tenant,
         address _usdcToken,
+        address _rentalNFT,
         uint256 _baseRent,
         uint256 _securityDeposit,
         uint256 _inflationBps,
@@ -108,6 +108,7 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
         propertyId = _propertyId;
         tenant = _tenant;
         usdcToken = _usdcToken;
+        rentalNFT = _rentalNFT;
         factory = msg.sender;
 
         baseRent = _baseRent;
@@ -145,7 +146,7 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
 
     /**
      * @notice Allows landlord or tenant to approve the rental terms.
-     * @dev Once both approve, the contract deploys RentalNFT and becomes Active.
+     * @dev Once both approve, the contract assigns the ERC4907 occupancy user.
      */
     function approveAgreement() external override nonReentrant {
         checkExpiration();
@@ -174,27 +175,18 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
             startTime = block.timestamp;
             rentPaidUntil = block.timestamp;
 
-            // Deploy RentalNFT
-            RentalNFT nft = new RentalNFT();
-            rentalNFT = address(nft);
-            emit RentalNFTDeployed(rentalNFT);
+            // Assign tenant as user on the permanent RentalNFT (using delegated PropertyNFT approvals)
+            IRentalNFT(rentalNFT).setUser(propertyId, tenant, uint64(block.timestamp + duration));
 
-            // Mint single token representation to this agreement contract
-            nft.mint(address(this), 1);
-
-            // Assign tenant as user with expiration matching lease end time
-            nft.setUser(1, tenant, uint64(block.timestamp + duration));
-
-            // Register as active rental in factory
+            // Register as active rental in factory registry
             IRentalAgreementFactory(factory).registerActiveRental(propertyId, address(this));
 
-            emit AgreementActivated(rentalNFT);
+            emit AgreementActivated(address(this), propertyId);
         }
     }
 
     /**
      * @notice Tenant pays the monthly rent (and late fee if applicable).
-     * @dev Escrows the funds inside the agreement contract.
      */
     function payRent() external override onlyActive nonReentrant {
         if (block.timestamp > startTime + duration) revert LeaseTermNotEnded(); // Lease ended, should terminate
@@ -294,9 +286,9 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
             if (landlordCancelled && tenantCancelled) {
                 status = AgreementStatus.Cancelled;
                 
-                // Burn RentalNFT
+                // Clear user on RentalNFT
                 if (rentalNFT != address(0)) {
-                    RentalNFT(rentalNFT).burn(1);
+                    IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
                 }
 
                 IRentalAgreementFactory(factory).unregisterActiveRental(propertyId);
@@ -314,9 +306,9 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
         if (block.timestamp < startTime + duration) revert LeaseTermNotEnded();
         status = AgreementStatus.Completed;
 
-        // Burn RentalNFT
+        // Clear user on RentalNFT
         if (rentalNFT != address(0)) {
-            RentalNFT(rentalNFT).burn(1);
+            IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
         }
 
         IRentalAgreementFactory(factory).unregisterActiveRental(propertyId);
@@ -331,9 +323,9 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
         if (block.timestamp <= rentPaidUntil + gracePeriod) revert RentNotOverdue();
         status = AgreementStatus.Defaulted;
 
-        // Burn RentalNFT
+        // Clear user on RentalNFT
         if (rentalNFT != address(0)) {
-            RentalNFT(rentalNFT).burn(1);
+            IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
         }
 
         IRentalAgreementFactory(factory).unregisterActiveRental(propertyId);

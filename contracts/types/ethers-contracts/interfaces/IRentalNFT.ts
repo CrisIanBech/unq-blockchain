@@ -6,18 +6,17 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface IRentalNFTInterface extends Interface {
-    getFunction(nameOrSignature: "approve" | "balanceOf" | "burn" | "controller" | "getApproved" | "isApprovedForAll" | "mint" | "ownerOf" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "setUser" | "supportsInterface" | "transferFrom" | "userExpires" | "userOf"): FunctionFragment;
+    getFunction(nameOrSignature: "approve" | "balanceOf" | "getApproved" | "isApprovedForAll" | "mint" | "ownerOf" | "propertyNFT" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "setUser" | "supportsInterface" | "transferFrom" | "userExpires" | "userOf"): FunctionFragment;
 
-    getEvent(nameOrSignatureOrTopic: "Approval" | "ApprovalForAll" | "RentalNFTBurned" | "RentalNFTMinted" | "Transfer" | "UpdateUser"): EventFragment;
+    getEvent(nameOrSignatureOrTopic: "Approval" | "ApprovalForAll" | "RentalNFTCreated" | "Transfer" | "UpdateUser"): EventFragment;
 
     encodeFunctionData(functionFragment: 'approve', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'balanceOf', values: [AddressLike]): string;
-encodeFunctionData(functionFragment: 'burn', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'controller', values?: undefined): string;
 encodeFunctionData(functionFragment: 'getApproved', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'isApprovedForAll', values: [AddressLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'mint', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'ownerOf', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'propertyNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256)', values: [AddressLike, AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', values: [AddressLike, AddressLike, BigNumberish, BytesLike]): string;
 encodeFunctionData(functionFragment: 'setApprovalForAll', values: [AddressLike, boolean]): string;
@@ -29,12 +28,11 @@ encodeFunctionData(functionFragment: 'userOf', values: [BigNumberish]): string;
 
     decodeFunctionResult(functionFragment: 'approve', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'balanceOf', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'burn', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'controller', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'getApproved', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'isApprovedForAll', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'mint', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'ownerOf', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'propertyNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256)', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'setApprovalForAll', data: BytesLike): Result;
@@ -70,22 +68,10 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
 
   
 
-    export namespace RentalNFTBurnedEvent {
-      export type InputTuple = [tokenId: BigNumberish];
-      export type OutputTuple = [tokenId: bigint];
-      export interface OutputObject {tokenId: bigint };
-      export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
-      export type Filter = TypedDeferredTopicFilter<Event>
-      export type Log = TypedEventLog<Event>
-      export type LogDescription = TypedLogDescription<Event>
-    }
-
-  
-
-    export namespace RentalNFTMintedEvent {
-      export type InputTuple = [tokenId: BigNumberish, owner: AddressLike];
-      export type OutputTuple = [tokenId: bigint, owner: string];
-      export interface OutputObject {tokenId: bigint, owner: string };
+    export namespace RentalNFTCreatedEvent {
+      export type InputTuple = [propertyId: BigNumberish, rentalTokenId: BigNumberish];
+      export type OutputTuple = [propertyId: bigint, rentalTokenId: bigint];
+      export interface OutputObject {propertyId: bigint, rentalTokenId: bigint };
       export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
       export type Filter = TypedDeferredTopicFilter<Event>
       export type Log = TypedEventLog<Event>
@@ -168,22 +154,6 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
     
 
     
-    burn: TypedContractMethod<
-      [tokenId: BigNumberish, ],
-      [void],
-      'nonpayable'
-    >
-    
-
-    
-    controller: TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >
-    
-
-    
     getApproved: TypedContractMethod<
       [tokenId: BigNumberish, ],
       [string],
@@ -210,6 +180,14 @@ decodeFunctionResult(functionFragment: 'userOf', data: BytesLike): Result;
     
     ownerOf: TypedContractMethod<
       [tokenId: BigNumberish, ],
+      [string],
+      'view'
+    >
+    
+
+    
+    propertyNFT: TypedContractMethod<
+      [],
       [string],
       'view'
     >
@@ -292,16 +270,6 @@ getFunction(nameOrSignature: 'balanceOf'): TypedContractMethod<
       [bigint],
       'view'
     >;
-getFunction(nameOrSignature: 'burn'): TypedContractMethod<
-      [tokenId: BigNumberish, ],
-      [void],
-      'nonpayable'
-    >;
-getFunction(nameOrSignature: 'controller'): TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >;
 getFunction(nameOrSignature: 'getApproved'): TypedContractMethod<
       [tokenId: BigNumberish, ],
       [string],
@@ -319,6 +287,11 @@ getFunction(nameOrSignature: 'mint'): TypedContractMethod<
     >;
 getFunction(nameOrSignature: 'ownerOf'): TypedContractMethod<
       [tokenId: BigNumberish, ],
+      [string],
+      'view'
+    >;
+getFunction(nameOrSignature: 'propertyNFT'): TypedContractMethod<
+      [],
       [string],
       'view'
     >;
@@ -365,8 +338,7 @@ getFunction(nameOrSignature: 'userOf'): TypedContractMethod<
 
     getEvent(key: 'Approval'): TypedContractEvent<ApprovalEvent.InputTuple, ApprovalEvent.OutputTuple, ApprovalEvent.OutputObject>;
 getEvent(key: 'ApprovalForAll'): TypedContractEvent<ApprovalForAllEvent.InputTuple, ApprovalForAllEvent.OutputTuple, ApprovalForAllEvent.OutputObject>;
-getEvent(key: 'RentalNFTBurned'): TypedContractEvent<RentalNFTBurnedEvent.InputTuple, RentalNFTBurnedEvent.OutputTuple, RentalNFTBurnedEvent.OutputObject>;
-getEvent(key: 'RentalNFTMinted'): TypedContractEvent<RentalNFTMintedEvent.InputTuple, RentalNFTMintedEvent.OutputTuple, RentalNFTMintedEvent.OutputObject>;
+getEvent(key: 'RentalNFTCreated'): TypedContractEvent<RentalNFTCreatedEvent.InputTuple, RentalNFTCreatedEvent.OutputTuple, RentalNFTCreatedEvent.OutputObject>;
 getEvent(key: 'Transfer'): TypedContractEvent<TransferEvent.InputTuple, TransferEvent.OutputTuple, TransferEvent.OutputObject>;
 getEvent(key: 'UpdateUser'): TypedContractEvent<UpdateUserEvent.InputTuple, UpdateUserEvent.OutputTuple, UpdateUserEvent.OutputObject>;
 
@@ -380,12 +352,8 @@ getEvent(key: 'UpdateUser'): TypedContractEvent<UpdateUserEvent.InputTuple, Upda
       ApprovalForAll: TypedContractEvent<ApprovalForAllEvent.InputTuple, ApprovalForAllEvent.OutputTuple, ApprovalForAllEvent.OutputObject>;
     
 
-      'RentalNFTBurned(uint256)': TypedContractEvent<RentalNFTBurnedEvent.InputTuple, RentalNFTBurnedEvent.OutputTuple, RentalNFTBurnedEvent.OutputObject>;
-      RentalNFTBurned: TypedContractEvent<RentalNFTBurnedEvent.InputTuple, RentalNFTBurnedEvent.OutputTuple, RentalNFTBurnedEvent.OutputObject>;
-    
-
-      'RentalNFTMinted(uint256,address)': TypedContractEvent<RentalNFTMintedEvent.InputTuple, RentalNFTMintedEvent.OutputTuple, RentalNFTMintedEvent.OutputObject>;
-      RentalNFTMinted: TypedContractEvent<RentalNFTMintedEvent.InputTuple, RentalNFTMintedEvent.OutputTuple, RentalNFTMintedEvent.OutputObject>;
+      'RentalNFTCreated(uint256,uint256)': TypedContractEvent<RentalNFTCreatedEvent.InputTuple, RentalNFTCreatedEvent.OutputTuple, RentalNFTCreatedEvent.OutputObject>;
+      RentalNFTCreated: TypedContractEvent<RentalNFTCreatedEvent.InputTuple, RentalNFTCreatedEvent.OutputTuple, RentalNFTCreatedEvent.OutputObject>;
     
 
       'Transfer(address,address,uint256)': TypedContractEvent<TransferEvent.InputTuple, TransferEvent.OutputTuple, TransferEvent.OutputObject>;

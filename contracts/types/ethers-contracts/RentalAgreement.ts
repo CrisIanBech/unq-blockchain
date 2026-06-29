@@ -8,7 +8,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   export interface RentalAgreementInterface extends Interface {
     getFunction(nameOrSignature: "approveAgreement" | "baseRent" | "cancelAgreement" | "checkExpiration" | "claimDeposit" | "completeAgreement" | "deadline" | "declareDefault" | "depositStatus" | "duration" | "factory" | "gracePeriod" | "inflationAdjustmentInterval" | "inflationBps" | "landlord" | "landlordApproved" | "landlordCancelled" | "lateFeeBps" | "payRent" | "paymentPeriod" | "propertyId" | "propertyNFT" | "releaseDeposit" | "rentPaidUntil" | "rentalNFT" | "securityDeposit" | "startTime" | "status" | "tenant" | "tenantApproved" | "tenantCancelled" | "usdcToken" | "withdrawRent"): FunctionFragment;
 
-    getEvent(nameOrSignatureOrTopic: "AgreementActivated" | "AgreementCancelled" | "AgreementCompleted" | "AgreementDefaulted" | "AgreementExpired" | "AgreementPending" | "DepositClaimed" | "DepositLocked" | "DepositReleased" | "LandlordApproved" | "LateFeeApplied" | "RentPaid" | "RentalNFTDeployed" | "TenantApproved"): EventFragment;
+    getEvent(nameOrSignatureOrTopic: "AgreementActivated" | "AgreementCancelled" | "AgreementCompleted" | "AgreementDefaulted" | "AgreementExpired" | "AgreementPending" | "DepositClaimed" | "DepositLocked" | "DepositReleased" | "LandlordApproved" | "LateFeeApplied" | "RentPaid" | "TenantApproved"): EventFragment;
 
     encodeFunctionData(functionFragment: 'approveAgreement', values?: undefined): string;
 encodeFunctionData(functionFragment: 'baseRent', values?: undefined): string;
@@ -81,9 +81,9 @@ decodeFunctionResult(functionFragment: 'withdrawRent', data: BytesLike): Result;
 
   
     export namespace AgreementActivatedEvent {
-      export type InputTuple = [rentalNFTAddress: AddressLike];
-      export type OutputTuple = [rentalNFTAddress: string];
-      export interface OutputObject {rentalNFTAddress: string };
+      export type InputTuple = [agreementAddress: AddressLike, propertyId: BigNumberish];
+      export type OutputTuple = [agreementAddress: string, propertyId: bigint];
+      export interface OutputObject {agreementAddress: string, propertyId: bigint };
       export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
       export type Filter = TypedDeferredTopicFilter<Event>
       export type Log = TypedEventLog<Event>
@@ -216,18 +216,6 @@ decodeFunctionResult(functionFragment: 'withdrawRent', data: BytesLike): Result;
       export type InputTuple = [monthIndex: BigNumberish, amount: BigNumberish, lateFeeApplied: BigNumberish];
       export type OutputTuple = [monthIndex: bigint, amount: bigint, lateFeeApplied: bigint];
       export interface OutputObject {monthIndex: bigint, amount: bigint, lateFeeApplied: bigint };
-      export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
-      export type Filter = TypedDeferredTopicFilter<Event>
-      export type Log = TypedEventLog<Event>
-      export type LogDescription = TypedLogDescription<Event>
-    }
-
-  
-
-    export namespace RentalNFTDeployedEvent {
-      export type InputTuple = [nftAddress: AddressLike];
-      export type OutputTuple = [nftAddress: string];
-      export interface OutputObject {nftAddress: string };
       export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
       export type Filter = TypedDeferredTopicFilter<Event>
       export type Log = TypedEventLog<Event>
@@ -726,12 +714,11 @@ getEvent(key: 'DepositReleased'): TypedContractEvent<DepositReleasedEvent.InputT
 getEvent(key: 'LandlordApproved'): TypedContractEvent<LandlordApprovedEvent.InputTuple, LandlordApprovedEvent.OutputTuple, LandlordApprovedEvent.OutputObject>;
 getEvent(key: 'LateFeeApplied'): TypedContractEvent<LateFeeAppliedEvent.InputTuple, LateFeeAppliedEvent.OutputTuple, LateFeeAppliedEvent.OutputObject>;
 getEvent(key: 'RentPaid'): TypedContractEvent<RentPaidEvent.InputTuple, RentPaidEvent.OutputTuple, RentPaidEvent.OutputObject>;
-getEvent(key: 'RentalNFTDeployed'): TypedContractEvent<RentalNFTDeployedEvent.InputTuple, RentalNFTDeployedEvent.OutputTuple, RentalNFTDeployedEvent.OutputObject>;
 getEvent(key: 'TenantApproved'): TypedContractEvent<TenantApprovedEvent.InputTuple, TenantApprovedEvent.OutputTuple, TenantApprovedEvent.OutputObject>;
 
     filters: {
       
-      'AgreementActivated(address)': TypedContractEvent<AgreementActivatedEvent.InputTuple, AgreementActivatedEvent.OutputTuple, AgreementActivatedEvent.OutputObject>;
+      'AgreementActivated(address,uint256)': TypedContractEvent<AgreementActivatedEvent.InputTuple, AgreementActivatedEvent.OutputTuple, AgreementActivatedEvent.OutputObject>;
       AgreementActivated: TypedContractEvent<AgreementActivatedEvent.InputTuple, AgreementActivatedEvent.OutputTuple, AgreementActivatedEvent.OutputObject>;
     
 
@@ -777,10 +764,6 @@ getEvent(key: 'TenantApproved'): TypedContractEvent<TenantApprovedEvent.InputTup
 
       'RentPaid(uint256,uint256,uint256)': TypedContractEvent<RentPaidEvent.InputTuple, RentPaidEvent.OutputTuple, RentPaidEvent.OutputObject>;
       RentPaid: TypedContractEvent<RentPaidEvent.InputTuple, RentPaidEvent.OutputTuple, RentPaidEvent.OutputObject>;
-    
-
-      'RentalNFTDeployed(address)': TypedContractEvent<RentalNFTDeployedEvent.InputTuple, RentalNFTDeployedEvent.OutputTuple, RentalNFTDeployedEvent.OutputObject>;
-      RentalNFTDeployed: TypedContractEvent<RentalNFTDeployedEvent.InputTuple, RentalNFTDeployedEvent.OutputTuple, RentalNFTDeployedEvent.OutputObject>;
     
 
       'TenantApproved(address)': TypedContractEvent<TenantApprovedEvent.InputTuple, TenantApprovedEvent.OutputTuple, TenantApprovedEvent.OutputObject>;

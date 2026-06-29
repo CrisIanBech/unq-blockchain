@@ -16,4 +16,9 @@ interface IPropertyNFT is IERC721 {
      * @return The newly generated property token ID.
      */
     function mint(address to, string calldata _tokenURI) external returns (uint256);
+
+    /**
+     * @notice Returns the linked RentalNFT contract address.
+     */
+    function rentalNFT() external view returns (address);
 }

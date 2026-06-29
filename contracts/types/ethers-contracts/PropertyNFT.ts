@@ -6,7 +6,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface PropertyNFTInterface extends Interface {
-    getFunction(nameOrSignature: "DEFAULT_ADMIN_ROLE" | "MINTER_ROLE" | "approve" | "balanceOf" | "getApproved" | "getRoleAdmin" | "grantRole" | "hasRole" | "isApprovedForAll" | "mint" | "name" | "ownerOf" | "renounceRole" | "revokeRole" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "supportsInterface" | "symbol" | "tokenURI" | "transferFrom"): FunctionFragment;
+    getFunction(nameOrSignature: "DEFAULT_ADMIN_ROLE" | "MINTER_ROLE" | "approve" | "balanceOf" | "getApproved" | "getRoleAdmin" | "grantRole" | "hasRole" | "isApprovedForAll" | "mint" | "name" | "ownerOf" | "renounceRole" | "rentalNFT" | "revokeRole" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "supportsInterface" | "symbol" | "tokenURI" | "transferFrom"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "Approval" | "ApprovalForAll" | "BatchMetadataUpdate" | "MetadataUpdate" | "PropertyMinted" | "RoleAdminChanged" | "RoleGranted" | "RoleRevoked" | "Transfer"): EventFragment;
 
@@ -23,6 +23,7 @@ encodeFunctionData(functionFragment: 'mint', values: [AddressLike, string]): str
 encodeFunctionData(functionFragment: 'name', values?: undefined): string;
 encodeFunctionData(functionFragment: 'ownerOf', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'renounceRole', values: [BytesLike, AddressLike]): string;
+encodeFunctionData(functionFragment: 'rentalNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'revokeRole', values: [BytesLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256)', values: [AddressLike, AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', values: [AddressLike, AddressLike, BigNumberish, BytesLike]): string;
@@ -45,6 +46,7 @@ decodeFunctionResult(functionFragment: 'mint', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'name', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'ownerOf', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'renounceRole', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'rentalNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'revokeRole', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256)', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', data: BytesLike): Result;
@@ -302,6 +304,14 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
     
 
     
+    rentalNFT: TypedContractMethod<
+      [],
+      [string],
+      'view'
+    >
+    
+
+    
     revokeRole: TypedContractMethod<
       [role: BytesLike, account: AddressLike, ],
       [void],
@@ -432,6 +442,11 @@ getFunction(nameOrSignature: 'renounceRole'): TypedContractMethod<
       [role: BytesLike, callerConfirmation: AddressLike, ],
       [void],
       'nonpayable'
+    >;
+getFunction(nameOrSignature: 'rentalNFT'): TypedContractMethod<
+      [],
+      [string],
+      'view'
     >;
 getFunction(nameOrSignature: 'revokeRole'): TypedContractMethod<
       [role: BytesLike, account: AddressLike, ],
