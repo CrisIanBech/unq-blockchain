@@ -69,7 +69,7 @@ contract RentalNFT is IRentalNFT, ERC721 {
     /**
      * @notice Get the user address of an NFT.
      */
-    function userOf(uint256 tokenId) public view override(IRentalNFT) returns (address) {
+    function userOf(uint256 tokenId) public view override returns (address) {
         if (uint256(_users[tokenId].expires) >= block.timestamp) {
             return _users[tokenId].user;
         }
@@ -79,7 +79,7 @@ contract RentalNFT is IRentalNFT, ERC721 {
     /**
      * @notice Get the user expiration of an NFT.
      */
-    function userExpires(uint256 tokenId) public view override(IRentalNFT) returns (uint256) {
+    function userExpires(uint256 tokenId) public view override returns (uint256) {
         return _users[tokenId].expires;
     }
 
