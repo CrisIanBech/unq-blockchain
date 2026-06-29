@@ -2,6 +2,7 @@
 artifacts/
 cache/
 typechain-types/
+types/ethers-contracts/
 
 # Dependencies
 node_modules/
