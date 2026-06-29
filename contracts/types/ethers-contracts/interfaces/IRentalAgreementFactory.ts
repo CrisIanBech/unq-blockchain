@@ -6,37 +6,13 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface IRentalAgreementFactoryInterface extends Interface {
-    getFunction(nameOrSignature: "activeRentals" | "agreementHistory" | "agreementOf" | "createRentalAgreement" | "getAgreementAt" | "getAgreementsCount" | "isRegistered" | "latestAgreement" | "propertyNFT" | "registerActiveRental" | "rentalNFT" | "unregisterActiveRental" | "usdcToken"): FunctionFragment;
+    getFunction(nameOrSignature: "createRentalAgreement"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "RentalAgreementCreated"): EventFragment;
 
-    encodeFunctionData(functionFragment: 'activeRentals', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'agreementHistory', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'agreementOf', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'createRentalAgreement', values: [BigNumberish, AddressLike, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish]): string;
-encodeFunctionData(functionFragment: 'getAgreementAt', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'getAgreementsCount', values?: undefined): string;
-encodeFunctionData(functionFragment: 'isRegistered', values: [AddressLike]): string;
-encodeFunctionData(functionFragment: 'latestAgreement', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'propertyNFT', values?: undefined): string;
-encodeFunctionData(functionFragment: 'registerActiveRental', values: [BigNumberish, AddressLike]): string;
-encodeFunctionData(functionFragment: 'rentalNFT', values?: undefined): string;
-encodeFunctionData(functionFragment: 'unregisterActiveRental', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'usdcToken', values?: undefined): string;
+    encodeFunctionData(functionFragment: 'createRentalAgreement', values: [AddressLike, BigNumberish, AddressLike, AddressLike, AddressLike, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish, BigNumberish]): string;
 
-    decodeFunctionResult(functionFragment: 'activeRentals', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'agreementHistory', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'agreementOf', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'createRentalAgreement', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'getAgreementAt', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'getAgreementsCount', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'isRegistered', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'latestAgreement', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'propertyNFT', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'registerActiveRental', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'rentalNFT', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'unregisterActiveRental', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'usdcToken', data: BytesLike): Result;
+    decodeFunctionResult(functionFragment: 'createRentalAgreement', data: BytesLike): Result;
   }
 
   
@@ -86,176 +62,20 @@ decodeFunctionResult(functionFragment: 'usdcToken', data: BytesLike): Result;
 
     
     
-    activeRentals: TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string],
-      'view'
-    >
-    
-
-    
-    agreementHistory: TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string[]],
-      'view'
-    >
-    
-
-    
-    agreementOf: TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string],
-      'view'
-    >
-    
-
-    
     createRentalAgreement: TypedContractMethod<
-      [propertyId: BigNumberish, tenant: AddressLike, baseRent: BigNumberish, securityDeposit: BigNumberish, inflationBps: BigNumberish, lateFeeBps: BigNumberish, gracePeriod: BigNumberish, duration: BigNumberish, deadline: BigNumberish, ],
+      [propertyNFT: AddressLike, propertyId: BigNumberish, tenant: AddressLike, usdcToken: AddressLike, rentalNFT: AddressLike, baseRent: BigNumberish, securityDeposit: BigNumberish, inflationBps: BigNumberish, lateFeeBps: BigNumberish, gracePeriod: BigNumberish, duration: BigNumberish, deadline: BigNumberish, ],
       [string],
       'nonpayable'
-    >
-    
-
-    
-    getAgreementAt: TypedContractMethod<
-      [index: BigNumberish, ],
-      [string],
-      'view'
-    >
-    
-
-    
-    getAgreementsCount: TypedContractMethod<
-      [],
-      [bigint],
-      'view'
-    >
-    
-
-    
-    isRegistered: TypedContractMethod<
-      [agreement: AddressLike, ],
-      [boolean],
-      'view'
-    >
-    
-
-    
-    latestAgreement: TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string],
-      'view'
-    >
-    
-
-    
-    propertyNFT: TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >
-    
-
-    
-    registerActiveRental: TypedContractMethod<
-      [propertyId: BigNumberish, agreement: AddressLike, ],
-      [void],
-      'nonpayable'
-    >
-    
-
-    
-    rentalNFT: TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >
-    
-
-    
-    unregisterActiveRental: TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [void],
-      'nonpayable'
-    >
-    
-
-    
-    usdcToken: TypedContractMethod<
-      [],
-      [string],
-      'view'
     >
     
 
 
     getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T;
 
-    getFunction(nameOrSignature: 'activeRentals'): TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string],
-      'view'
-    >;
-getFunction(nameOrSignature: 'agreementHistory'): TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string[]],
-      'view'
-    >;
-getFunction(nameOrSignature: 'agreementOf'): TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string],
-      'view'
-    >;
-getFunction(nameOrSignature: 'createRentalAgreement'): TypedContractMethod<
-      [propertyId: BigNumberish, tenant: AddressLike, baseRent: BigNumberish, securityDeposit: BigNumberish, inflationBps: BigNumberish, lateFeeBps: BigNumberish, gracePeriod: BigNumberish, duration: BigNumberish, deadline: BigNumberish, ],
+    getFunction(nameOrSignature: 'createRentalAgreement'): TypedContractMethod<
+      [propertyNFT: AddressLike, propertyId: BigNumberish, tenant: AddressLike, usdcToken: AddressLike, rentalNFT: AddressLike, baseRent: BigNumberish, securityDeposit: BigNumberish, inflationBps: BigNumberish, lateFeeBps: BigNumberish, gracePeriod: BigNumberish, duration: BigNumberish, deadline: BigNumberish, ],
       [string],
       'nonpayable'
-    >;
-getFunction(nameOrSignature: 'getAgreementAt'): TypedContractMethod<
-      [index: BigNumberish, ],
-      [string],
-      'view'
-    >;
-getFunction(nameOrSignature: 'getAgreementsCount'): TypedContractMethod<
-      [],
-      [bigint],
-      'view'
-    >;
-getFunction(nameOrSignature: 'isRegistered'): TypedContractMethod<
-      [agreement: AddressLike, ],
-      [boolean],
-      'view'
-    >;
-getFunction(nameOrSignature: 'latestAgreement'): TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [string],
-      'view'
-    >;
-getFunction(nameOrSignature: 'propertyNFT'): TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >;
-getFunction(nameOrSignature: 'registerActiveRental'): TypedContractMethod<
-      [propertyId: BigNumberish, agreement: AddressLike, ],
-      [void],
-      'nonpayable'
-    >;
-getFunction(nameOrSignature: 'rentalNFT'): TypedContractMethod<
-      [],
-      [string],
-      'view'
-    >;
-getFunction(nameOrSignature: 'unregisterActiveRental'): TypedContractMethod<
-      [propertyId: BigNumberish, ],
-      [void],
-      'nonpayable'
-    >;
-getFunction(nameOrSignature: 'usdcToken'): TypedContractMethod<
-      [],
-      [string],
-      'view'
     >;
 
     getEvent(key: 'RentalAgreementCreated'): TypedContractEvent<RentalAgreementCreatedEvent.InputTuple, RentalAgreementCreatedEvent.OutputTuple, RentalAgreementCreatedEvent.OutputObject>;

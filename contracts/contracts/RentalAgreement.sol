@@ -178,9 +178,7 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
             // Assign tenant as user on the permanent RentalNFT (using delegated PropertyNFT approvals)
             IRentalNFT(rentalNFT).setUser(propertyId, tenant, uint64(block.timestamp + duration));
 
-            // Register as active rental in factory registry
-            IRentalAgreementFactory(factory).registerActiveRental(propertyId, address(this));
-
+            // Register as active rental in factory registry - removed as factory is now stateless
             emit AgreementActivated(address(this), propertyId);
         }
     }
@@ -291,7 +289,6 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
                     IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
                 }
 
-                IRentalAgreementFactory(factory).unregisterActiveRental(propertyId);
                 emit AgreementCancelled();
             }
         } else {
@@ -311,7 +308,6 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
             IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
         }
 
-        IRentalAgreementFactory(factory).unregisterActiveRental(propertyId);
         emit AgreementCompleted();
     }
 
@@ -328,7 +324,6 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
             IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
         }
 
-        IRentalAgreementFactory(factory).unregisterActiveRental(propertyId);
         emit AgreementDefaulted();
     }
 }

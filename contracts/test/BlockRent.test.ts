@@ -38,6 +38,47 @@ describe("BlockRent System Tests", function () {
     let deadline: number;
     let propertyId: number;
 
+    async function deployAgreement(landlord: Signer, propId: number = propertyId, tAddr: string = tenantAddr): Promise<string> {
+        const propNFTAddr = await propertyNFT.getAddress();
+        const usdcAddr = await mockUSDC.getAddress();
+        const rNFTAddr = await rentalNFT.getAddress();
+        
+        // Static call to get the return value (address)
+        const agreementAddress = await factory.connect(landlord).createRentalAgreement.staticCall(
+            propNFTAddr,
+            propId,
+            tAddr,
+            usdcAddr,
+            rNFTAddr,
+            baseRent,
+            securityDeposit,
+            inflationBps,
+            lateFeeBps,
+            gracePeriod,
+            duration,
+            deadline
+        );
+
+        // Execute the transaction
+        const tx = await factory.connect(landlord).createRentalAgreement(
+            propNFTAddr,
+            propId,
+            tAddr,
+            usdcAddr,
+            rNFTAddr,
+            baseRent,
+            securityDeposit,
+            inflationBps,
+            lateFeeBps,
+            gracePeriod,
+            duration,
+            deadline
+        );
+        await tx.wait();
+
+        return agreementAddress;
+    }
+
     beforeEach(async function () {
         const connection = await hre.network.getOrCreate("hardhat");
         ethers = connection.ethers;
@@ -67,13 +108,9 @@ describe("BlockRent System Tests", function () {
         MockUSDC = await ethers.getContractFactory("MockUSDC");
         mockUSDC = await MockUSDC.deploy();
 
-        // 4. Deploy RentalAgreementFactory
+        // 4. Deploy RentalAgreementFactory (Stateless)
         RentalAgreementFactory = await ethers.getContractFactory("RentalAgreementFactory");
-        factory = await RentalAgreementFactory.deploy(
-            await propertyNFT.getAddress(),
-            await mockUSDC.getAddress(),
-            await rentalNFT.getAddress()
-        );
+        factory = await RentalAgreementFactory.deploy();
 
         // 5. Grant MINTER_ROLE on PropertyNFT to landlord1
         const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
@@ -113,82 +150,70 @@ describe("BlockRent System Tests", function () {
     });
 
     describe("RentalAgreementFactory", function () {
-        it("should allow deploying new agreements and querying history", async function () {
-            const tx = await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            await tx.wait();
-            
-            const agreementAddress = await factory.latestAgreement(propertyId);
-            expect(agreementAddress).to.not.equal(ZeroAddress);
-            expect(await factory.latestAgreement(propertyId)).to.equal(agreementAddress);
-            
-            const history = await factory.agreementHistory(propertyId);
-            expect(history.length).to.equal(1);
-            expect(history[0]).to.equal(agreementAddress);
+        it("Se crea correctamente el factory", async function () {
+            expect(await factory.getAddress()).to.not.equal(ZeroAddress);
         });
 
-        it("should prevent deploying a new agreement if another active agreement exists", async function () {
-            const tx1 = await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            await tx1.wait();
-
-            const tx2 = await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            await tx2.wait();
-
-            const agreement1Addr = await factory.getAgreementAt(0);
-            const agreement2Addr = await factory.getAgreementAt(1);
-
-            const agreement1 = await ethers.getContractAt("RentalAgreement", agreement1Addr);
-            const agreement2 = await ethers.getContractAt("RentalAgreement", agreement2Addr);
-
-            // Delegate PropertyNFT approvals to agreement1 for activation
-            await propertyNFT.connect(landlord1).approve(agreement1Addr, propertyId);
-
-            // Activate agreement1
-            await mockUSDC.connect(tenant).approve(agreement1Addr, securityDeposit);
-            await agreement1.connect(landlord1).approveAgreement();
-            await agreement1.connect(tenant).approveAgreement();
-
-            expect(await agreement1.status()).to.equal(2); // Active
-
-            // Attempting to activate agreement2 should revert since the property's RentalNFT token is occupied
-            await mockUSDC.connect(tenant).approve(agreement2Addr, securityDeposit);
-            await agreement2.connect(landlord1).approveAgreement();
-
-            // Delegate PropertyNFT approvals to agreement2
-            await propertyNFT.connect(landlord1).approve(agreement2Addr, propertyId);
-
+        it("El que crea el contrato no es el dueño del nft de la propiedad -> falla", async function () {
+            const propNFTAddr = await propertyNFT.getAddress();
+            const usdcAddr = await mockUSDC.getAddress();
+            const rNFTAddr = await rentalNFT.getAddress();
+            
             await expect(
-                agreement2.connect(tenant).approveAgreement()
-            ).to.be.revertedWithCustomError(rentalNFT, "PropertyAlreadyOccupied");
+                factory.connect(stranger).createRentalAgreement(
+                    propNFTAddr,
+                    propertyId,
+                    tenantAddr,
+                    usdcAddr,
+                    rNFTAddr,
+                    baseRent,
+                    securityDeposit,
+                    inflationBps,
+                    lateFeeBps,
+                    gracePeriod,
+                    duration,
+                    deadline
+                )
+            ).to.be.revertedWithCustomError(factory, "NotPropertyOwner");
+        });
+
+        it("Si quiero crear un contrato de una propiedad ya alquilada, antes de que se venza por completo -> falla", async function () {
+            // First, create and activate an agreement
+            const agreementAddress = await deployAgreement(landlord1);
+            
+            // Delegate PropertyNFT approvals to the agreement for activation
+            await propertyNFT.connect(landlord1).approve(agreementAddress, propertyId);
+            
+            // Activate it
+            await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit);
+            const agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
+            await agreement.connect(landlord1).approveAgreement();
+            await agreement.connect(tenant).approveAgreement();
+            
+            // Verify it is active/occupied
+            expect(await rentalNFT.userOf(propertyId)).to.equal(tenantAddr);
+            
+            // Now attempt to create a second agreement for the same property, while it is still occupied -> should revert
+            const propNFTAddr = await propertyNFT.getAddress();
+            const usdcAddr = await mockUSDC.getAddress();
+            const rNFTAddr = await rentalNFT.getAddress();
+            
+            await expect(
+                factory.connect(landlord1).createRentalAgreement(
+                    propNFTAddr,
+                    propertyId,
+                    tenantAddr,
+                    usdcAddr,
+                    rNFTAddr,
+                    baseRent,
+                    securityDeposit,
+                    inflationBps,
+                    lateFeeBps,
+                    gracePeriod,
+                    duration,
+                    deadline
+                )
+            ).to.be.revertedWithCustomError(factory, "PropertyAlreadyRented");
         });
     });
 
@@ -197,19 +222,7 @@ describe("BlockRent System Tests", function () {
         let agreementAddress: string;
 
         beforeEach(async function () {
-            const tx = await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            await tx.wait();
-            agreementAddress = await factory.getAgreementAt(0);
+            agreementAddress = await deployAgreement(landlord1);
             agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
         });
 
@@ -269,18 +282,7 @@ describe("BlockRent System Tests", function () {
         let agreementAddress: string;
 
         beforeEach(async function () {
-            await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            agreementAddress = await factory.getAgreementAt(0);
+            agreementAddress = await deployAgreement(landlord1);
             agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
             await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit + baseRent * 20n);
@@ -340,18 +342,7 @@ describe("BlockRent System Tests", function () {
         let agreementAddress: string;
 
         beforeEach(async function () {
-            await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            agreementAddress = await factory.getAgreementAt(0);
+            agreementAddress = await deployAgreement(landlord1);
             agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
             await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit + baseRent);
@@ -386,18 +377,7 @@ describe("BlockRent System Tests", function () {
         let agreementAddress: string;
 
         beforeEach(async function () {
-            await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            agreementAddress = await factory.getAgreementAt(0);
+            agreementAddress = await deployAgreement(landlord1);
             agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
             await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit);
@@ -439,18 +419,7 @@ describe("BlockRent System Tests", function () {
         let agreementAddress: string;
 
         beforeEach(async function () {
-            await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            agreementAddress = await factory.getAgreementAt(0);
+            agreementAddress = await deployAgreement(landlord1);
             agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
             await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit);
@@ -487,18 +456,7 @@ describe("BlockRent System Tests", function () {
         let agreementAddress: string;
 
         beforeEach(async function () {
-            await factory.connect(landlord1).createRentalAgreement(
-                propertyId,
-                tenantAddr,
-                baseRent,
-                securityDeposit,
-                inflationBps,
-                lateFeeBps,
-                gracePeriod,
-                duration,
-                deadline
-            );
-            agreementAddress = await factory.getAgreementAt(0);
+            agreementAddress = await deployAgreement(landlord1);
             agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
             await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit);
@@ -516,7 +474,6 @@ describe("BlockRent System Tests", function () {
 
             expect(await agreement.status()).to.equal(3); // Completed
             expect(await rentalNFT.userOf(propertyId)).to.equal(ZeroAddress);
-            expect(await factory.activeRentals(propertyId)).to.equal(ZeroAddress);
         });
 
         it("should clear occupancy on default", async function () {
@@ -528,7 +485,6 @@ describe("BlockRent System Tests", function () {
 
             expect(await agreement.status()).to.equal(5); // Defaulted
             expect(await rentalNFT.userOf(propertyId)).to.equal(ZeroAddress);
-            expect(await factory.activeRentals(propertyId)).to.equal(ZeroAddress);
         });
 
         it("should clear occupancy on cooperative cancellation", async function () {
@@ -540,7 +496,6 @@ describe("BlockRent System Tests", function () {
 
             expect(await agreement.status()).to.equal(4); // Cancelled
             expect(await rentalNFT.userOf(propertyId)).to.equal(ZeroAddress);
-            expect(await factory.activeRentals(propertyId)).to.equal(ZeroAddress);
         });
     });
 });
