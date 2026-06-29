@@ -52,57 +52,59 @@ npx hardhat test
 
 ---
 
-## 5. Guía de Despliegue (Deploy) en Sepolia
+## 5. Guía de Despliegue (Deploy) y Versionado Automático
 
-Existen dos alternativas recomendadas para desplegar los contratos inteligentes utilizando sus wallets de MetaMask en la red de pruebas Sepolia.
+Hemos automatizado el flujo de despliegue mediante un script de TypeScript que gestiona el orden de inicialización de los enlaces bidireccionales, ejecuta validaciones on-chain y genera reportes de versión.
 
-### Opción A: Despliegue mediante Remix IDE (Visual e Intuitivo)
-
-Esta es la mejor opción si están acostumbrados a la interfaz gráfica de Remix.
-
-1.  **Cargar los archivos en Remix:**
-    *   Ingresa a [Remix IDE](https://remix.ethereum.org/).
-    *   Crea o importa la estructura de archivos `.sol` dentro de la carpeta `contracts` de Remix. Recuerda mantener la subcarpeta `interfaces/` con las interfaces correspondientes.
-2.  **Configurar el compilador:**
-    *   En la pestaña **Solidity Compiler**, selecciona la versión de compilador `0.8.24`.
-    *   En *Advanced Configuration*, activa la opción **Enable optimization** y pon el valor de *runs* en `200`.
-    *   Haz clic en **Compile**.
-3.  **Conectar MetaMask:**
-    *   Asegúrate de estar en la red **Sepolia Testnet** en tu extensión de MetaMask y contar con saldo de prueba (Sepolia ETH).
-    *   En Remix, ve a la pestaña **Deploy & Run Transactions**.
-    *   En el menú de **Environment**, selecciona **Injected Provider - MetaMask**. Acepta la solicitud de conexión en MetaMask.
-4.  **Secuencia de Despliegue:**
-    *   **Paso 1:** Selecciona `PropertyNFT` y haz clic en **Deploy**. Confirma la transacción en MetaMask y copia la dirección del contrato resultante.
-    *   **Paso 2 (Opcional):** Si requieres un token de prueba de USDC en Sepolia, selecciona `MockUSDC`, haz clic en **Deploy**, y copia su dirección. De lo contrario, puedes usar cualquier dirección de USDC de prueba oficial que ya exista.
-    *   **Paso 3:** Selecciona `RentalAgreementFactory` en Remix. En los parámetros del constructor, ingresa la dirección de tu `PropertyNFT` y de `MockUSDC` (o del USDC oficial de prueba), y haz clic en **Transact**. Confirma la transacción en MetaMask.
-
----
-
-### Opción B: Despliegue mediante Hardhat CLI (Automatizado)
-
-Hardhat permite realizar el despliegue automático mediante código utilizando claves privadas de MetaMask configuradas localmente de manera segura.
-
-1.  **Configurar las variables de entorno:**
-    *   Copia el archivo `.env.example` y nómbralo como `.env` (este archivo ya está excluido en el `.gitignore` por seguridad):
+### Requisitos Previos:
+1.  **Configurar variables de entorno:**
+    *   Copia el archivo `.env.example` y nómbralo como `.env` en la carpeta `contracts`:
         ```bash
         cp .env.example .env
         ```
-    *   Abre el archivo `.env` y coloca la clave privada de tu cuenta de MetaMask en la variable `SEPOLIA_PRIVATE_KEY` (sin el prefijo `0x`):
+    *   Abre el archivo `.env` y coloca la clave privada de tu cuenta de MetaMask (sin el prefijo `0x`):
         ```env
         SEPOLIA_PRIVATE_KEY=tu_clave_privada_aqui
         ```
-2.  **Verificar la configuración de red:**
-    *   El archivo `hardhat.config.ts` ya está configurado para leer esta clave privada y conectarse al RPC público de Sepolia:
-        ```typescript
-        sepolia: {
-          type: "http",
-          url: "https://ethereum-sepolia-rpc.publicnode.com",
-          accounts: process.env.SEPOLIA_PRIVATE_KEY ? [process.env.SEPOLIA_PRIVATE_KEY] : [],
-        }
-        ```
-3.  **Ejecutar el despliegue automático:**
-    *   Utilizamos **Hardhat Ignition** para orquestar la secuencia de despliegue. Ejecuta el comando en tu terminal:
-        ```bash
-        npx hardhat ignition deploy ignition/modules/BlockRent.ts --network sepolia
-        ```
-    *   La herramienta desplegará secuencialmente `PropertyNFT`, `MockUSDC`, y `RentalAgreementFactory` firmando las transacciones automáticamente con tu cuenta, devolviéndote las direcciones resultantes por consola.
+
+### Ejecutar Despliegue Local (Prueba de Humo / Dry Run):
+Para comprobar que los contratos compilan y se configuran sin gastar Sepolia ETH reales, corre el deploy en la red interna de Hardhat:
+```bash
+npx hardhat run scripts/deploy.ts --network hardhat
+```
+
+### Ejecutar Despliegue en Sepolia (Oficial):
+Ejecuta el script apuntando a la testnet oficial:
+```bash
+npx hardhat run scripts/deploy.ts --network sepolia
+```
+
+El script imprimirá por consola un resumen detallado del despliegue y validará on-chain que las referencias bidireccionales se hayan registrado correctamente.
+
+---
+
+## 6. Historial de Versiones y Salidas Generadas
+
+### A. Archivos de Despliegue Versionados (`deployments/`)
+Cada ejecución exitosa del script de despliegue escribe un archivo JSON correlativo bajo `contracts/deployments/` (por ejemplo: `deploy-v1.json`, `deploy-v2.json`, etc.). Cada archivo almacena el siguiente reporte de metadatos:
+```json
+{
+  "protocolVersion": 1,
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployedAt": "2026-06-29T16:04:27.123Z",
+  "contracts": {
+    "mockUSDC": "0x3f622AfeEC2B85171fC4131F691558d845E08698",
+    "propertyNFT": "0x078dE63bB4365493e74A97EF23E8a569E8c8c314",
+    "rentalNFT": "0x84f176EB9686522C532FE12d9E8D138ef9056407",
+    "rentalAgreementFactory": "0x409FDc9C6Dd2654217e735436e8FC5C1913F9c54"
+  }
+}
+```
+*   **Nota:** La versión se incrementa automáticamente consultando los archivos `.json` existentes en la carpeta de despliegues.
+
+### B. Salidas Listas para el Frontend
+Al finalizar el despliegue de forma exitosa, el script genera/actualiza los siguientes archivos de configuración en el frontend para agilizar la integración:
+*   [frontend/.env.example](file:///home/nikkoros/dev/unq-blockchain/frontend/.env.example): Plantilla de variables de entorno de Vite con las nuevas direcciones asignadas automáticamente.
+*   [frontend/contracts-config.example.ts](file:///home/nikkoros/dev/unq-blockchain/frontend/contracts-config.example.ts): Export TypeScript tipado de las nuevas direcciones para facilitar el reuso directo en la base de código.
+*   **Importante:** Estos scripts **no** sobreescriben el archivo `.env` privado del desarrollador en el frontend para evitar pisar claves API o parámetros de testing locales.

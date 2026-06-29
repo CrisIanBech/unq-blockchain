@@ -1,0 +1,11 @@
+{
+  "protocolVersion": 1,
+  "chainId": 11155111,
+  "deployedAt": "2026-06-29T16:04:27.423Z",
+  "contracts": {
+    "mockUSDC": "0x3f622AfeEC2B85171fC4131F691558d845E08698",
+    "propertyNFT": "0x078dE63bB4365493e74A97EF23E8a569E8c8c314",
+    "rentalNFT": "0x84f176EB9686522C532FE12d9E8D138ef9056407",
+    "rentalAgreementFactory": "0x409FDc9C6Dd2654217e735436e8FC5C1913F9c54"
+  }
+}
