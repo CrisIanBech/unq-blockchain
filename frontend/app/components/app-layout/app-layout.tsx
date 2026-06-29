@@ -11,7 +11,7 @@ export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const { wallet, balance, toasts, dismissToast } = useUserStore()
+  const { wallet, balance, toasts, dismissToast, connectWallet } = useUserStore()
 
   const theme = useMemo(() => (mode === "light" ? lightTheme : darkTheme), [mode])
 
@@ -25,6 +25,7 @@ export function AppLayout() {
       <AppShell
         wallet={wallet}
         balance={balance}
+        onConnectWallet={connectWallet}
         currentPathname={location.pathname}
         onNavigate={navigate}
         mode={mode}
