@@ -1,151 +1,76 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi"
-import { CONTRACTS } from "@/lib/contracts"
-import ReviewSystemAbi from "@/lib/abi/ReviewSystem.json"
-import FactoryAbi from "@/lib/abi/RentalAgreementFactory.json"
-import AgreementAbi from "@/lib/abi/RentalAgreement.json"
 import { useState, useEffect, useCallback } from "react"
-import { createPublicClient, http } from "viem"
-import { localhost } from "wagmi/chains"
+import { ReviewsService, type OnChainReview } from "@/lib/services/reviews-service"
+import { WalletService } from "@/lib/services/wallet-service"
 
-export interface OnChainReview {
-  author: `0x${string}`
-  agreement: `0x${string}`
-  rating: number
-  comment: string
-  timestamp: bigint
-}
+export type { OnChainReview }
 
-const publicClient = createPublicClient({
-  chain: localhost,
-  transport: http("http://127.0.0.1:8545"),
-})
-
-export function useReviewSystem(propertyId: bigint) {
-  const { address } = useAccount()
-
-  const { data: reviewCount, refetch: refetchCount } = useReadContract({
-    address: CONTRACTS.reviewSystem,
-    abi: ReviewSystemAbi,
-    functionName: "getReviewCount",
-    args: [propertyId],
-  })
-
-  const {
-    writeContract,
-    data: txHash,
-    isPending: isWriting,
-    error: writeError,
-    reset,
-  } = useWriteContract()
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash: txHash,
-  })
-
+export function useReviewSystem(propertyId: number) {
   const [reviews, setReviews] = useState<OnChainReview[]>([])
+  const [reviewCount, setReviewCount] = useState(0)
+  const [canPostReview, setCanPostReview] = useState(false)
+  const [isWriting, setIsWriting] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [isConfirmed, setIsConfirmed] = useState(false)
+  const [writeError, setWriteError] = useState<Error | null>(null)
+  const [txHash, setTxHash] = useState<string | null>(null)
 
   const fetchReviews = useCallback(async () => {
+    if (propertyId <= 0) { setReviews([]); setReviewCount(0); return }
     try {
-      const count = await publicClient.readContract({
-        address: CONTRACTS.reviewSystem,
-        abi: ReviewSystemAbi,
-        functionName: "getReviewCount",
-        args: [propertyId],
-      }) as bigint
-
-      if (count === 0n) {
-        setReviews([])
-        return
-      }
-
-      const fetched: OnChainReview[] = []
-      for (let i = 0; i < Number(count); i++) {
-        const result = await publicClient.readContract({
-          address: CONTRACTS.reviewSystem,
-          abi: ReviewSystemAbi,
-          functionName: "getReview",
-          args: [propertyId, BigInt(i)],
-        }) as unknown as OnChainReview
-        fetched.push(result)
-      }
-      setReviews(fetched)
+      const all = await ReviewsService.getAllReviews(propertyId)
+      setReviews(all)
+      setReviewCount(all.length)
     } catch {
       setReviews([])
+      setReviewCount(0)
     }
   }, [propertyId])
 
-  useEffect(() => {
-    fetchReviews()
-  }, [fetchReviews])
-
-  useEffect(() => {
-    if (isConfirmed) {
-      refetchCount()
-      fetchReviews()
-      reset()
-    }
-  }, [isConfirmed, refetchCount, fetchReviews, reset])
-
-  function postReview(rating: number, comment: string) {
-    writeContract({
-      address: CONTRACTS.reviewSystem,
-      abi: ReviewSystemAbi,
-      functionName: "postReview",
-      args: [propertyId, rating, comment],
-    })
-  }
-
-  const [canPostReview, setCanPostReview] = useState(false)
-
   const checkCanPost = useCallback(async () => {
-    if (!address || propertyId === 0n) {
-      setCanPostReview(false)
-      return
-    }
+    if (propertyId <= 0) { setCanPostReview(false); return }
     try {
-      const agreementAddr = await publicClient.readContract({
-        address: CONTRACTS.factory,
-        abi: FactoryAbi,
-        functionName: "activeRentals",
-        args: [propertyId],
-      }) as `0x${string}`
-
-      if (agreementAddr === "0x0000000000000000000000000000000000000000") {
-        setCanPostReview(false)
-        return
-      }
-
-      const tenant = await publicClient.readContract({
-        address: agreementAddr,
-        abi: AgreementAbi,
-        functionName: "tenant",
-      }) as `0x${string}`
-
-      if (tenant.toLowerCase() !== address.toLowerCase()) {
-        setCanPostReview(false)
-        return
-      }
-
-      const alreadyReviewed = await publicClient.readContract({
-        address: CONTRACTS.reviewSystem,
-        abi: ReviewSystemAbi,
-        functionName: "hasReviewed",
-        args: [agreementAddr],
-      }) as boolean
-
-      setCanPostReview(!alreadyReviewed)
+      const account = await WalletService.getCurrentAccount()
+      if (!account) { setCanPostReview(false); return }
+      const can = await ReviewsService.canPostReview(propertyId, account)
+      setCanPostReview(can)
     } catch {
       setCanPostReview(false)
     }
-  }, [address, propertyId])
+  }, [propertyId])
 
+  useEffect(() => { fetchReviews() }, [fetchReviews])
+  useEffect(() => { checkCanPost() }, [checkCanPost])
   useEffect(() => {
-    checkCanPost()
-  }, [checkCanPost])
+    setIsWriting(false)
+    setIsConfirming(false)
+    setIsConfirmed(false)
+    setWriteError(null)
+    setTxHash(null)
+  }, [propertyId])
+
+  async function postReview(rating: number, comment: string) {
+    setIsWriting(true)
+    setIsConfirming(false)
+    setIsConfirmed(false)
+    setWriteError(null)
+    setTxHash(null)
+    try {
+      const hash = await ReviewsService.postReview(propertyId, rating, comment)
+      setTxHash(hash)
+      setIsWriting(false)
+      setIsConfirming(true)
+      setIsConfirmed(true)
+      fetchReviews()
+      checkCanPost()
+    } catch (error: any) {
+      setIsWriting(false)
+      setWriteError(error)
+    }
+  }
 
   return {
     reviews,
-    reviewCount: Number(reviewCount ?? 0n),
+    reviewCount,
     canPostReview,
     postReview,
     isWriting,

@@ -4,7 +4,7 @@ import { Signer, ZeroAddress } from "ethers";
 
 let ethers: any;
 
-describe("ReviewSystem Tests", function () {
+describe("Review Tests", function () {
     let owner: Signer;
     let landlord: Signer;
     let tenant: Signer;
@@ -53,8 +53,8 @@ describe("ReviewSystem Tests", function () {
             await mockUSDC.getAddress()
         );
 
-        const ReviewSystem = await ethers.getContractFactory("ReviewSystem");
-        reviewSystem = await ReviewSystem.deploy(
+        const Review = await ethers.getContractFactory("Review");
+        reviewSystem = await Review.deploy(
             await propertyNFT.getAddress(),
             await factory.getAddress()
         );

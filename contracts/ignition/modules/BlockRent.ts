@@ -11,9 +11,9 @@ const BlockRentModule = buildModule("BlockRentModule", (m) => {
   const factory = m.contract("RentalAgreementFactory", [propertyNFT, mockUSDC]);
 
   // 4. Deploy ReviewSystem, injecting PropertyNFT and Factory addresses
-  const reviewSystem = m.contract("ReviewSystem", [propertyNFT, factory]);
+  const review = m.contract("Review", [propertyNFT, factory]);
 
-  return { propertyNFT, mockUSDC, factory, reviewSystem };
+  return { propertyNFT, mockUSDC, factory, review };
 });
 
 export default BlockRentModule;

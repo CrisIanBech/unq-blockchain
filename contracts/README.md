@@ -14,6 +14,7 @@ La arquitectura está compuesta por los siguientes contratos principales e inter
 *   **`RentalNFT.sol`**: Token ERC4907 que representa el derecho temporal de ocupación de una propiedad. Se despliega dinámicamente al activarse un contrato de alquiler, es propiedad permanente del contrato `RentalAgreement` que lo crea, y define al inquilino como el `user` con una fecha de expiración. Se quema cuando el alquiler finaliza.
 *   **`RentalAgreement.sol`**: Contrato individual que maneja el ciclo de vida de un alquiler (`PendingSignatures -> Active -> Completed/Cancelled/Defaulted`). Implementa la resolución dinámica del propietario (`PropertyNFT.ownerOf()`), depósito de garantía (`Locked -> Released / Claimed`), cobro de rentas en custodia, incrementos por inflación (BPS) y penalizaciones por mora (BPS).
 *   **`RentalAgreementFactory.sol`**: Fábrica y registro global utilizado por los propietarios para desplegar nuevos contratos de alquiler. Evita que existan alquileres activos duplicados para la misma propiedad.
+*   **`Review.sol`**: Sistema de reviews on-chain para propiedades. Solo inquilinos con acuerdo activo/completado pueden postear una review por acuerdo. Verifica tenant contra `RentalAgreementFactory.activeRentals()`.
 
 ---
 
@@ -106,3 +107,29 @@ Hardhat permite realizar el despliegue automático mediante código utilizando c
         npx hardhat ignition deploy ignition/modules/BlockRent.ts --network sepolia
         ```
     *   La herramienta desplegará secuencialmente `PropertyNFT`, `MockUSDC`, y `RentalAgreementFactory` firmando las transacciones automáticamente con tu cuenta, devolviéndote las direcciones resultantes por consola.
+
+---
+
+## 6. Desarrollo Local (Hardhat Node + Seeding)
+
+Para probar on-chain sin depender de Sepolia:
+
+1. **Levantar el nodo local** (mantener esta terminal abierta):
+   ```bash
+   npx hardhat node
+   ```
+
+2. **Deploy + Seed** (en otra terminal):
+   ```bash
+   npx hardhat run scripts/seed.ts --network localhost
+   ```
+   Esto despliega todos los contratos, mintea 2 propiedades, crea y activa 2 contratos de alquiler para el tenant, y muestra las addresses para el `.env` del frontend.
+
+3. **Importar cuentas en MetaMask:**
+   - Red: **Hardhat Local** (Chain ID 31337, RPC http://127.0.0.1:8545)
+   - Account #1 (`0x7099...`): landlord
+   - Account #2 (`0x3C44...`): tenant (PK: `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a`)
+
+4. **Actualizar `.env` del frontend** con las addresses impresas por el seed.
+
+> **Importante**: El nodo Hardhat es efímero. Al cerrarlo se pierde todo el estado. Si MetaMask muestra errores de nonce, usar *Settings → Advanced → Clear activity tab data*.

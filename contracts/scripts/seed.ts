@@ -25,10 +25,10 @@ async function main() {
   const factoryAddr = await factory.getAddress();
   console.log("RentalAgreementFactory:", factoryAddr);
 
-  const ReviewSystem = await ethers.getContractFactory("ReviewSystem");
-  const reviewSystem = await ReviewSystem.deploy(propertyNFTAddr, factoryAddr);
+  const Review = await ethers.getContractFactory("Review");
+  const reviewSystem = await Review.deploy(propertyNFTAddr, factoryAddr);
   const reviewSystemAddr = await reviewSystem.getAddress();
-  console.log("ReviewSystem:", reviewSystemAddr);
+  console.log("Review:", reviewSystemAddr);
 
   console.log("\n=== Setting up scenario ===\n");
 

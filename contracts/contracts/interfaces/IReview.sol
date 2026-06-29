@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 /**
- * @title IReviewSystem
- * @notice Interface for the ReviewSystem contract managing on-chain property reviews.
+ * @title IReview
+ * @notice Interface for the Review contract managing on-chain property reviews.
  */
-interface IReviewSystem {
+interface IReview {
     struct Review {
         address author;
         address agreement;

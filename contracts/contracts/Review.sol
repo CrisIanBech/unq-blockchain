@@ -2,17 +2,17 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./interfaces/IReviewSystem.sol";
+import "./interfaces/IReview.sol";
 import "./interfaces/IRentalAgreementFactory.sol";
 import "./interfaces/IRentalAgreement.sol";
 
 /**
- * @title ReviewSystem
+ * @title Review
  * @notice On-chain review system for rental properties.
  * @dev Reviews are linked to verified rental agreements. Only tenants with
  *      active or completed agreements can post reviews, and only one per agreement.
  */
-contract ReviewSystem is IReviewSystem {
+contract Review is IReview {
     address public immutable override propertyNFT;
     address public immutable override factory;
 

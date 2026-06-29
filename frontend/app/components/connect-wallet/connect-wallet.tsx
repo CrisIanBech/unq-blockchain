@@ -1,33 +1,25 @@
 import { Button, Box, Typography } from "@mui/material"
-import { useAccount, useConnect, useDisconnect } from "wagmi"
+import { useUserStore } from "@/stores/user-store"
+
+const MOCK_WALLET = "0x7A3f...91Cd"
 
 export function ConnectWallet() {
-  const { address, isConnected } = useAccount()
-  const { connect, connectors } = useConnect()
-  const { disconnect } = useDisconnect()
+  const wallet = useUserStore((s) => s.wallet)
+  const connectWallet = useUserStore((s) => s.connectWallet)
+  const isConnected = wallet !== MOCK_WALLET
 
-  if (isConnected && address) {
+  if (isConnected) {
     return (
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
-          {address.slice(0, 6)}...{address.slice(-4)}
+          {wallet.slice(0, 6)}...{wallet.slice(-4)}
         </Typography>
-        <Button size="small" variant="outlined" onClick={() => disconnect()}>
-          Desconectar
-        </Button>
       </Box>
     )
   }
 
   return (
-    <Button
-      variant="contained"
-      size="small"
-      onClick={() => {
-        const injected = connectors.find((c) => c.id === "injected")
-        if (injected) connect({ connector: injected })
-      }}
-    >
+    <Button variant="contained" size="small" onClick={connectWallet}>
       Conectar Wallet
     </Button>
   )

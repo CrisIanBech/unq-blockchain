@@ -20,7 +20,7 @@ import RateReviewRoundedIcon from "@mui/icons-material/RateReviewRounded"
 import type { Listing, Review } from "@/models/types"
 import { usdc, dateLabel, TYPE_LABEL } from "@/lib/format"
 import { ReviewItem } from "./review-item"
-import { useAccount } from "wagmi"
+import { useUserStore } from "@/stores/user-store"
 import { useReviewSystem } from "@/hooks/use-review-system"
 import { useState, useEffect, useMemo } from "react"
 
@@ -50,9 +50,10 @@ export function ListingDetail({
   onRatingChange,
   onCommentChange,
 }: ListingDetailProps) {
-  const { isConnected } = useAccount()
+  const wallet = useUserStore((s) => s.wallet)
+  const isConnected = wallet !== "0x7A3f...91Cd"
   const numericId = listing?.id ? parseInt(listing.id.replace(/\D/g, ""), 10) : 0
-  const onChainPropertyId = numericId > 0 ? BigInt(numericId) : 0n
+  const onChainPropertyId = numericId > 0 ? numericId : 0
   const onChain = useReviewSystem(onChainPropertyId)
 
   const [onChainReviews, setOnChainReviews] = useState<Review[]>([])
