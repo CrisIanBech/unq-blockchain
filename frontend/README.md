@@ -1,182 +1,123 @@
-# Guía de Integración Blockchain - Frontend (BlockRent)
+# Integración Blockchain - Frontend (BlockRent)
 
-Este documento detalla los pasos para conectar la aplicación web (construida con React, TypeScript y Vite) a los contratos inteligentes de BlockRent desplegados en Sepolia.
+Este proyecto cuenta con una arquitectura desacoplada para interactuar con la red Sepolia. La interfaz de usuario y los stores de Zustand no invocan directamente a la librería `ethers` ni acceden directamente a `window.ethereum`. En su lugar, se utiliza una capa de servicios estructurada:
+
+```
+Zustand Stores (Estado & UI)
+    ↓
+Servicio / Repositorio (Lógica de Negocio Web3)
+    ↓
+Módulo Blockchain Core (Configuración, Providers & Contratos)
+    ↓
+Ethers.js & Metamask
+```
 
 ---
 
-## Paso 1: Instalar Ethers.js en el Frontend
+## Estructura del Módulo Blockchain
 
-El frontend actualmente no cuenta con librerías para interactuar con la blockchain. Debes instalar **Ethers v6**:
+Toda la lógica de integración con la blockchain se encuentra centralizada en:
+📁 **`frontend/app/lib/blockchain/`**
 
-Si usas `npm`:
+*   **`addresses.ts`**: Expone las constantes tipadas leyendo las direcciones de contratos desde las variables de entorno de Vite de manera segura.
+*   **`provider.ts`**: Encapsula la inicialización del `BrowserProvider` y la obtención del `Signer` (firmante) de MetaMask.
+*   **`wallet.ts`**: Maneja la conexión de MetaMask, la consulta de cuentas activas, validación del ID de red (Chain ID) y solicitudes para agregar o cambiar a la red **Sepolia** (Chain ID: `11155111`).
+*   **`contracts.ts`**: Fábrica que expone instanciadores estáticos y dinámicos para los contratos:
+    *   `getPropertyNFT(runner)`
+    *   `getRentalAgreementFactory(runner)`
+    *   `getMockUSDC(runner)`
+    *   `getRentalAgreement(address, runner)` (Carga dinámica para acuerdos de alquiler desplegados por la fábrica)
+    *   `getRentalNFT(address, runner)` (Carga dinámica para el NFT de renta asociado)
+*   **`abi/`**: Directorio que contiene los archivos JSON de las ABIs ligeras de cada contrato.
+
+---
+
+## Configuración de Entorno
+
+Las direcciones de los contratos inteligentes desplegados no están hardcodeadas en TypeScript. Deben ser provistas mediante variables de entorno de Vite.
+
+1.  Copia el archivo `.env.template` y renómbralo como **`.env`** en la raíz de la carpeta `frontend/`:
+    ```bash
+    cp .env.template .env
+    ```
+2.  Define las direcciones de tus contratos inteligentes en el archivo `.env`:
+    ```env
+    VITE_GOOGLE_MAPS_API_KEY=tu_api_key_de_google_maps
+    VITE_PROPERTY_NFT_ADDRESS=0x8C744e6136E972bE81c32e4463539a968b154105
+    VITE_RENTAL_FACTORY_ADDRESS=0x3b6532A0452F94Fe0e07616d6F733e2BbEbE1B9b
+    VITE_USDC_ADDRESS=0xFb68745988cd480F95a9FFd86A0c41c9F15A4813
+    ```
+
+---
+
+## Sincronización Automatizada de ABIs
+
+El frontend cuenta con un pipeline automático para sincronizar y limpiar las ABIs directamente de los artefactos compilados en la carpeta de contratos (`/contracts`).
+
+Para actualizar las ABIs del frontend después de compilar tus contratos, simplemente ejecuta desde la raíz de `frontend/`:
+
 ```bash
-npm install ethers
+npm run sync-abi
 ```
-Si usas `pnpm`:
-```bash
-pnpm install ethers
+
+### ¿Cómo funciona?
+El script de Node.js `frontend/scripts/sync-abi.js` lee los archivos generados por Hardhat, extrae **únicamente** la propiedad `abi` (descartando bytecode, metadatos y código intermedio) y genera archivos JSON livianos en `frontend/app/lib/blockchain/abi/` para mantener el bundle del frontend optimizado y ligero.
+
+---
+
+## Capa de Servicios de Dominio (`frontend/app/lib/services/`)
+
+Los servicios de dominio exponen métodos asíncronos limpios de alto nivel que los stores de Zustand invocan sin importar ni conocer tipos de `ethers`:
+
+```typescript
+// Ejemplo de uso en Zustand
+import { PropertiesService } from "../lib/services/properties-service";
+import { RentalsService } from "../lib/services/rentals-service";
+
+// Mintear NFT de Propiedad
+const result = await PropertiesService.mintProperty(walletAddress, metadataURI);
+console.log(result.txHash); // Hash de transacción real de Sepolia
+
+// Pagar Renta (Maneja la aprobación de USDC y llamada al alquiler internamente)
+const resultRent = await RentalsService.payRent(agreementAddress, rentAmount);
+
+// Retirar USDC acumulados de renta
+const resultWithdraw = await RentalsService.withdrawRent(agreementAddress);
 ```
 
 ---
 
-## Paso 2: Importar las ABIs de los Contratos
+## Persistencia y Arquitectura con Backend (NestJS)
 
-Las ABIs definen los métodos y eventos con los que el frontend interactúa.
-1. Compila tus contratos en el directorio `/contracts/` para generar las ABIs en `artifacts/contracts/`.
-2. Copia los archivos `.json` de las ABIs a una nueva carpeta en el frontend (por ejemplo, `frontend/app/lib/abi/`):
-   * `PropertyNFT.json`
-   * `RentalAgreementFactory.json`
-   * `RentalAgreement.json`
-   * `RentalNFT.json`
-   * `MockUSDC.json` (o la de tu token ERC20 USDC en Sepolia)
+Actualmente, el listado de propiedades se gestiona **en memoria (Zustand)**, por lo que recargar la página (`F5`) reinicia los datos a sus fixtures por defecto. Para llevar BlockRent a producción, se debe incorporar una capa de backend construida en **NestJS** y una base de datos relacional (ej. PostgreSQL):
 
----
+### 1. Rol de NestJS como Indexador Blockchain (Mempool & Event listener)
+En lugar de forzar al frontend a realizar pesadas llamadas de lectura a la blockchain para escanear todos los NFTs de un usuario, el backend de NestJS actuará como indexador local:
+*   **Servicio Indexador (Cron / Event Listener):** Usando librerías como `ethers` o `viem`, NestJS se conectará a la red Sepolia y se suscribirá a los eventos de los contratos inteligentes:
+    *   `Transfer(from, to, tokenId)` en el contrato de **`PropertyNFT`**.
+    *   `RentalAgreementCreated(propertyId, tenant, agreementAddress)` en el contrato de **`RentalAgreementFactory`**.
+    *   `RentPaid(agreementAddress, tenant, amount)` en los contratos de **`RentalAgreement`**.
+*   **Base de Datos Relacional:** Al detectar que se emite un evento `Transfer` hacia un usuario, NestJS guarda el `tokenId` (como `propertyId`), la dirección del dueño y los metadatos (URI) en la base de datos.
 
-## Paso 3: Configurar las Direcciones de los Contratos
+### 2. Guardado de Información Cosmética
+La blockchain solo debe almacenar datos transaccionales críticos (gas optimization). El backend de NestJS expondrá una API REST para almacenar los datos cosméticos de la propiedad (descripción larga, fotos de alta resolución, comodidades) mapeados al `propertyId` del NFT.
 
-Crea un archivo de configuración, por ejemplo, `frontend/app/lib/contracts-config.ts` para almacenar las direcciones estáticas obtenidas tras el deploy:
+### 3. Flujo de Trabajo Frontend ↔ NestJS
+Cuando la arquitectura del backend esté integrada, el ciclo de vida del frontend será:
 
-```typescript
-export const CONTRACT_ADDRESSES = {
-  PROPERTY_NFT: "0x... (dirección de PropertyNFT desplegado)",
-  FACTORY: "0x... (dirección de RentalAgreementFactory desplegado)",
-  USDC: "0x... (dirección de MockUSDC o USDC Sepolia desplegado)",
-};
-```
-*Nota: Nunca debes guardar direcciones de contratos `RentalAgreement` o `RentalNFT` de forma estática, ya que estas se generan dinámicamente on-chain.*
+1.  **Carga de Página (On Mount):**
+    Al conectar la wallet real en la UI, el frontend realiza una petición HTTP al backend:
+    ```bash
+    GET https://api.blockrent.com/properties?owner=0xTuWalletAddress
+    ```
+    El store de Zustand recibe el JSON indexado desde la base de datos de NestJS y actualiza `ownedProperties` de forma instantánea en lugar de usar los mocks.
 
----
-
-## Paso 4: Implementar la Conexión con MetaMask
-
-Actualiza **`frontend/app/stores/user-store.ts`** para gestionar la conexión y el estado real de la cuenta de MetaMask:
-
-```typescript
-import { create } from "zustand";
-import { ethers } from "ethers";
-
-interface UserState {
-  wallet: string;
-  balance: number;
-  connectWallet: () => Promise<void>;
-  // ... resto del estado
-}
-
-export const useUserStore = create<UserState>((set) => ({
-  wallet: "",
-  balance: 0,
-
-  connectWallet: async () => {
-    if (!(window as any).ethereum) {
-      alert("Por favor instala MetaMask para utilizar la aplicación.");
-      return;
-    }
-    try {
-      // Solicita acceso a las cuentas de MetaMask
-      const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-
-      set({ wallet: address });
-    } catch (error) {
-      console.error("Error al conectar wallet:", error);
-    }
-  }
-}));
-```
-
----
-
-## Paso 5: Reemplazar Simulaciones (Mocks) por Llamadas a Blockchain
-
-En **`frontend/app/stores/properties-store.ts`**, debes actualizar las funciones para interactuar con los contratos utilizando el firmante (signer) de MetaMask.
-
-### Ejemplo 1: Mintear Propiedad (`mintAndLoadProperty`)
-```typescript
-import { ethers } from "ethers";
-import { CONTRACT_ADDRESSES } from "../lib/contracts-config";
-import PropertyNFTABI from "../lib/abi/PropertyNFT.json";
-
-// Dentro de tu acción mintAndLoadProperty en Zustand:
-const provider = new ethers.BrowserProvider((window as any).ethereum);
-const signer = await provider.getSigner();
-
-const propertyContract = new ethers.Contract(
-  CONTRACT_ADDRESSES.PROPERTY_NFT,
-  PropertyNFTABI.abi,
-  signer
-);
-
-const tx = await propertyContract.mint(await signer.getAddress(), input.metadataURI);
-const receipt = await tx.wait(); // Espera a que se mine la tx
-const txHash = receipt.hash;
-```
-
-### Ejemplo 2: Crear Acuerdo de Alquiler (`createContract`)
-```typescript
-import RentalAgreementFactoryABI from "../lib/abi/RentalAgreementFactory.json";
-
-const factoryContract = new ethers.Contract(
-  CONTRACT_ADDRESSES.FACTORY,
-  RentalAgreementFactoryABI.abi,
-  signer
-);
-
-const tx = await factoryContract.createRentalAgreement(
-  propertyId,
-  tenantAddress,
-  ethers.parseUnits(rentAmount.toString(), 6), // 6 decimales para USDC
-  ethers.parseUnits(depositAmount.toString(), 6),
-  inflationBps,
-  lateFeeBps,
-  gracePeriod,
-  duration,
-  deadline
-);
-const receipt = await tx.wait();
-
-// Buscar la dirección del contrato RentalAgreement en los eventos emitidos por la Fábrica:
-const event = receipt.logs.find(log => log.fragment && log.fragment.name === 'RentalAgreementCreated');
-const agreementAddress = event.args.agreementAddress;
-// Guarda esta dirección en tu backend o estado local para futuros usos
-```
-
-### Ejemplo 3: Firma Cruzada y Depósito (`signContract` / Inquilino)
-Antes de llamar a `approveAgreement` en el contrato del alquiler, el inquilino debe autorizar el depósito de garantía en el contrato de USDC:
-
-```typescript
-import USDCABI from "../lib/abi/MockUSDC.json";
-import RentalAgreementABI from "../lib/abi/RentalAgreement.json";
-
-const usdcContract = new ethers.Contract(CONTRACT_ADDRESSES.USDC, USDCABI.abi, signer);
-const agreementContract = new ethers.Contract(agreementAddress, RentalAgreementABI.abi, signer);
-
-// 1. Inquilino aprueba que el contrato del alquiler retire el depósito
-const approveTx = await usdcContract.approve(agreementAddress, depositAmount);
-await approveTx.wait();
-
-// 2. Inquilino aprueba/firma el contrato
-const signTx = await agreementContract.approveAgreement();
-await signTx.wait();
-```
-
-### Ejemplo 4: Pagar Renta Mensual (`payMonthlyRent`)
-El inquilino debe aprobar y luego transferir la renta correspondiente:
-
-```typescript
-const approveTx = await usdcContract.approve(agreementAddress, currentRentAmount);
-await approveTx.wait();
-
-const payTx = await agreementContract.payRent();
-await payTx.wait();
-```
-
-### Ejemplo 5: Retirar Fondos de Renta (`withdrawRent`)
-Llamado por el propietario para retirar los USDC que han sido pagados por el inquilino:
-
-```typescript
-const agreementContract = new ethers.Contract(agreementAddress, RentalAgreementABI.abi, signer);
-const withdrawTx = await agreementContract.withdrawRent();
-await withdrawTx.wait();
-```
+2.  **Carga de Nueva Propiedad (Minter):**
+    *   El usuario hace clic en *"Mintear y cargar"*.
+    *   El frontend llama a `PropertiesService.mintProperty(...)`, lo cual dispara la transacción de minteo de NFT en MetaMask.
+    *   Una vez confirmada on-chain y devuelto el `txHash`, el frontend realiza un envío al backend:
+        ```bash
+        POST https://api.blockrent.com/properties
+        Body: { tokenId, txHash, name, type, address, imageUrl }
+        ```
+    *   NestJS valida la transacción en Sepolia, registra la propiedad en la base de datos y la asocia a tu cuenta. Al recargar la página, se recuperará del backend de forma persistente.

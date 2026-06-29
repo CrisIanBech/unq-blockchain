@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "sync-abi": "node scripts/sync-abi.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -21,6 +22,7 @@
     "@vercel/analytics": "1.6.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "ethers": "^6.17.0",
     "lucide-react": "^1.16.0",
     "react": "^19",
     "react-dom": "^19",

@@ -107,3 +107,43 @@ export function AddPropertyForm({ form, onSubmit }: AddPropertyProps) {
   );
 }
 ```
+
+---
+
+# BlockRent Blockchain Integration Rules
+
+You MUST strictly adhere to the following architecture and guidelines when implementing new features, connecting endpoints, or updating the state in the BlockRent application.
+
+## 1. Architectural Boundaries
+
+Every blockchain or API action must pass sequentially through these boundaries:
+
+```
+[ Zustand Stores (UI State) ]
+             ↓
+[ Domain Services (Business Logic & Error Translation) ]
+             ↓
+[ Repositories (Domain Persistence Abstraction) ]
+             ↓
+[ Blockchain Infrastructure (Ethers.js / Web3 Providers) ]
+             ↓
+[ Smart Contracts / External APIs ]
+```
+
+### Constraints:
+*   **Zustand Stores & UI Components:** MUST NEVER import `ethers` or interact with raw smart contract instances. They must only interact with Domain Services.
+*   **Domain Services:** Responsible for orchestrating repository actions, validating parameters, converting numeric currencies (e.g. converting user-friendly numbers to 6-decimal `USDC` raw bigint), translating raw errors into domain errors, and returning **pure domain objects** (no ethers types like `TransactionReceipt` or `Contract`).
+*   **Repositories:** Represent persistence of the business domain. They call contract wrappers under the hood, but their methods should hide the contract names and parameters using clean business terminology (e.g., `payRent`, `withdrawRent` instead of raw `payRent()` calls).
+*   **Blockchain Infrastructure:** Holds the ABI files, `WeakMap` cached contract instance resolving logic, providers, and MetaMask/network switching scripts.
+
+---
+
+## 2. Dynamic Address Resolving vs. Mock IDs
+*   **Never reuse UI string IDs** (e.g., `"rent-1"`) as contract addresses on-chain.
+*   The `Rental` and `OwnedProperty` interface objects explicitly define `propertyId: bigint`, `agreementAddress?: string`, and `rentalNFTAddress?: string`. Always check for `agreementAddress` or the dynamic `propertyId` when executing real on-chain actions.
+
+---
+
+## 3. Domain-Level Error Handling
+*   All blockchain exceptions (e.g., MetaMask user cancellation `ACTION_REJECTED`, out of gas, or EVM reverts like `NotPropertyOwner`) must be caught at the **Domain Service** layer using the `translateError` helper (`frontend/app/lib/errors/translator.ts`).
+*   Stores and UI components must only receive translated **Domain Errors** (`UserRejectedTransaction`, `InsufficientFunds`, etc.) to show clean, localized messages.

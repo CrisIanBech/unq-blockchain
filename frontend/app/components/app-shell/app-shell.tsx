@@ -36,6 +36,7 @@ interface AppShellProps {
   onNavigate: (href: string) => void
   mode: "light" | "dark"
   onToggleTheme: () => void
+  onConnectWallet?: () => void
   connectWalletSlot?: ReactNode
 }
 
@@ -47,6 +48,7 @@ export function AppShell({
   onNavigate,
   mode,
   onToggleTheme,
+  onConnectWallet,
   connectWalletSlot,
 }: AppShellProps) {
   const theme = useTheme()
@@ -169,7 +171,8 @@ export function AppShell({
               <Chip
                 label={wallet}
                 variant="outlined"
-                sx={{ fontFamily: "monospace", display: { xs: "none", sm: "flex" } }}
+                onClick={onConnectWallet}
+                sx={{ fontFamily: "monospace", display: { xs: "none", sm: "flex" }, cursor: onConnectWallet ? "pointer" : "default" }}
               />
             )}
             <Tooltip title={mode === "light" ? "Modo oscuro" : "Modo claro"}>

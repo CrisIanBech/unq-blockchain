@@ -31,9 +31,13 @@ export interface OwnedProperty {
   type: PropertyType
   address: string
   imageUrl: string
-  /** Token addresses (simulated). */
+  /** Real blockchain property NFT token ID */
+  propertyId?: bigint
+  /** Token addresses (simulated/real). */
   realEstateToken: string
   rentalToken: string
+  agreementAddress?: string
+  rentalNFTAddress?: string
   monthlyRent: number
   /** null when vacant */
   tenant: string | null
@@ -57,6 +61,11 @@ export interface Rental {
   monthlyRent: number
   nextPaymentDate: string
   payments: PaymentRecord[]
+  /** Real blockchain property NFT token ID */
+  propertyId?: bigint
+  /** Dynamically deployed rental agreement contract address */
+  agreementAddress?: string
+  rentalNFTAddress?: string
   /** Tenant's NFC key for the unit's smartlock */
   smartlockId: string
   hasKey: boolean

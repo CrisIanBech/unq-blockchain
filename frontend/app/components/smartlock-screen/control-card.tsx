@@ -94,7 +94,7 @@ export function ControlCard({
             <AddModeratorRoundedIcon sx={{ fontSize: 40, color: "text.secondary" }} />
           </Box>
           <Typography variant="h6">Sin cerradura instalada</Typography>
-          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 1, maxWidth: 260 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 260, textAlign: "center" }}>
             Colocá una cerradura virtual para &quot;{ownedProp?.name}&quot;. Quedará registrada en el contrato
             on-chain.
           </Typography>
@@ -124,10 +124,9 @@ export function ControlCard({
             keyMode={keyMode}
             unlocked={!keyMode && !!ownedProp?.smartlock.unlocked}
             onClick={onPower}
-            size={80}
           />
 
-          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 1.5, mb: 0.25 }}>
+          <Stack direction="row" spacing={0.75} sx={{ mt: 1.5, mb: 0.25, alignItems: "center" }}>
             <NfcRoundedIcon sx={{ color: active ? (keyMode ? "tertiary.main" : "primary.main") : "text.disabled" }} />
             <Typography
               variant="h6"
