@@ -139,7 +139,7 @@ async function main() {
   if (fs.existsSync(frontendDir)) {
     // 10a. Write frontend/.env.example
     const envExampleContent = [
-      `VITE_GOOGLE_MAPS_API_KEY=AIzaSyAomakmqvdWDDcNON5TEgBrZw3w7AIz4pU`,
+      `VITE_GOOGLE_MAPS_API_KEY=`,
       `VITE_PROPERTY_NFT_ADDRESS=${propertyNFTAddress}`,
       `VITE_RENTAL_FACTORY_ADDRESS=${factoryAddress}`,
       `VITE_USDC_ADDRESS=${mockUSDCAddress}`
