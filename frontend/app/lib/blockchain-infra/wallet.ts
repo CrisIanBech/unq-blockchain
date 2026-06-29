@@ -1,9 +1,5 @@
 import { getBrowserProvider } from "./provider";
 
-/**
- * Requests the user to connect their wallet and returns the active account address.
- * Throws an error if MetaMask is not installed.
- */
 export async function connectWallet(): Promise<string | null> {
   if (typeof window === "undefined" || !(window as any).ethereum) {
     throw new Error("No Ethereum provider found. Please install MetaMask.");
@@ -19,9 +15,6 @@ export async function connectWallet(): Promise<string | null> {
   }
 }
 
-/**
- * Returns the currently connected account address if any, without prompting.
- */
 export async function getCurrentAccount(): Promise<string | null> {
   if (typeof window === "undefined" || !(window as any).ethereum) return null;
   try {
@@ -35,9 +28,6 @@ export async function getCurrentAccount(): Promise<string | null> {
   }
 }
 
-/**
- * Returns the chain ID of the active network connection.
- */
 export async function getChainId(): Promise<number | null> {
   const provider = getBrowserProvider();
   if (!provider) return null;
@@ -50,10 +40,6 @@ export async function getChainId(): Promise<number | null> {
   }
 }
 
-/**
- * Requests switching MetaMask to the Sepolia Testnet (chain ID 11155111).
- * If the network is not configured in MetaMask, it requests to add it.
- */
 export async function switchToSepolia(): Promise<boolean> {
   if (typeof window === "undefined" || !(window as any).ethereum) return false;
   
@@ -66,7 +52,6 @@ export async function switchToSepolia(): Promise<boolean> {
     });
     return true;
   } catch (switchError: any) {
-    // Error code 4902 indicates that the chain is not registered
     if (switchError.code === 4902) {
       try {
         await (window as any).ethereum.request({

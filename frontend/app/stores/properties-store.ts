@@ -2,7 +2,8 @@ import { create } from "zustand";
 import type { OwnedProperty, Rental, PaymentRecord } from "@models/types";
 import { initialOwnedProperties, initialRentals } from "@models/mock-data";
 import { useUserStore } from "./user-store";
-import { BlockchainService } from "../lib/services/blockchain-service";
+import { PropertiesService } from "../lib/services/properties-service";
+import { RentalsService } from "../lib/services/rentals-service";
 
 const MOCK_WALLET_ADDRESS = "0x7A3f...91Cd";
 
@@ -47,6 +48,7 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
         type: input.type,
         address: input.address,
         imageUrl: "/images/prop-5.png",
+        propertyId: BigInt(Date.now()),
         realEstateToken: input.realEstateToken,
         rentalToken: input.rentalToken,
         monthlyRent: input.monthlyRent,
@@ -70,11 +72,11 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
     // Real on-chain flow
     try {
       userStore.pushToast({
-        message: "Minteando NFT de Propiedad en blockchain...",
+        message: "Minteando NFT de Propiedad en la blockchain...",
         severity: "info"
       });
 
-      const receipt = await BlockchainService.mintPropertyNFT(wallet, `ipfs://property-metadata-${Date.now()}`);
+      const result = await PropertiesService.mintProperty(wallet, `ipfs://property-metadata-${Date.now()}`);
       
       const newProp: OwnedProperty = {
         id: `own-${Date.now()}`,
@@ -82,8 +84,10 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
         type: input.type,
         address: input.address,
         imageUrl: "/images/prop-5.png",
-        realEstateToken: receipt.contractAddress || input.realEstateToken,
+        propertyId: BigInt(Date.now()),
+        realEstateToken: result.contractAddress || input.realEstateToken,
         rentalToken: "",
+        agreementAddress: undefined,
         monthlyRent: input.monthlyRent,
         tenant: null,
         availableToWithdraw: 0,
@@ -99,7 +103,7 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
       userStore.pushToast({
         message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
         severity: "success",
-        txHash: receipt.hash,
+        txHash: result.txHash,
       });
     } catch (err: any) {
       console.error("Failed to mint property NFT:", err);
@@ -117,7 +121,10 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
     const property = get().ownedProperties.find((p) => p.id === propertyId);
     if (!property) return;
 
-    if (isMockWallet(wallet) || !property.rentalToken) {
+    // Use agreementAddress if present, else fallback to rentalToken
+    const targetAgreement = property.agreementAddress || property.rentalToken;
+
+    if (isMockWallet(wallet) || !targetAgreement) {
       // Mock flow
       let message = "";
       let tx = "";
@@ -151,9 +158,8 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
         severity: "info"
       });
 
-      const txHash = await BlockchainService.withdrawRent(property.rentalToken);
+      const result = await RentalsService.withdrawRent(targetAgreement);
       
-      // Update local state available to withdraw
       set((state) => ({
         ownedProperties: state.ownedProperties.map((p) =>
           p.id === propertyId ? { ...p, availableToWithdraw: 0 } : p
@@ -166,7 +172,7 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
       userStore.pushToast({
         message: `Retiro exitoso de ${property.availableToWithdraw} USDC de "${property.name}"`,
         severity: "success",
-        txHash
+        txHash: result.txHash
       });
     } catch (err: any) {
       console.error("Failed to withdraw rent:", err);
@@ -190,7 +196,10 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
       return;
     }
 
-    if (isMockWallet(wallet)) {
+    // Must use real agreementAddress for Web3 flow
+    const targetAgreement = r.agreementAddress;
+
+    if (isMockWallet(wallet) || !targetAgreement) {
       // Mock flow
       const balance = userStore.balance;
       if (balance < r.monthlyRent) {
@@ -234,15 +243,14 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
         severity: "info"
       });
 
-      // Use rental ID as the agreement address for direct blockchain interaction
-      const txHash = await BlockchainService.payMonthlyRent(rentalId, r.monthlyRent);
+      const result = await RentalsService.payRent(targetAgreement, r.monthlyRent);
 
       const record: PaymentRecord = {
         month,
         amount: r.monthlyRent,
         status: "paid",
         paidAt: new Date().toISOString(),
-        txHash,
+        txHash: result.txHash,
       };
 
       set((s) => ({
@@ -256,13 +264,12 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
         })
       }));
 
-      // Sync user on-chain balance
       await userStore.syncOnchainBalance();
 
       userStore.pushToast({
         message: `Pagaste ${r.monthlyRent} USDC — ${r.name} (${month})`,
         severity: "success",
-        txHash,
+        txHash: result.txHash,
       });
     } catch (err: any) {
       console.error("Failed to pay monthly rent:", err);
@@ -277,6 +284,9 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
     const userStore = useUserStore.getState();
     const wallet = userStore.wallet;
 
+    const property = get().ownedProperties.find((p) => p.id === propertyId);
+    if (!property) return;
+
     if (isMockWallet(wallet)) {
       // Mock flow
       set((s) => ({
@@ -288,39 +298,39 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
       return;
     }
 
-    // Real on-chain flow
+    // Real on-chain flow using dynamic property.propertyId
     try {
       userStore.pushToast({
         message: "Desplegando contrato de alquiler en blockchain...",
         severity: "info"
       });
 
-      // Standard lease configuration parameters
+      const dynamicPropertyId = property.propertyId || 1n;
       const oneDaySeconds = 24 * 60 * 60;
       const thirtyDaysSeconds = 30 * oneDaySeconds;
       
-      const { agreementAddress, txHash } = await BlockchainService.createRentalAgreement({
-        propertyId: 1, // Using first property ID for demonstration
+      const result = await RentalsService.createRental({
+        propertyId: dynamicPropertyId,
         tenant,
         baseRent: rent,
-        securityDeposit: rent * 2, // Deposit is 2x monthly rent by default
-        inflationBps: 500, // 5% period inflation
-        lateFeeBps: 100, // 1% late fee
-        gracePeriod: 5 * oneDaySeconds, // 5 days grace period
-        duration: 12 * thirtyDaysSeconds, // 12 periods
-        deadline: Math.floor(Date.now() / 1000) + 7 * oneDaySeconds // 7 days deadline
+        securityDeposit: rent * 2,
+        inflationBps: 500,
+        lateFeeBps: 100,
+        gracePeriod: 5 * oneDaySeconds,
+        duration: 12 * thirtyDaysSeconds,
+        deadline: Math.floor(Date.now() / 1000) + 7 * oneDaySeconds
       });
 
       set((s) => ({
         ownedProperties: s.ownedProperties.map((p) =>
-          p.id === propertyId ? { ...p, contractStatus: "draft", tenant, monthlyRent: rent, rentalToken: agreementAddress } : p
+          p.id === propertyId ? { ...p, contractStatus: "draft", tenant, monthlyRent: rent, agreementAddress: result.agreementAddress } : p
         )
       }));
 
       userStore.pushToast({
-        message: `Contrato de alquiler creado en ${agreementAddress}`,
+        message: `Contrato de alquiler creado en ${result.agreementAddress}`,
         severity: "success",
-        txHash
+        txHash: result.txHash
       });
     } catch (err: any) {
       console.error("Failed to deploy rental agreement:", err);
@@ -338,7 +348,10 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
     const property = get().ownedProperties.find((p) => p.id === propertyId);
     if (!property) return;
 
-    if (isMockWallet(wallet) || !property.rentalToken) {
+    // Use agreementAddress if present, else fallback to rentalToken
+    const targetAgreement = property.agreementAddress || property.rentalToken;
+
+    if (isMockWallet(wallet) || !targetAgreement) {
       // Mock flow
       set((s) => ({
         ownedProperties: s.ownedProperties.map((p) =>
@@ -363,9 +376,8 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
         severity: "info"
       });
 
-      // Owner signing contract (isTenant = false)
-      const txHash = await BlockchainService.approveRentalAgreement({
-        agreementAddress: property.rentalToken,
+      const result = await RentalsService.approveAgreement({
+        agreementAddress: targetAgreement,
         isTenant: false
       });
 
@@ -385,7 +397,7 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
       userStore.pushToast({
         message: "Contrato firmado exitosamente on-chain",
         severity: "success",
-        txHash
+        txHash: result.txHash
       });
     } catch (err: any) {
       console.error("Failed to sign contract:", err);
@@ -403,7 +415,9 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
     const property = get().ownedProperties.find((p) => p.id === propertyId);
     if (!property) return;
 
-    if (isMockWallet(wallet) || !property.rentalToken) {
+    const targetAgreement = property.agreementAddress || property.rentalToken;
+
+    if (isMockWallet(wallet) || !targetAgreement) {
       // Mock flow
       set((s) => ({
         ownedProperties: s.ownedProperties.map((p) =>
@@ -421,7 +435,7 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
         severity: "info"
       });
 
-      const txHash = await BlockchainService.cancelRentalAgreement(property.rentalToken);
+      const result = await RentalsService.cancelAgreement(targetAgreement);
 
       set((s) => ({
         ownedProperties: s.ownedProperties.map((p) =>
@@ -432,7 +446,7 @@ export const usePropertiesStore = create<PropertiesState>((set, get) => ({
       userStore.pushToast({
         message: "Contrato cancelado cooperativamente on-chain",
         severity: "info",
-        txHash
+        txHash: result.txHash
       });
     } catch (err: any) {
       console.error("Failed to cancel contract:", err);

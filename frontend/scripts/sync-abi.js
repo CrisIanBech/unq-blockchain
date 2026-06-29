@@ -14,7 +14,7 @@ const contracts = [
 ];
 
 const artifactsDir = path.resolve(__dirname, "../../contracts/artifacts/contracts");
-const outputDir = path.resolve(__dirname, "../app/lib/blockchain/abi");
+const outputDir = path.resolve(__dirname, "../app/lib/blockchain-infra/abi");
 
 // Ensure output directory exists
 if (!fs.existsSync(outputDir)) {

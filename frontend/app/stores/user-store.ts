@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import type { Toast } from "@models/types";
-import { connectWallet, getCurrentAccount } from "../lib/blockchain/wallet";
-import { BlockchainService } from "../lib/services/blockchain-service";
+import { WalletService } from "../lib/services/wallet-service";
 
 const MOCK_WALLET_ADDRESS = "0x7A3f...91Cd";
 const MOCK_INITIAL_BALANCE = 3250;
@@ -42,12 +41,12 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   connectWallet: async () => {
     try {
-      const address = await connectWallet();
+      const address = await WalletService.connect();
       if (address) {
         set({ wallet: address });
         
-        // Fetch and sync actual on-chain USDC balance
-        const balance = await BlockchainService.getUSDCBalance(address);
+        // Fetch actual on-chain USDC balance
+        const balance = await WalletService.getUSDCBalance(address);
         set({ balance });
 
         get().pushToast({
@@ -66,10 +65,9 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   syncOnchainBalance: async () => {
     const address = get().wallet;
-    // Don't sync for mock address
     if (address && address !== MOCK_WALLET_ADDRESS) {
       try {
-        const balance = await BlockchainService.getUSDCBalance(address);
+        const balance = await WalletService.getUSDCBalance(address);
         set({ balance });
       } catch (err) {
         console.error("Failed to sync balance:", err);
@@ -80,11 +78,11 @@ export const useUserStore = create<UserState>((set, get) => ({
 
 // Attempt to load current account on store load if already authorized
 if (typeof window !== "undefined") {
-  getCurrentAccount().then(async (address) => {
+  WalletService.getCurrentAccount().then(async (address) => {
     if (address) {
       useUserStore.setState({ wallet: address });
       try {
-        const balance = await BlockchainService.getUSDCBalance(address);
+        const balance = await WalletService.getUSDCBalance(address);
         useUserStore.setState({ balance });
       } catch (err) {
         // Silently fail, fall back to mock
