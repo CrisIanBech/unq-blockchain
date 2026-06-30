@@ -14,7 +14,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
 encodeFunctionData(functionFragment: 'balanceOf', values: [AddressLike]): string;
 encodeFunctionData(functionFragment: 'getApproved', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'isApprovedForAll', values: [AddressLike, AddressLike]): string;
-encodeFunctionData(functionFragment: 'mint', values: [AddressLike, string]): string;
+encodeFunctionData(functionFragment: 'mint', values: [AddressLike, string, BigNumberish, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'ownerOf', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'rentalNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'safeTransferFrom(address,address,uint256)', values: [AddressLike, AddressLike, BigNumberish]): string;
@@ -141,7 +141,7 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
 
     
     mint: TypedContractMethod<
-      [to: AddressLike, _tokenURI: string, ],
+      [to: AddressLike, _tokenURI: string, latitude: BigNumberish, longitude: BigNumberish, ],
       [bigint],
       'nonpayable'
     >
@@ -227,7 +227,7 @@ getFunction(nameOrSignature: 'isApprovedForAll'): TypedContractMethod<
       'view'
     >;
 getFunction(nameOrSignature: 'mint'): TypedContractMethod<
-      [to: AddressLike, _tokenURI: string, ],
+      [to: AddressLike, _tokenURI: string, latitude: BigNumberish, longitude: BigNumberish, ],
       [bigint],
       'nonpayable'
     >;

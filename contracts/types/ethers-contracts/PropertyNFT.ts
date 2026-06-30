@@ -6,11 +6,13 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface PropertyNFTInterface extends Interface {
-    getFunction(nameOrSignature: "DEFAULT_ADMIN_ROLE" | "MINTER_ROLE" | "approve" | "balanceOf" | "getApproved" | "getRoleAdmin" | "grantRole" | "hasRole" | "isApprovedForAll" | "mint" | "name" | "ownerOf" | "renounceRole" | "rentalNFT" | "revokeRole" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "supportsInterface" | "symbol" | "tokenURI" | "transferFrom"): FunctionFragment;
+    getFunction(nameOrSignature: "DEFAULT_ADMIN_ROLE" | "MERCATOR_MAX" | "MERCATOR_MIN" | "MINTER_ROLE" | "approve" | "balanceOf" | "getApproved" | "getRoleAdmin" | "grantRole" | "hasRole" | "isApprovedForAll" | "mint" | "name" | "ownerOf" | "propertyLocations" | "renounceRole" | "rentalNFT" | "revokeRole" | "safeTransferFrom(address,address,uint256)" | "safeTransferFrom(address,address,uint256,bytes)" | "setApprovalForAll" | "supportsInterface" | "symbol" | "tokenURI" | "transferFrom"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "Approval" | "ApprovalForAll" | "BatchMetadataUpdate" | "MetadataUpdate" | "PropertyMinted" | "RoleAdminChanged" | "RoleGranted" | "RoleRevoked" | "Transfer"): EventFragment;
 
     encodeFunctionData(functionFragment: 'DEFAULT_ADMIN_ROLE', values?: undefined): string;
+encodeFunctionData(functionFragment: 'MERCATOR_MAX', values?: undefined): string;
+encodeFunctionData(functionFragment: 'MERCATOR_MIN', values?: undefined): string;
 encodeFunctionData(functionFragment: 'MINTER_ROLE', values?: undefined): string;
 encodeFunctionData(functionFragment: 'approve', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'balanceOf', values: [AddressLike]): string;
@@ -19,9 +21,10 @@ encodeFunctionData(functionFragment: 'getRoleAdmin', values: [BytesLike]): strin
 encodeFunctionData(functionFragment: 'grantRole', values: [BytesLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'hasRole', values: [BytesLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'isApprovedForAll', values: [AddressLike, AddressLike]): string;
-encodeFunctionData(functionFragment: 'mint', values: [AddressLike, string]): string;
+encodeFunctionData(functionFragment: 'mint', values: [AddressLike, string, BigNumberish, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'name', values?: undefined): string;
 encodeFunctionData(functionFragment: 'ownerOf', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'propertyLocations', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'renounceRole', values: [BytesLike, AddressLike]): string;
 encodeFunctionData(functionFragment: 'rentalNFT', values?: undefined): string;
 encodeFunctionData(functionFragment: 'revokeRole', values: [BytesLike, AddressLike]): string;
@@ -34,6 +37,8 @@ encodeFunctionData(functionFragment: 'tokenURI', values: [BigNumberish]): string
 encodeFunctionData(functionFragment: 'transferFrom', values: [AddressLike, AddressLike, BigNumberish]): string;
 
     decodeFunctionResult(functionFragment: 'DEFAULT_ADMIN_ROLE', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'MERCATOR_MAX', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'MERCATOR_MIN', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'MINTER_ROLE', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'approve', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'balanceOf', data: BytesLike): Result;
@@ -45,6 +50,7 @@ decodeFunctionResult(functionFragment: 'isApprovedForAll', data: BytesLike): Res
 decodeFunctionResult(functionFragment: 'mint', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'name', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'ownerOf', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'propertyLocations', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'renounceRole', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'rentalNFT', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'revokeRole', data: BytesLike): Result;
@@ -107,9 +113,9 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
   
 
     export namespace PropertyMintedEvent {
-      export type InputTuple = [propertyId: BigNumberish, owner: AddressLike, tokenURI: string];
-      export type OutputTuple = [propertyId: bigint, owner: string, tokenURI: string];
-      export interface OutputObject {propertyId: bigint, owner: string, tokenURI: string };
+      export type InputTuple = [propertyId: BigNumberish, owner: AddressLike, tokenURI: string, latitude: BigNumberish, longitude: BigNumberish];
+      export type OutputTuple = [propertyId: bigint, owner: string, tokenURI: string, latitude: bigint, longitude: bigint];
+      export interface OutputObject {propertyId: bigint, owner: string, tokenURI: string, latitude: bigint, longitude: bigint };
       export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
       export type Filter = TypedDeferredTopicFilter<Event>
       export type Log = TypedEventLog<Event>
@@ -208,6 +214,22 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
     
 
     
+    MERCATOR_MAX: TypedContractMethod<
+      [],
+      [bigint],
+      'view'
+    >
+    
+
+    
+    MERCATOR_MIN: TypedContractMethod<
+      [],
+      [bigint],
+      'view'
+    >
+    
+
+    
     MINTER_ROLE: TypedContractMethod<
       [],
       [string],
@@ -273,7 +295,7 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
 
     
     mint: TypedContractMethod<
-      [to: AddressLike, _tokenURI: string, ],
+      [to: AddressLike, _tokenURI: string, latitude: BigNumberish, longitude: BigNumberish, ],
       [bigint],
       'nonpayable'
     >
@@ -291,6 +313,14 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
     ownerOf: TypedContractMethod<
       [tokenId: BigNumberish, ],
       [string],
+      'view'
+    >
+    
+
+    
+    propertyLocations: TypedContractMethod<
+      [arg0: BigNumberish, ],
+      [[bigint, bigint] & {latitude: bigint, longitude: bigint }],
       'view'
     >
     
@@ -383,6 +413,16 @@ decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
       [string],
       'view'
     >;
+getFunction(nameOrSignature: 'MERCATOR_MAX'): TypedContractMethod<
+      [],
+      [bigint],
+      'view'
+    >;
+getFunction(nameOrSignature: 'MERCATOR_MIN'): TypedContractMethod<
+      [],
+      [bigint],
+      'view'
+    >;
 getFunction(nameOrSignature: 'MINTER_ROLE'): TypedContractMethod<
       [],
       [string],
@@ -424,7 +464,7 @@ getFunction(nameOrSignature: 'isApprovedForAll'): TypedContractMethod<
       'view'
     >;
 getFunction(nameOrSignature: 'mint'): TypedContractMethod<
-      [to: AddressLike, _tokenURI: string, ],
+      [to: AddressLike, _tokenURI: string, latitude: BigNumberish, longitude: BigNumberish, ],
       [bigint],
       'nonpayable'
     >;
@@ -436,6 +476,11 @@ getFunction(nameOrSignature: 'name'): TypedContractMethod<
 getFunction(nameOrSignature: 'ownerOf'): TypedContractMethod<
       [tokenId: BigNumberish, ],
       [string],
+      'view'
+    >;
+getFunction(nameOrSignature: 'propertyLocations'): TypedContractMethod<
+      [arg0: BigNumberish, ],
+      [[bigint, bigint] & {latitude: bigint, longitude: bigint }],
       'view'
     >;
 getFunction(nameOrSignature: 'renounceRole'): TypedContractMethod<
@@ -517,7 +562,7 @@ getEvent(key: 'Transfer'): TypedContractEvent<TransferEvent.InputTuple, Transfer
       MetadataUpdate: TypedContractEvent<MetadataUpdateEvent.InputTuple, MetadataUpdateEvent.OutputTuple, MetadataUpdateEvent.OutputObject>;
     
 
-      'PropertyMinted(uint256,address,string)': TypedContractEvent<PropertyMintedEvent.InputTuple, PropertyMintedEvent.OutputTuple, PropertyMintedEvent.OutputObject>;
+      'PropertyMinted(uint256,address,string,int256,int256)': TypedContractEvent<PropertyMintedEvent.InputTuple, PropertyMintedEvent.OutputTuple, PropertyMintedEvent.OutputObject>;
       PropertyMinted: TypedContractEvent<PropertyMintedEvent.InputTuple, PropertyMintedEvent.OutputTuple, PropertyMintedEvent.OutputObject>;
     
 
