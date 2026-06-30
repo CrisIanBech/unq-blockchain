@@ -11,6 +11,10 @@ export default defineConfig({
     hardhat: {
       type: "edr-simulated",
     },
+    localhost: {
+      type: "http",
+      url: "http://127.0.0.1:8545",
+    },
     sepolia: {
       type: "http",
       url: "https://ethereum-sepolia-rpc.publicnode.com",

@@ -37,6 +37,7 @@ interface AppShellProps {
   mode: "light" | "dark"
   onToggleTheme: () => void
   onConnectWallet?: () => void
+  connectWalletSlot?: ReactNode
 }
 
 export function AppShell({
@@ -48,6 +49,7 @@ export function AppShell({
   mode,
   onToggleTheme,
   onConnectWallet,
+  connectWalletSlot,
 }: AppShellProps) {
   const theme = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -165,12 +167,14 @@ export function AppShell({
               label={`${balance.toLocaleString()} USDC`}
               sx={{ bgcolor: "primaryContainer.main", color: "primaryContainer.contrastText", fontWeight: 700 }}
             />
-            <Chip
-              label={wallet}
-              variant="outlined"
-              onClick={onConnectWallet}
-              sx={{ fontFamily: "monospace", display: { xs: "none", sm: "flex" }, cursor: onConnectWallet ? "pointer" : "default" }}
-            />
+            {connectWalletSlot ?? (
+              <Chip
+                label={wallet}
+                variant="outlined"
+                onClick={onConnectWallet}
+                sx={{ fontFamily: "monospace", display: { xs: "none", sm: "flex" }, cursor: onConnectWallet ? "pointer" : "default" }}
+              />
+            )}
             <Tooltip title={mode === "light" ? "Modo oscuro" : "Modo claro"}>
               <IconButton onClick={onToggleTheme} aria-label="cambiar tema">
                 {mode === "light" ? <DarkModeRoundedIcon /> : <LightModeRoundedIcon />}
