@@ -36,6 +36,7 @@ interface AppShellProps {
   onNavigate: (href: string) => void
   mode: "light" | "dark"
   onToggleTheme: () => void
+  onConnectWallet?: () => void
 }
 
 export function AppShell({
@@ -46,6 +47,7 @@ export function AppShell({
   onNavigate,
   mode,
   onToggleTheme,
+  onConnectWallet,
 }: AppShellProps) {
   const theme = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -166,7 +168,8 @@ export function AppShell({
             <Chip
               label={wallet}
               variant="outlined"
-              sx={{ fontFamily: "monospace", display: { xs: "none", sm: "flex" } }}
+              onClick={onConnectWallet}
+              sx={{ fontFamily: "monospace", display: { xs: "none", sm: "flex" }, cursor: onConnectWallet ? "pointer" : "default" }}
             />
             <Tooltip title={mode === "light" ? "Modo oscuro" : "Modo claro"}>
               <IconButton onClick={onToggleTheme} aria-label="cambiar tema">

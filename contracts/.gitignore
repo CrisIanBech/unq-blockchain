@@ -1,0 +1,18 @@
+# Hardhat files
+artifacts/
+cache/
+typechain-types/
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+
+# Build outputs
+dist/
+ignition/deployments/
+
+# Test coverage
+coverage/
+coverage.json

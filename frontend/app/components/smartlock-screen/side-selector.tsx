@@ -69,7 +69,7 @@ export function SideSelector({ keyMode, list, selId, onSelectId }: SideSelectorP
                 {item.name}
               </Typography>
               {item.address && (
-                <Stack direction="row" alignItems="center" gap={0.25} sx={{ mt: 0.25 }}>
+                <Stack direction="row" sx={{ mt: 0.25, alignItems: "center", gap: 0.25 }}>
                   <LocationOnRoundedIcon sx={{ fontSize: 11, color: "text.disabled", flexShrink: 0 }} />
                   <Typography variant="caption" noWrap color="text.secondary" sx={{ lineHeight: 1.3 }}>
                     {item.address}

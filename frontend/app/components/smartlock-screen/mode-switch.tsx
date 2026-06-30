@@ -54,7 +54,7 @@ export function ModeSwitch({ keyMode, onSetKeyMode }: ModeSwitchProps) {
           }}
         >
           <LockRoundedIcon fontSize="medium" />
-          <Typography variant="body2" fontWeight={600}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             Cerradura
           </Typography>
         </ToggleButton>
@@ -89,7 +89,7 @@ export function ModeSwitch({ keyMode, onSetKeyMode }: ModeSwitchProps) {
           }}
         >
           <VpnKeyRoundedIcon fontSize="medium" />
-          <Typography variant="body2" fontWeight={600}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             Llave
           </Typography>
         </ToggleButton>
