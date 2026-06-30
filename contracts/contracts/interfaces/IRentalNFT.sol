@@ -24,4 +24,10 @@ interface IRentalNFT is IERC721, IERC4907 {
      * @notice Returns the linked PropertyNFT address.
      */
     function propertyNFT() external view returns (address);
+
+    /**
+     * @notice Allows the currently assigned user of the property (the RentalAgreement)
+     *         to release its own occupancy rights.
+     */
+    function retrieve(uint256 tokenId) external;
 }

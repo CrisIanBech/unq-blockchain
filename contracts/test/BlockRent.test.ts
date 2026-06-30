@@ -449,6 +449,23 @@ describe("BlockRent System Tests", function () {
                 rentalNFT.connect(landlord1).transferFrom(landlord1Addr, strangerAddr, propertyId)
             ).to.be.revertedWithCustomError(rentalNFT, "TransferForbidden");
         });
+
+        it("should restrict retrieve to the currently assigned user of the RentalNFT", async function () {
+            // Currently, user is agreementAddress. stranger calling retrieve should revert
+            await expect(
+                rentalNFT.connect(stranger).retrieve(propertyId)
+            ).to.be.revertedWithCustomError(rentalNFT, "UnauthorizedCaller");
+
+            // If we manually assign strangerAddr as user using landlord1
+            await propertyNFT.connect(landlord1).approve(ownerAddr, propertyId);
+            await rentalNFT.connect(owner).setUser(propertyId, ZeroAddress, 0); // clear first
+            await rentalNFT.connect(landlord1).setUser(propertyId, strangerAddr, 2000000000);
+            expect(await rentalNFT.userOf(propertyId)).to.equal(strangerAddr);
+
+            // stranger can now call retrieve to release occupancy
+            await rentalNFT.connect(stranger).retrieve(propertyId);
+            expect(await rentalNFT.userOf(propertyId)).to.equal(ZeroAddress);
+        });
     });
 
     describe("Termination & Occupancy Release of RentalNFT", function () {

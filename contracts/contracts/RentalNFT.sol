@@ -67,6 +67,17 @@ contract RentalNFT is IRentalNFT, ERC721 {
     }
 
     /**
+     * @notice Allows the currently assigned user of the property (the RentalAgreement)
+     *         to release its own occupancy rights.
+     */
+    function retrieve(uint256 tokenId) external override {
+        if (msg.sender != _users[tokenId].user) revert UnauthorizedCaller();
+
+        _users[tokenId] = UserInfo(address(0), 0);
+        emit UpdateUser(tokenId, address(0), 0);
+    }
+
+    /**
      * @notice Get the user address of an NFT.
      */
     function userOf(uint256 tokenId) public view override returns (address) {

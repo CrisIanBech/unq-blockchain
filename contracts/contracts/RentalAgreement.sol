@@ -286,7 +286,7 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
                 
                 // Clear user on RentalNFT
                 if (rentalNFT != address(0)) {
-                    IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
+                    IRentalNFT(rentalNFT).retrieve(propertyId);
                 }
 
                 emit AgreementCancelled();
@@ -305,7 +305,7 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
 
         // Clear user on RentalNFT
         if (rentalNFT != address(0)) {
-            IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
+            IRentalNFT(rentalNFT).retrieve(propertyId);
         }
 
         emit AgreementCompleted();
@@ -321,7 +321,7 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
 
         // Clear user on RentalNFT
         if (rentalNFT != address(0)) {
-            IRentalNFT(rentalNFT).setUser(propertyId, address(0), 0);
+            IRentalNFT(rentalNFT).retrieve(propertyId);
         }
 
         emit AgreementDefaulted();
