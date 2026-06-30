@@ -117,7 +117,7 @@ describe("BlockRent System Tests", function () {
         await propertyNFT.grantRole(MINTER_ROLE, landlord1Addr);
 
         // 6. Landlord1 mints a property NFT (this automatically mints the corresponding RentalNFT with ID 1)
-        const tx = await propertyNFT.connect(landlord1).mint(landlord1Addr, "ipfs://property-metadata-1");
+        const tx = await propertyNFT.connect(landlord1).mint(landlord1Addr, "ipfs://property-metadata-1", 100000n, 200000n);
         await tx.wait();
         
         propertyId = 1;
@@ -133,14 +133,14 @@ describe("BlockRent System Tests", function () {
     describe("PropertyNFT & RentalNFT Linkage", function () {
         it("should restrict minting to accounts with MINTER_ROLE", async function () {
             await expect(
-                propertyNFT.connect(stranger).mint(strangerAddr, "ipfs://test")
+                propertyNFT.connect(stranger).mint(strangerAddr, "ipfs://test", 100000n, 200000n)
             ).to.revert(ethers);
         });
 
         it("should allow minters to mint property tokens and automatically mint mirror RentalNFT", async function () {
-            await expect(propertyNFT.connect(landlord1).mint(landlord1Addr, "ipfs://test-2"))
+            await expect(propertyNFT.connect(landlord1).mint(landlord1Addr, "ipfs://test-2", 100000n, 200000n))
                 .to.emit(propertyNFT, "PropertyMinted")
-                .withArgs(2, landlord1Addr, "ipfs://test-2")
+                .withArgs(2, landlord1Addr, "ipfs://test-2", 100000n, 200000n)
                 .to.emit(rentalNFT, "RentalNFTCreated")
                 .withArgs(2, 2);
 
