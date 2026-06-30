@@ -191,7 +191,7 @@ describe("BlockRent System Tests", function () {
             await agreement.connect(tenant).approveAgreement();
             
             // Verify it is active/occupied
-            expect(await rentalNFT.userOf(propertyId)).to.equal(tenantAddr);
+            expect(await rentalNFT.userOf(propertyId)).to.equal(agreementAddress);
             
             // Now attempt to create a second agreement for the same property, while it is still occupied -> should revert
             const propNFTAddr = await propertyNFT.getAddress();
@@ -254,8 +254,8 @@ describe("BlockRent System Tests", function () {
             expect(await agreement.landlordApproved()).to.be.true;
             expect(await agreement.status()).to.equal(2); // Active
 
-            // Verify RentalNFT occupancy is registered to tenant
-            expect(await rentalNFT.userOf(propertyId)).to.equal(tenantAddr);
+            // Verify RentalNFT occupancy is registered to the agreement contract
+            expect(await rentalNFT.userOf(propertyId)).to.equal(agreementAddress);
         });
 
         it("should revert approval if deadline has passed", async function () {

@@ -175,8 +175,8 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
             startTime = block.timestamp;
             rentPaidUntil = block.timestamp;
 
-            // Assign tenant as user on the permanent RentalNFT (using delegated PropertyNFT approvals)
-            IRentalNFT(rentalNFT).setUser(propertyId, tenant, uint64(block.timestamp + duration));
+            // Assign the agreement contract as user on the permanent RentalNFT (using delegated PropertyNFT approvals)
+            IRentalNFT(rentalNFT).setUser(propertyId, address(this), uint64(block.timestamp + duration));
 
             // Register as active rental in factory registry - removed as factory is now stateless
             emit AgreementActivated(address(this), propertyId);
