@@ -6,8 +6,33 @@ import {
   getMockUSDC
 } from "../blockchain-infra";
 
-export class RentalsRepository {
-  static async createRental(params: {
+export interface IRentalsRepository {
+  createRental(params: any): Promise<ethers.TransactionReceipt>;
+  approveRental(params: any): Promise<ethers.TransactionReceipt>;
+  payRent(agreementAddress: string, rentAmount: bigint): Promise<ethers.TransactionReceipt>;
+  withdrawRent(agreementAddress: string): Promise<ethers.TransactionReceipt>;
+  cancelRental(agreementAddress: string): Promise<ethers.TransactionReceipt>;
+  checkRentalExpiration(agreementAddress: string): Promise<ethers.TransactionReceipt>;
+  getRentAmountToPay(agreementAddress: string): Promise<{ currentRent: bigint, lateFee: bigint, totalAmount: bigint }>;
+  getRentalDetails(agreementAddress: string): Promise<{
+    propertyId: bigint;
+    tenant: string;
+    landlord: string;
+    baseRent: bigint;
+    rentPaidUntil: bigint;
+    status: number;
+  }>;
+  getPaymentHistory(agreementAddress: string): Promise<Array<{
+    periodIndex: number;
+    amount: bigint;
+    lateFee: bigint;
+    txHash: string;
+    blockNumber: number;
+  }>>;
+}
+
+export class RentalsRepository implements IRentalsRepository {
+  async createRental(params: {
     propertyId: bigint;
     tenant: string;
     baseRent: bigint;
@@ -36,7 +61,7 @@ export class RentalsRepository {
     return await tx.wait();
   }
 
-  static async approveRental(params: {
+  async approveRental(params: {
     agreementAddress: string;
     isTenant: boolean;
     depositAmount?: bigint;
@@ -60,7 +85,7 @@ export class RentalsRepository {
     return await tx.wait();
   }
 
-  static async payRent(agreementAddress: string, rentAmount: bigint): Promise<ethers.TransactionReceipt> {
+  async payRent(agreementAddress: string, rentAmount: bigint): Promise<ethers.TransactionReceipt> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
@@ -75,7 +100,7 @@ export class RentalsRepository {
     return await tx.wait();
   }
 
-  static async withdrawRent(agreementAddress: string): Promise<ethers.TransactionReceipt> {
+  async withdrawRent(agreementAddress: string): Promise<ethers.TransactionReceipt> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
@@ -84,7 +109,7 @@ export class RentalsRepository {
     return await tx.wait();
   }
 
-  static async cancelRental(agreementAddress: string): Promise<ethers.TransactionReceipt> {
+  async cancelRental(agreementAddress: string): Promise<ethers.TransactionReceipt> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
@@ -93,12 +118,72 @@ export class RentalsRepository {
     return await tx.wait();
   }
 
-  static async checkRentalExpiration(agreementAddress: string): Promise<ethers.TransactionReceipt> {
+  async checkRentalExpiration(agreementAddress: string): Promise<ethers.TransactionReceipt> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
     const agreement = getRentalAgreement(agreementAddress, signer);
     const tx = await agreement.checkExpiration();
     return await tx.wait();
+  }
+
+  async getRentAmountToPay(agreementAddress: string): Promise<{ currentRent: bigint, lateFee: bigint, totalAmount: bigint }> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const agreement = getRentalAgreement(agreementAddress, signer);
+    const [currentRent, lateFee, totalAmount] = await agreement.getRentAmountToPay();
+    return { currentRent, lateFee, totalAmount };
+  }
+
+  async getRentalDetails(agreementAddress: string): Promise<{
+    propertyId: bigint;
+    tenant: string;
+    landlord: string;
+    baseRent: bigint;
+    rentPaidUntil: bigint;
+    status: number;
+  }> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const agreement = getRentalAgreement(agreementAddress, signer);
+    const [propertyId, tenant, landlord, baseRent, rentPaidUntil, status] = await Promise.all([
+      agreement.propertyId(),
+      agreement.tenant(),
+      agreement.landlord(),
+      agreement.baseRent(),
+      agreement.rentPaidUntil(),
+      agreement.status()
+    ]);
+
+    return { propertyId, tenant, landlord, baseRent, rentPaidUntil, status: Number(status) };
+  }
+
+  async getPaymentHistory(agreementAddress: string): Promise<Array<{
+    periodIndex: number;
+    amount: bigint;
+    lateFee: bigint;
+    txHash: string;
+    blockNumber: number;
+  }>> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const agreement = getRentalAgreement(agreementAddress, signer);
+    
+    // Create filter for the RentPaid event
+    const filter = agreement.filters.RentPaid();
+    
+    // Query logs from block 0 to latest
+    const logs = await agreement.queryFilter(filter, 0, "latest");
+    
+    return logs.map((log: any) => ({
+      periodIndex: Number(log.args[0]),
+      amount: log.args[1],
+      lateFee: log.args[2],
+      txHash: log.transactionHash,
+      blockNumber: log.blockNumber
+    }));
   }
 }

@@ -9,16 +9,16 @@ import {
   Typography,
   Chip,
 } from "@mui/material"
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
+import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded"
 import type { Rental } from "@/models/types"
-import { usdc, monthLabel, nextMonths } from "@/lib/format"
+import { usdc } from "@/lib/format"
 
 interface PayRentDialogProps {
   rental: Rental | null
   open: boolean
   onClose: () => void
-  onPay: (rentalId: string, month: string) => void
+  onPay: (rentalId: string, month: string, amount?: number) => void
   balance: number
 }
 
@@ -29,22 +29,33 @@ export function PayRentDialog({
   onPay,
   balance,
 }: PayRentDialogProps) {
-  const [selected, setSelected] = useState<string | null>(null)
-
-  const months = useMemo(() => {
-    if (!rental) return []
-    const paidSet = new Set(rental.payments.filter((p) => p.status === "paid").map((p) => p.month))
-    return nextMonths(12, "2025-09").map((m) => ({ month: m, paid: paidSet.has(m) }))
-  }, [rental])
-
   if (!rental) return null
 
-  const enoughBalance = balance >= rental.monthlyRent
+  const details = rental.contractDetails
+
+  if (!details) {
+    return (
+      <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+        <DialogTitle>Cargando...</DialogTitle>
+        <DialogContent>Obteniendo detalles del contrato...</DialogContent>
+      </Dialog>
+    )
+  }
+
+  const totalPeriods = Math.floor(details.duration / details.paymentPeriod) || 12
+  const periodsPaid = Math.floor((details.rentPaidUntil - details.startTime) / details.paymentPeriod) || 0
+
+  const periodStart = new Date((details.startTime + periodsPaid * details.paymentPeriod) * 1000)
+  const periodEnd = new Date((details.startTime + (periodsPaid + 1) * details.paymentPeriod) * 1000)
+  const dateOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
+  const periodLabel = `${periodStart.toLocaleDateString("es-ES", dateOpts)} - ${periodEnd.toLocaleDateString("es-ES", dateOpts)}`
+
+  const enoughBalance = balance >= details.amountToPay
 
   function confirm() {
-    if (!selected || !rental) return
-    onPay(rental.id, selected)
-    setSelected(null)
+    if (!rental) return
+    const monthLabelForRecord = new Date((details.startTime + periodsPaid * details.paymentPeriod) * 1000).toISOString().slice(0, 7)
+    onPay(rental.id, monthLabelForRecord, details.amountToPay)
     onClose()
   }
 
@@ -54,64 +65,83 @@ export function PayRentDialog({
         <Box sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: "primaryContainer.main", color: "primaryContainer.contrastText", display: "grid", placeItems: "center" }}>
           <PaymentsRoundedIcon />
         </Box>
-        Pagar mes
+        Pagar periodo
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {rental.name} — {usdc(rental.monthlyRent)} / mes
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Seleccioná el mes a pagar. Los meses ya pagados no se pueden volver a pagar.
+          {rental.name} — Cuota base: {usdc(details.baseRent)}
         </Typography>
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 1,
-            mt: 2,
-          }}
-        >
-          {months.map(({ month, paid }) => {
-            const isSel = selected === month
-            return (
-              <Box
-                key={month}
-                role="button"
-                aria-disabled={paid}
-                onClick={() => !paid && setSelected(month)}
-                sx={{
-                  p: 1.25,
-                  borderRadius: 3,
-                  border: 2,
-                  borderColor: isSel ? "primary.main" : "divider",
-                  bgcolor: paid ? "surfaceContainer.high" : isSel ? "primaryContainer.main" : "transparent",
-                  color: paid ? "text.disabled" : isSel ? "primaryContainer.contrastText" : "text.primary",
-                  cursor: paid ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 0.5,
-                  transition: ".15s",
-                }}
-              >
-                <Typography variant="body2" sx={{ textTransform: "capitalize", fontWeight: 600 }}>
-                  {monthLabel(month)}
+        <Box sx={{ bgcolor: "surfaceContainer.highest", p: 2, borderRadius: 1.5, mt: 2, mb: 1, display: "flex", flexDirection: "column", gap: 1.5, border: "1px solid", borderColor: "divider" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                Periodo a abonar:
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 600, textTransform: "capitalize" }}>
+                {periodLabel}
+              </Typography>
+            </Box>
+            {details.isLate ? (
+              <Chip size="small" color="error" label="Con mora" />
+            ) : (
+              <Chip size="small" color="success" label="Al día" />
+            )}
+          </Box>
+
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, borderTop: "1px dashed", borderColor: "divider", pt: 1.5 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="body2" color="text.secondary">
+                Cuota original
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {usdc(details.baseRent)}
+              </Typography>
+            </Box>
+
+            {details.isLate && (
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Typography variant="body2" color="textDisabled">
+                  Interés por mora (+{details.lateFeeBps / 100}%)
                 </Typography>
-                {paid && <CheckCircleRoundedIcon fontSize="small" color="success" />}
+                <Typography variant="body2" color="textDisabled" sx={{ fontWeight: 500 }}>
+                  +{usdc(details.lateFeeAmount)}
+                </Typography>
               </Box>
-            )
-          })}
+            )}
+
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 0.5 }}>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                Total final
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: "primary.main" }}>
+                {usdc(details.amountToPay)}
+              </Typography>
+            </Box>
+          </Box>
         </Box>
 
         {!enoughBalance && (
-          <Chip color="error" variant="outlined" label="Saldo USDC insuficiente" sx={{ mt: 2 }} />
+          <Chip
+            color="error"
+            variant="filled"
+            icon={<ErrorRoundedIcon />}
+            label={`Saldo insuficiente (Tenés ${usdc(balance)})`}
+            sx={{
+              mt: 2,
+              width: "100%",
+              color: "error.contrastText",
+              fontWeight: 600,
+              justifyContent: "flex-start",
+              px: 1
+            }}
+          />
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
         <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="contained" disabled={!selected || !enoughBalance} onClick={confirm}>
-          Pagar {usdc(rental.monthlyRent)}
+        <Button variant="contained" disabled={!enoughBalance || periodsPaid >= totalPeriods} onClick={confirm}>
+          {periodsPaid >= totalPeriods ? "Contrato saldado" : `Pagar ${usdc(details.amountToPay)}`}
         </Button>
       </DialogActions>
     </Dialog>
