@@ -53,42 +53,17 @@ npx hardhat test
 
 ---
 
-## 5. Guía de Despliegue (Deploy) en Sepolia
+## 5. Guía de Despliegue (Deploy) y Versionado Automático
 
-Existen dos alternativas recomendadas para desplegar los contratos inteligentes utilizando sus wallets de MetaMask en la red de pruebas Sepolia.
+Hemos automatizado el flujo de despliegue mediante un script de TypeScript que gestiona el orden de inicialización de los enlaces bidireccionales, ejecuta validaciones on-chain y genera reportes de versión.
 
-### Opción A: Despliegue mediante Remix IDE (Visual e Intuitivo)
-
-Esta es la mejor opción si están acostumbrados a la interfaz gráfica de Remix.
-
-1.  **Cargar los archivos en Remix:**
-    *   Ingresa a [Remix IDE](https://remix.ethereum.org/).
-    *   Crea o importa la estructura de archivos `.sol` dentro de la carpeta `contracts` de Remix. Recuerda mantener la subcarpeta `interfaces/` con las interfaces correspondientes.
-2.  **Configurar el compilador:**
-    *   En la pestaña **Solidity Compiler**, selecciona la versión de compilador `0.8.24`.
-    *   En *Advanced Configuration*, activa la opción **Enable optimization** y pon el valor de *runs* en `200`.
-    *   Haz clic en **Compile**.
-3.  **Conectar MetaMask:**
-    *   Asegúrate de estar en la red **Sepolia Testnet** en tu extensión de MetaMask y contar con saldo de prueba (Sepolia ETH).
-    *   En Remix, ve a la pestaña **Deploy & Run Transactions**.
-    *   En el menú de **Environment**, selecciona **Injected Provider - MetaMask**. Acepta la solicitud de conexión en MetaMask.
-4.  **Secuencia de Despliegue:**
-    *   **Paso 1:** Selecciona `PropertyNFT` y haz clic en **Deploy**. Confirma la transacción en MetaMask y copia la dirección del contrato resultante.
-    *   **Paso 2 (Opcional):** Si requieres un token de prueba de USDC en Sepolia, selecciona `MockUSDC`, haz clic en **Deploy**, y copia su dirección. De lo contrario, puedes usar cualquier dirección de USDC de prueba oficial que ya exista.
-    *   **Paso 3:** Selecciona `RentalAgreementFactory` en Remix. En los parámetros del constructor, ingresa la dirección de tu `PropertyNFT` y de `MockUSDC` (o del USDC oficial de prueba), y haz clic en **Transact**. Confirma la transacción en MetaMask.
-
----
-
-### Opción B: Despliegue mediante Hardhat CLI (Automatizado)
-
-Hardhat permite realizar el despliegue automático mediante código utilizando claves privadas de MetaMask configuradas localmente de manera segura.
-
-1.  **Configurar las variables de entorno:**
-    *   Copia el archivo `.env.example` y nómbralo como `.env` (este archivo ya está excluido en el `.gitignore` por seguridad):
+### Requisitos Previos:
+1.  **Configurar variables de entorno:**
+    *   Copia el archivo `.env.example` y nómbralo como `.env` en la carpeta `contracts`:
         ```bash
         cp .env.example .env
         ```
-    *   Abre el archivo `.env` y coloca la clave privada de tu cuenta de MetaMask en la variable `SEPOLIA_PRIVATE_KEY` (sin el prefijo `0x`):
+    *   Abre el archivo `.env` y coloca la clave privada de tu cuenta de MetaMask (sin el prefijo `0x`):
         ```env
         SEPOLIA_PRIVATE_KEY=tu_clave_privada_aqui
         ```

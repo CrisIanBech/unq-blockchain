@@ -13,7 +13,14 @@ interface IPropertyNFT is IERC721 {
      * @dev Restricted to addresses with MINTER_ROLE in the implementation.
      * @param to The address that will own the minted NFT.
      * @param _tokenURI The metadata URI containing property details.
+     * @param latitude The latitude of the property (Mercator projection).
+     * @param longitude The longitude of the property (Mercator projection).
      * @return The newly generated property token ID.
      */
-    function mint(address to, string calldata _tokenURI) external returns (uint256);
+    function mint(address to, string calldata _tokenURI, int256 latitude, int256 longitude) external returns (uint256);
+
+    /**
+     * @notice Returns the linked RentalNFT contract address.
+     */
+    function rentalNFT() external view returns (address);
 }

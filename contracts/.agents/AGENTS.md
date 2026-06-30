@@ -112,17 +112,14 @@ Business logic belongs here.
 
 ## RentalAgreementFactory
 
-Exactly one Factory exists.
+Exactly one global stateless singleton Factory exists. It is deployed once and reused by all properties, landlords, and tenants.
 
 Responsibilities:
 
-- Deploy RentalAgreement contracts
-- Register agreements
-- Keep mappings
-- Prevent duplicate active rentals
-- Emit deployment events
+- Deploy `RentalAgreement` contracts dynamically by accepting all necessary parameters (PropertyNFT, RentalNFT, USDC token, property ID, tenant, rent, security deposit, duration, deadline, etc.) in the creation function.
+- Emit the `RentalAgreementCreated` event with the deployed agreement's address and details.
 
-The Factory should contain as little business logic as possible.
+The Factory contains no state, active rental mappings, or registry histories. It acts strictly as a stateless deployer utility.
 
 ---
 
@@ -130,29 +127,26 @@ The Factory should contain as little business logic as possible.
 
 Rental creation follows this sequence:
 
-1. Landlord calls RentalAgreementFactory.
-2. Factory validates the request.
-3. Factory deploys a RentalAgreement.
-4. RentalAgreement creates its own RentalNFT.
-5. RentalAgreement configures:
-   - owner (itself)
-   - user (tenant)
-   - expiration
-6. Factory emits RentalAgreementCreated().
-7. Frontend retrieves the RentalAgreement address from the emitted event.
-8. Future interactions occur directly with the RentalAgreement.
+1. Landlord (or frontend on their behalf) calls `RentalAgreementFactory.createRentalAgreement(...)` passing all contract addresses (PropertyNFT, RentalNFT, USDC token) and terms (property ID, tenant, rent, security deposit, duration, deadline, etc.).
+2. The Factory deploys a new `RentalAgreement` contract, forwarding all parameters to its constructor.
+3. The Factory emits the `RentalAgreementCreated` event and returns the newly deployed `RentalAgreement` address.
+4. The frontend retrieves the `RentalAgreement` address directly from the transaction (as the return value of the function call).
+5. Before activation, the Landlord must approve the deployed `RentalAgreement` address on `PropertyNFT` (e.g., via `approve` or `setApprovalForAll`) to authorize it to set the user on `RentalNFT`.
+6. Landlord and Tenant approve the agreement terms on the `RentalAgreement` contract.
+7. Upon mutual approval:
+   - The agreement state transitions to Active.
+   - The `RentalAgreement` calls `setUser` on the existing `RentalNFT` to set the tenant as the temporary user with the corresponding expiration.
+8. Future interactions (rent payments, claims, completions) occur directly with the `RentalAgreement` contract.
 
 ---
 
 # Frontend Integration
 
-The frontend should only contain a static reference to:
+The frontend maintains a single static reference to the global stateless `RentalAgreementFactory` singleton.
 
-RentalAgreementFactory
+When a landlord wants to create a rental agreement, the frontend queries the deployed factory, passing the appropriate property details, token addresses, and agreement parameters.
 
-The frontend must never contain hardcoded RentalAgreement addresses.
-
-RentalAgreement addresses are obtained from emitted events.
+The frontend must never hardcode individual `RentalAgreement` addresses. Instead, it discovers them dynamically by reading the return value of the creation transaction.
 
 ---
 
@@ -272,7 +266,7 @@ Favor correctness, modularity, and maintainability over minimizing the number of
 
 Each contract should have a single responsibility.
 
-The Factory deploys and registers contracts.
+The Factory acts as a stateless deployer for agreements.
 
 RentalAgreement contains rental business logic.
 

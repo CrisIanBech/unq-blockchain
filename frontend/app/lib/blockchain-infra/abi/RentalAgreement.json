@@ -23,6 +23,11 @@
           "type": "address"
         },
         {
+          "internalType": "address",
+          "name": "_rentalNFT",
+          "type": "address"
+        },
+        {
           "internalType": "uint256",
           "name": "_baseRent",
           "type": "uint256"
@@ -148,8 +153,14 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "rentalNFTAddress",
+          "name": "agreementAddress",
           "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "propertyId",
+          "type": "uint256"
         }
       ],
       "name": "AgreementActivated",
@@ -285,19 +296,6 @@
         }
       ],
       "name": "RentPaid",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "nftAddress",
-          "type": "address"
-        }
-      ],
-      "name": "RentalNFTDeployed",
       "type": "event"
     },
     {
