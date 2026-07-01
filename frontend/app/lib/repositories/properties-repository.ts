@@ -6,6 +6,7 @@ export interface IPropertiesRepository {
   getPropertyMetadataURI(propertyId: number): Promise<string>;
   getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }>;
   getOwnedProperties(ownerAddress: string): Promise<number[]>;
+  ownerOf(propertyId: number): Promise<string>;
 }
 
 export class PropertiesRepository implements IPropertiesRepository {
@@ -74,5 +75,13 @@ export class PropertiesRepository implements IPropertiesRepository {
     }
     
     return ownedIds.sort((a, b) => a - b);
+  }
+
+  async ownerOf(propertyId: number): Promise<string> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const nftContract = getPropertyNFT(signer);
+    return await nftContract.ownerOf(BigInt(propertyId));
   }
 }

@@ -14,9 +14,11 @@ export function useMyPropertiesPage() {
     cancelContract,
     createContract,
     syncOwnedProperties,
+    importProperty,
   } = usePropertiesStore()
 
   const [addOpen, setAddOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
@@ -68,14 +70,30 @@ export function useMyPropertiesPage() {
     mintAndLoadProperty(input)
   }
 
+  function handleOpenImport() {
+    setImportOpen(true)
+  }
+
+  function handleCloseImport() {
+    setImportOpen(false)
+  }
+
+  function handleSubmitImport(propertyId: number) {
+    importProperty(propertyId)
+  }
+
   return {
     ownedProperties,
     addOpen,
+    importOpen,
     stats,
     isSyncing,
     onOpenAdd: handleOpenAdd,
     onCloseAdd: handleCloseAdd,
     onSubmitAdd: handleSubmitAdd,
+    onOpenImport: handleOpenImport,
+    onCloseImport: handleCloseImport,
+    onSubmitImport: handleSubmitImport,
     onWithdrawRent: withdrawRent,
     onSignContract: signContract,
     onCancelContract: cancelContract,

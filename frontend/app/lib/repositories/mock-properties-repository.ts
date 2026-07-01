@@ -32,4 +32,9 @@ export class MockPropertiesRepository implements IPropertiesRepository {
     }
     return [];
   }
+
+  async ownerOf(propertyId: number): Promise<string> {
+    await new Promise((res) => setTimeout(res, 100));
+    return "0xMockUser";
+  }
 }

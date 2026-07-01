@@ -16,14 +16,40 @@ export class PropertiesService {
   /**
    * Mints a new property NFT and returns plain domain transaction details.
    */
-  async mintProperty(recipient: string, metadataURI: string): Promise<PropertyMintResult> {
+  async mintProperty(recipient: string, metadataURI: string): Promise<PropertyMintResult & { tokenId?: number }> {
     try {
       const receipt = await this.repo.createProperty(recipient, metadataURI);
         
+      let tokenId: number | undefined;
+      if (receipt && receipt.logs) {
+        for (const log of receipt.logs) {
+          try {
+            if (log.topics[0] === "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") {
+              const parsedTokenId = Number(BigInt(log.topics[3]));
+              if (!isNaN(parsedTokenId)) {
+                tokenId = parsedTokenId;
+                break;
+              }
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+
       return {
-        txHash: receipt.hash,
-        contractAddress: receipt.contractAddress || ""
+        txHash: receipt.hash || receipt.transactionHash || "",
+        contractAddress: receipt.contractAddress || "",
+        tokenId
       };
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getPropertyOwner(propertyId: number): Promise<string> {
+    try {
+      return await this.repo.ownerOf(propertyId);
     } catch (error) {
       throw translateError(error);
     }

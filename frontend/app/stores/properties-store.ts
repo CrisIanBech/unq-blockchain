@@ -42,6 +42,7 @@ interface PropertiesState {
   ownedProperties: OwnedProperty[];
   rentals: Rental[];
   rentalImports: { name: string, address: string }[];
+  propertyImports: number[];
   mintAndLoadProperty: (input: AddPropertyInput) => Promise<void>;
   withdrawRent: (propertyId: string) => Promise<void>;
   payMonthlyRent: (rentalId: string, month: string) => Promise<void>;
@@ -49,6 +50,7 @@ interface PropertiesState {
   signContract: (propertyId: string) => Promise<void>;
   cancelContract: (propertyId: string) => Promise<void>;
   importRental: (name: string, agreementAddress: string) => Promise<void>;
+  importProperty: (propertyId: number) => Promise<void>;
   syncRentals: () => Promise<void>;
   syncOwnedProperties: () => Promise<void>;
 }
@@ -59,6 +61,7 @@ export const usePropertiesStore = create<PropertiesState>()(
       ownedProperties: [],
       rentals: [],
       rentalImports: [],
+      propertyImports: [],
 
       mintAndLoadProperty: async (input) => {
         const userStore = useUserStore.getState();
@@ -86,6 +89,10 @@ export const usePropertiesStore = create<PropertiesState>()(
           const metadataURI = `data:application/json;base64,${base64Metadata}`;
 
           const result = await propertiesService.mintProperty(wallet, metadataURI);
+
+          if (result.tokenId !== undefined) {
+            set((s) => ({ propertyImports: [...(s.propertyImports || []), result.tokenId!] }));
+          }
 
           await get().syncOwnedProperties();
 
@@ -396,6 +403,42 @@ export const usePropertiesStore = create<PropertiesState>()(
         await get().syncRentals();
       },
 
+      importProperty: async (propertyId: number) => {
+        const userStore = useUserStore.getState();
+        const wallet = userStore.wallet;
+        if (!wallet) return;
+
+        const { propertiesService } = getServices(wallet);
+        
+        try {
+          userStore.pushToast({ message: "Verificando propiedad en la blockchain...", severity: "info" });
+          
+          // Verify owner of the property NFT
+          const owner = await propertiesService.getPropertyOwner(propertyId);
+          if (owner.toLowerCase() !== wallet.toLowerCase()) {
+            throw new Error("No eres el propietario de este Token ID.");
+          }
+
+          // Add to imports if not already there
+          const currentImports = get().propertyImports || [];
+          if (currentImports.includes(propertyId)) {
+            userStore.pushToast({ message: "La propiedad ya está en tu lista", severity: "warning" });
+            return;
+          }
+
+          set({ propertyImports: [...currentImports, propertyId] });
+          await get().syncOwnedProperties();
+          
+          userStore.pushToast({ message: "Propiedad importada con éxito", severity: "success" });
+        } catch (err: any) {
+          console.error("Failed to import property:", err);
+          userStore.pushToast({
+            message: err.message || "Error al importar propiedad",
+            severity: "error"
+          });
+        }
+      },
+
       syncRentals: async () => {
         const userStore = useUserStore.getState();
         const wallet = userStore.wallet;
@@ -474,8 +517,50 @@ export const usePropertiesStore = create<PropertiesState>()(
         const { propertiesService, rentalsService } = getServices(wallet);
 
         try {
-          // 1. Get base owned properties from blockchain events
-          const baseProps = await propertiesService.getOwnedProperties(wallet);
+          // 1. Get base owned properties from imported property IDs on-chain
+          const imports = get().propertyImports || [];
+          
+          const allProps = await Promise.all(imports.map(async (tokenId) => {
+            try {
+              const metadata = await propertiesService.getPropertyMetadata(tokenId);
+              
+              const typeAttr = metadata.attributes?.find((a: any) => a.trait_type === "type")?.value || "departamento";
+              const addrAttr = metadata.attributes?.find((a: any) => a.trait_type === "address")?.value || metadata.address || "Dirección desconocida";
+              const rentAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "monthlyRent")?.value || metadata.monthlyRent || 0);
+
+              return {
+                propertyId: tokenId,
+                name: metadata.name || `Propiedad #${tokenId}`,
+                type: typeAttr,
+                address: addrAttr,
+                imageUrl: metadata.image || `/images/prop-${(tokenId % 5) + 1}.png`,
+                monthlyRent: rentAttr,
+              };
+            } catch (err) {
+              console.error(`Failed to fetch metadata for token ${tokenId}`, err);
+              return {
+                propertyId: tokenId,
+                name: `Propiedad #${tokenId}`,
+                type: "departamento" as const,
+                address: "Dirección no disponible",
+                imageUrl: `/images/prop-${(tokenId % 5) + 1}.png`,
+                monthlyRent: 0,
+              };
+            }
+          }));
+
+          // Filter out properties that are no longer owned by this wallet
+          const baseProps: typeof allProps = [];
+          for (const baseProp of allProps) {
+            try {
+              const owner = await propertiesService.getPropertyOwner(baseProp.propertyId);
+              if (owner.toLowerCase() === wallet.toLowerCase()) {
+                baseProps.push(baseProp);
+              }
+            } catch (err) {
+              // Skip if owner check fails (e.g. token burned or node reset)
+            }
+          }
 
           // 2. Fetch rental details and status for each property
           const loadedProps = await Promise.all(baseProps.map(async (baseProp) => {
@@ -583,7 +668,7 @@ export const usePropertiesStore = create<PropertiesState>()(
     }),
     {
       name: "properties-store-storage", // local storage key
-      partialize: (state) => ({ rentalImports: state.rentalImports, ownedProperties: state.ownedProperties }), // persist only rental imports and owned properties
+      partialize: (state) => ({ rentalImports: state.rentalImports, propertyImports: state.propertyImports || [] }), // persist only rental imports and property imports
     }
   ));
 
