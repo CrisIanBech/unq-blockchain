@@ -2,9 +2,10 @@ import { useState, useEffect } from "react"
 import { useUserStore } from "@stores/user-store"
 import { usePropertiesStore } from "@stores/properties-store"
 import type { Rental } from "../models/types"
+import { getBrowserProvider } from "@/lib/blockchain-infra"
 
 export function useMyRentalsPage() {
-  const { balance } = useUserStore()
+  const { balance, wallet } = useUserStore()
   const { rentals, payMonthlyRent, importRental, syncRentals } = usePropertiesStore()
   const [payTargetId, setPayTargetId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -12,8 +13,23 @@ export function useMyRentalsPage() {
   const [addRentalOpen, setAddRentalOpen] = useState(false)
 
   useEffect(() => {
+    if (!wallet) return
+
+    setIsSyncing(true)
     syncRentals().finally(() => setIsSyncing(false))
-  }, [])
+
+    // Listen for new blocks to reload rental details automatically
+    const provider = getBrowserProvider()
+    if (provider) {
+      const listener = () => {
+        syncRentals()
+      }
+      provider.on("block", listener)
+      return () => {
+        provider.off("block", listener)
+      }
+    }
+  }, [wallet, syncRentals])
 
   const payTarget = rentals.find(r => r.id === payTargetId) || null
 

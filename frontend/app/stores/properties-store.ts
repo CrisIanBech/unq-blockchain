@@ -11,6 +11,7 @@ import { PropertiesService } from "../lib/services/properties-service";
 import { RentalsService } from "../lib/services/rentals-service";
 import { GeocodingRepository } from "../lib/repositories/geocoding-repository";
 import { MockGeocodingRepository } from "../lib/repositories/mock-geocoding-repository";
+import { CONTRACT_ADDRESSES } from "../lib/blockchain-infra";
 
 const isMock = import.meta.env.VITE_USE_MOCKS === "true";
 
@@ -49,12 +50,13 @@ interface PropertiesState {
   cancelContract: (propertyId: string) => Promise<void>;
   importRental: (name: string, agreementAddress: string) => Promise<void>;
   syncRentals: () => Promise<void>;
+  syncOwnedProperties: () => Promise<void>;
 }
 
 export const usePropertiesStore = create<PropertiesState>()(
   persist(
     (set, get) => ({
-      ownedProperties: initialOwnedProperties,
+      ownedProperties: [],
       rentals: [],
       rentalImports: [],
 
@@ -69,29 +71,23 @@ export const usePropertiesStore = create<PropertiesState>()(
             severity: "info"
           });
 
-          const result = await propertiesService.mintProperty(wallet, `ipfs://property-metadata-${Date.now()}`);
-
-          const newProp: OwnedProperty = {
-            id: `own-${Date.now()}`,
+          // Construct base64 metadata URI to store name, address, rent and type on-chain
+          const metadata = {
             name: input.name,
-            type: input.type,
-            address: input.address,
-            imageUrl: "/images/prop-5.png",
-            propertyId: Date.now(),
-            realEstateToken: result.contractAddress || input.realEstateToken,
-            rentalToken: "",
-            agreementAddress: undefined,
-            monthlyRent: input.monthlyRent,
-            tenant: null,
-            availableToWithdraw: 0,
-            contractStatus: "draft",
-            smartlock: { id: `lock-${Date.now()}`, installed: false, nfcEnabled: false, unlocked: false },
-            payments: [],
+            description: `Tokenized property: ${input.name}`,
+            image: `/images/prop-${Math.floor(Math.random() * 5) + 1}.png`,
+            attributes: [
+              { trait_type: "type", value: input.type },
+              { trait_type: "address", value: input.address },
+              { trait_type: "monthlyRent", value: input.monthlyRent }
+            ]
           };
+          const base64Metadata = btoa(unescape(encodeURIComponent(JSON.stringify(metadata))));
+          const metadataURI = `data:application/json;base64,${base64Metadata}`;
 
-          set((state) => ({
-            ownedProperties: [newProp, ...state.ownedProperties]
-          }));
+          const result = await propertiesService.mintProperty(wallet, metadataURI);
+
+          await get().syncOwnedProperties();
 
           userStore.pushToast({
             message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
@@ -134,6 +130,8 @@ export const usePropertiesStore = create<PropertiesState>()(
               p.id === propertyId ? { ...p, availableToWithdraw: 0 } : p
             )
           }));
+
+          await get().syncOwnedProperties();
 
           if (!isMock) {
             await userStore.syncOnchainBalance();
@@ -217,6 +215,8 @@ export const usePropertiesStore = create<PropertiesState>()(
             userStore.adjustBalance(-amountToPay);
           }
 
+          await get().syncRentals();
+
           userStore.pushToast({
             message: `Pago procesado con éxito`,
             severity: "success",
@@ -266,6 +266,8 @@ export const usePropertiesStore = create<PropertiesState>()(
               p.id === propertyId ? { ...p, contractStatus: "draft", tenant, monthlyRent: rent, agreementAddress: result.agreementAddress } : p
             )
           }));
+
+          await get().syncOwnedProperties();
 
           userStore.pushToast({
             message: `Contrato de alquiler creado en ${result.agreementAddress}`,
@@ -319,6 +321,8 @@ export const usePropertiesStore = create<PropertiesState>()(
             )
           }));
 
+          await get().syncOwnedProperties();
+
           userStore.pushToast({
             message: "Contrato firmado exitosamente on-chain",
             severity: "success",
@@ -360,6 +364,8 @@ export const usePropertiesStore = create<PropertiesState>()(
               p.id === propertyId ? { ...p, contractStatus: "cancelled", tenant: null, nextChargeDate: undefined } : p
             )
           }));
+
+          await get().syncOwnedProperties();
 
           userStore.pushToast({
             message: "Contrato cancelado cooperativamente on-chain",
@@ -407,13 +413,16 @@ export const usePropertiesStore = create<PropertiesState>()(
             const typeAttr = metadata.attributes?.find((a: any) => a.trait_type === "type")?.value || "departamento";
             const addrAttr = metadata.attributes?.find((a: any) => a.trait_type === "address")?.value || "Dirección desconocida";
 
-            const payments: PaymentRecord[] = history.map((e, i) => ({
-              month: "Period " + e.periodIndex,
-              amount: e.amount,
-              status: "paid" as const,
-              txHash: e.txHash,
-              paidAt: new Date().toISOString()
-            }));
+            const payments: PaymentRecord[] = history.map((e) => {
+              const payDate = new Date((Number(details.startTime) + e.periodIndex * 30 * 24 * 60 * 60) * 1000);
+              return {
+                month: `${payDate.getFullYear()}-${String(payDate.getMonth() + 1).padStart(2, "0")}`,
+                amount: e.amount,
+                status: "paid" as const,
+                txHash: e.txHash,
+                paidAt: payDate.toISOString()
+              };
+            });
 
             const newRental: Rental = {
               id: address,
@@ -451,6 +460,124 @@ export const usePropertiesStore = create<PropertiesState>()(
         } catch (error: any) {
           console.error("Failed to sync rentals concurrently:", error);
           userStore.pushToast({ message: "Error al cargar alquileres: " + (error.message || error.toString()), severity: "error" });
+        }
+      },
+
+      syncOwnedProperties: async () => {
+        const userStore = useUserStore.getState();
+        const wallet = userStore.wallet;
+        if (!wallet) {
+          set({ ownedProperties: [] });
+          return;
+        }
+
+        const { propertiesService, rentalsService } = getServices(wallet);
+
+        try {
+          // 1. Get base owned properties from blockchain events
+          const baseProps = await propertiesService.getOwnedProperties(wallet);
+
+          // 2. Fetch rental details and status for each property
+          const loadedProps = await Promise.all(baseProps.map(async (baseProp) => {
+            const tokenId = baseProp.propertyId;
+            const agreementAddress = await rentalsService.getRentalAgreementForProperty(tokenId);
+            
+            let tenant: string | null = null;
+            let availableToWithdraw = 0;
+            let contractStatus: "draft" | "active" | "cancelled" = "draft";
+            let tenantSince: string | undefined = undefined;
+            let nextChargeDate: string | undefined = undefined;
+            let payments: PaymentRecord[] = [];
+            let monthlyRent = baseProp.monthlyRent;
+
+            if (agreementAddress) {
+              const details = await rentalsService.getRentalDetails(agreementAddress);
+              const statusNum = details.status;
+              
+              if (statusNum === 2 /* Active */) {
+                contractStatus = "active";
+                tenant = details.tenant;
+                tenantSince = new Date(Number(details.startTime) * 1000).toISOString().slice(0, 10);
+                nextChargeDate = new Date(Number(details.rentPaidUntil) * 1000).toISOString().slice(0, 10);
+                monthlyRent = details.baseRent;
+              } else if (statusNum === 0 || statusNum === 1) {
+                contractStatus = "draft";
+                tenant = details.tenant;
+                monthlyRent = details.baseRent;
+              } else {
+                contractStatus = "cancelled";
+                tenant = null;
+              }
+
+              // Fetch USDC retirable balance
+              availableToWithdraw = await rentalsService.getWithdrawableRent(agreementAddress);
+
+              // Fetch past payment records
+              const history = await rentalsService.getPaymentHistory(agreementAddress);
+              payments = history.map((e) => {
+                const payDate = new Date((Number(details.startTime) + e.periodIndex * 30 * 24 * 60 * 60) * 1000);
+                return {
+                  month: `${payDate.getFullYear()}-${String(payDate.getMonth() + 1).padStart(2, "0")}`,
+                  amount: e.amount,
+                  status: "paid" as const,
+                  paidAt: payDate.toISOString(),
+                  txHash: e.txHash
+                };
+              });
+
+              // Synthesize pending/overdue rent
+              const nowSec = Math.floor(Date.now() / 1000);
+              const nextPaymentDue = Number(details.rentPaidUntil);
+              if (nowSec > nextPaymentDue && statusNum === 2 /* Active */) {
+                const isLate = nowSec > nextPaymentDue + 5 * 24 * 60 * 60; // 5 days grace period
+                const nextPeriodDate = new Date(nextPaymentDue * 1000);
+                payments.unshift({
+                  month: `${nextPeriodDate.getFullYear()}-${String(nextPeriodDate.getMonth() + 1).padStart(2, "0")}`,
+                  amount: details.baseRent,
+                  status: isLate ? "overdue" as const : "pending" as const
+                });
+              }
+            }
+
+            // Preserve current local smartlock status to prevent UI lock loss
+            const existingProp = get().ownedProperties.find((p) => p.propertyId === tokenId);
+            const smartlock = existingProp?.smartlock || {
+              id: `lock-${tokenId}`,
+              installed: false,
+              nfcEnabled: false,
+              unlocked: false
+            };
+
+            const ownedProp: OwnedProperty = {
+              id: `own-${tokenId}`,
+              propertyId: tokenId,
+              name: baseProp.name,
+              type: baseProp.type,
+              address: baseProp.address,
+              imageUrl: baseProp.imageUrl,
+              realEstateToken: CONTRACT_ADDRESSES.propertyNft,
+              rentalToken: "",
+              agreementAddress: agreementAddress || undefined,
+              monthlyRent,
+              tenant,
+              tenantSince,
+              nextChargeDate,
+              payments,
+              availableToWithdraw,
+              smartlock,
+              contractStatus,
+            };
+
+            return ownedProp;
+          }));
+
+          set({ ownedProperties: loadedProps });
+        } catch (error: any) {
+          console.error("Failed to sync owned properties:", error);
+          userStore.pushToast({
+            message: "Error al sincronizar propiedades: " + (error.message || error.toString()),
+            severity: "error"
+          });
         }
       }
     }),

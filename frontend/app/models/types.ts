@@ -70,17 +70,21 @@ export interface RentalContractDetails {
 /** A property the current user RENTS (is the tenant). */
 export interface Rental {
   id: string; // The agreementAddress
-  agreementAddress: string;
+  agreementAddress?: string;
   propertyId: number;
   name: string;
   type: PropertyType;
   address: string; // physical address
   imageUrl: string;
   landlord: string;
-  tenant: string;
+  tenant?: string;
   monthlyRent: number;
   payments: PaymentRecord[];
   contractDetails?: RentalContractDetails;
+  nextPaymentDate?: string;
+  hasKey?: boolean;
+  rentalNFTAddress?: string;
+  smartlockId?: string;
 }
 
 export interface Review {

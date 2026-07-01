@@ -1,4 +1,6 @@
 import hre from "hardhat";
+import fs from "fs";
+import path from "path";
 
 async function main() {
     const networkName = hre.network.name;
@@ -150,6 +152,22 @@ async function main() {
     console.log("Landlord:", landlordAddr);
     console.log("Tenant:", tenantAddr);
     console.log("Tenant PK: 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a");
+
+    // Automatically update frontend/.env file
+    const envPath = path.resolve(process.cwd(), "../frontend/.env");
+
+    if (fs.existsSync(envPath)) {
+        let envContent = fs.readFileSync(envPath, "utf8");
+
+        envContent = envContent.replace(/VITE_PROPERTY_NFT_ADDRESS=.*/, `VITE_PROPERTY_NFT_ADDRESS=${propertyNFTAddr}`);
+        envContent = envContent.replace(/VITE_RENTAL_FACTORY_ADDRESS=.*/, `VITE_RENTAL_FACTORY_ADDRESS=${factoryAddr}`);
+        envContent = envContent.replace(/VITE_USDC_ADDRESS=.*/, `VITE_USDC_ADDRESS=${mockUSDCAddr}`);
+
+        fs.writeFileSync(envPath, envContent, "utf8");
+        console.log("\n[Auto] Updated frontend/.env with deployed addresses!");
+    } else {
+        console.log("\n[Warning] frontend/.env file not found, skipping auto-update.");
+    }
 }
 
 main().catch(console.error);

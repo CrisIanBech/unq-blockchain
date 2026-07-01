@@ -53,7 +53,7 @@ export function PayRentDialog({
   const enoughBalance = balance >= details.amountToPay
 
   function confirm() {
-    if (!rental) return
+    if (!rental || !details) return
     const monthLabelForRecord = new Date((details.startTime + periodsPaid * details.paymentPeriod) * 1000).toISOString().slice(0, 7)
     onPay(rental.id, monthLabelForRecord, details.amountToPay)
     onClose()

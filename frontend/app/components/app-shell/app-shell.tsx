@@ -41,6 +41,7 @@ interface AppShellProps {
   onToggleTheme: () => void
   onConnectWallet?: () => void
   onDisconnectWallet?: () => void
+  connectWalletSlot?: ReactNode
 }
 
 export function AppShell({
@@ -53,6 +54,7 @@ export function AppShell({
   onToggleTheme,
   onConnectWallet,
   onDisconnectWallet,
+  connectWalletSlot,
 }: AppShellProps) {
   const theme = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -199,22 +201,24 @@ export function AppShell({
                 </Tooltip>
               </Box>
             ) : (
-              <Button
-                variant="contained"
-                color="primary"
-                disableElevation
-                onClick={onConnectWallet}
-                sx={{
-                  height: 32,
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 2,
-                  fontWeight: 600,
-                  fontSize: "0.875rem"
-                }}
-              >
-                Conectar
-              </Button>
+              connectWalletSlot || (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disableElevation
+                  onClick={onConnectWallet}
+                  sx={{
+                    height: 32,
+                    textTransform: "none",
+                    borderRadius: 2,
+                    px: 2,
+                    fontWeight: 600,
+                    fontSize: "0.875rem"
+                  }}
+                >
+                  Conectar
+                </Button>
+              )
             )}
             <Tooltip title={mode === "light" ? "Modo oscuro" : "Modo claro"}>
               <IconButton onClick={onToggleTheme} aria-label="cambiar tema">

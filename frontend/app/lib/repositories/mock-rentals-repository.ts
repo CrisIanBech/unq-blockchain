@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { IRentalsRepository } from "./rentals-repository";
 
 const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
 
@@ -18,9 +19,9 @@ export interface MockContractState {
   duration: number;
   startTime: number;
   rentPaidUntil: number;
+  propertyId: bigint;
+  tenant: string;
 }
-
-import { IRentalsRepository } from "./rentals-repository";
 
 // Global in-memory state
 const mockEvents: MockEvent[] = [];
@@ -50,6 +51,8 @@ export class MockRentalsRepository implements IRentalsRepository {
       duration: params.duration,
       startTime: startTime,
       rentPaidUntil: startTime + 30 * 86400, // 1 month paid
+      propertyId: params.propertyId,
+      tenant: params.tenant,
     };
 
     return {
@@ -135,6 +138,8 @@ export class MockRentalsRepository implements IRentalsRepository {
     baseRent: bigint;
     rentPaidUntil: bigint;
     status: number;
+    startTime: bigint;
+    paymentPeriod: bigint;
   }> {
     await new Promise((res) => setTimeout(res, 500));
     const contract = mockContracts[agreementAddress];
@@ -146,7 +151,9 @@ export class MockRentalsRepository implements IRentalsRepository {
          landlord: "0xMockLandlord",
          baseRent: 500000000n, // 500 USDC
          rentPaidUntil: BigInt(Math.floor(Date.now() / 1000)),
-         status: 2 // Active
+         status: 2, // Active
+         startTime: BigInt(Math.floor(Date.now() / 1000) - 30 * 86400),
+         paymentPeriod: 30n * 86400n
        };
     }
     return {
@@ -155,7 +162,9 @@ export class MockRentalsRepository implements IRentalsRepository {
       landlord: "0xMockLandlord",
       baseRent: contract.baseRent,
       rentPaidUntil: BigInt(contract.rentPaidUntil),
-      status: 2 // Active
+      status: 2, // Active
+      startTime: BigInt(contract.startTime),
+      paymentPeriod: BigInt(contract.paymentPeriod)
     };
   }
 
@@ -176,6 +185,20 @@ export class MockRentalsRepository implements IRentalsRepository {
     }));
   }
 
+  async getRentalAgreementForProperty(propertyId: number): Promise<string | null> {
+    await new Promise((res) => setTimeout(res, 200));
+    const entry = Object.entries(mockContracts).find(([_, c]) => Number(c.propertyId) === propertyId);
+    if (entry) return entry[0];
+    if (propertyId === 1) return "0xMockAgreement1";
+    if (propertyId === 2) return "0xMockAgreement2";
+    return null;
+  }
+
+  async getWithdrawableRent(agreementAddress: string): Promise<bigint> {
+    await new Promise((res) => setTimeout(res, 200));
+    return ethers.parseUnits("720", 6);
+  }
+
   // Helper to seed some initial state for pre-existing rentals from mock-data
   static seedMockData(agreementAddress: string, baseRent: bigint) {
     if (mockContracts[agreementAddress]) return;
@@ -188,6 +211,8 @@ export class MockRentalsRepository implements IRentalsRepository {
       duration: 12 * 30 * 86400,
       startTime: startTime,
       rentPaidUntil: startTime + 1 * 30 * 86400, // 1 period paid
+      propertyId: 1n,
+      tenant: "0xMockTenant"
     };
     
     // Seed one previous payment

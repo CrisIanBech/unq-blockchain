@@ -100,6 +100,31 @@ if (typeof window !== "undefined") {
         }
       }
     }).catch(() => {});
+
+    // Listen for MetaMask account changes and update active wallet in real-time
+    if ((window as any).ethereum) {
+      (window as any).ethereum.on("accountsChanged", async (accounts: string[]) => {
+        const nextWallet = accounts[0] || "";
+        const userStore = useUserStore.getState();
+        const currentWallet = userStore.wallet;
+        
+        if (nextWallet.toLowerCase() !== currentWallet.toLowerCase()) {
+          if (nextWallet) {
+            useUserStore.setState({ wallet: nextWallet });
+            try {
+              const balance = await WalletService.getUSDCBalance(nextWallet);
+              useUserStore.setState({ balance });
+              userStore.pushToast({ message: "Cuenta de MetaMask cambiada", severity: "info" });
+            } catch (err) {
+              // Silently fail
+            }
+          } else {
+            useUserStore.setState({ wallet: "", balance: 0 });
+            userStore.pushToast({ message: "Billetera desconectada", severity: "info" });
+          }
+        }
+      });
+    }
   }
 }
 

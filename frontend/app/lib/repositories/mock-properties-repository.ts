@@ -24,4 +24,12 @@ export class MockPropertiesRepository implements IPropertiesRepository {
     // Web Mercator: -6500000, -4100000 approx
     return { lat: -4100000, lng: -6500000 };
   }
+
+  async getOwnedProperties(ownerAddress: string): Promise<number[]> {
+    await new Promise((res) => setTimeout(res, 500));
+    if (ownerAddress.toLowerCase() === "0xmockuser" || ownerAddress === "") {
+      return [1, 2, 3];
+    }
+    return [];
+  }
 }

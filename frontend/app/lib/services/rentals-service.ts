@@ -147,7 +147,9 @@ export class RentalsService {
         landlord: details.landlord,
         baseRent: Number(ethers.formatUnits(details.baseRent, 6)),
         rentPaidUntil: Number(details.rentPaidUntil),
-        status: details.status
+        status: details.status,
+        startTime: Number(details.startTime),
+        paymentPeriod: Number(details.paymentPeriod)
       };
     } catch (error) {
       throw translateError(error);
@@ -165,6 +167,23 @@ export class RentalsService {
         txHash: e.txHash,
         blockNumber: e.blockNumber
       }));
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getRentalAgreementForProperty(propertyId: number): Promise<string | null> {
+    try {
+      return await this.repo.getRentalAgreementForProperty(propertyId);
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getWithdrawableRent(agreementAddress: string): Promise<number> {
+    try {
+      const balance = await this.repo.getWithdrawableRent(agreementAddress);
+      return Number(ethers.formatUnits(balance, 6));
     } catch (error) {
       throw translateError(error);
     }

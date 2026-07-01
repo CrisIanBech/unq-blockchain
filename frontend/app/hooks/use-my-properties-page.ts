@@ -1,8 +1,11 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { usePropertiesStore, type AddPropertyInput } from "@stores/properties-store"
+import { useUserStore } from "@stores/user-store"
 import { CURRENT_MONTH } from "@/lib/format"
+import { getBrowserProvider } from "@/lib/blockchain-infra"
 
 export function useMyPropertiesPage() {
+  const { wallet } = useUserStore()
   const {
     ownedProperties,
     mintAndLoadProperty,
@@ -10,9 +13,30 @@ export function useMyPropertiesPage() {
     signContract,
     cancelContract,
     createContract,
+    syncOwnedProperties,
   } = usePropertiesStore()
 
   const [addOpen, setAddOpen] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  useEffect(() => {
+    if (!wallet) return
+
+    setIsSyncing(true)
+    syncOwnedProperties().finally(() => setIsSyncing(false))
+
+    // Listen for new blocks to keep UI reactive in real-time
+    const provider = getBrowserProvider()
+    if (provider) {
+      const listener = () => {
+        syncOwnedProperties()
+      }
+      provider.on("block", listener)
+      return () => {
+        provider.off("block", listener)
+      }
+    }
+  }, [wallet, syncOwnedProperties])
 
   const stats = useMemo(() => {
     const monthIncome = ownedProperties.reduce((sum, p) => {
@@ -48,6 +72,7 @@ export function useMyPropertiesPage() {
     ownedProperties,
     addOpen,
     stats,
+    isSyncing,
     onOpenAdd: handleOpenAdd,
     onCloseAdd: handleCloseAdd,
     onSubmitAdd: handleSubmitAdd,
@@ -58,3 +83,4 @@ export function useMyPropertiesPage() {
   }
 }
 export type UseMyPropertiesPageReturn = ReturnType<typeof useMyPropertiesPage>
+

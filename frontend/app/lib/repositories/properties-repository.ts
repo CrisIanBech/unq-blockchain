@@ -5,6 +5,7 @@ export interface IPropertiesRepository {
   createProperty(recipient: string, metadataURI: string): Promise<any>;
   getPropertyMetadataURI(propertyId: number): Promise<string>;
   getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }>;
+  getOwnedProperties(ownerAddress: string): Promise<number[]>;
 }
 
 export class PropertiesRepository implements IPropertiesRepository {
@@ -40,5 +41,38 @@ export class PropertiesRepository implements IPropertiesRepository {
     
     // They are stored as Web Mercator meters, we return them raw here
     return { lat: Number(location[0]), lng: Number(location[1]) };
+  }
+
+  async getOwnedProperties(ownerAddress: string): Promise<number[]> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const nftContract = getPropertyNFT(signer);
+    
+    // Query Transfer events where 'to' is ownerAddress
+    const transferFilter = nftContract.filters.Transfer(null, ownerAddress);
+    const transferEvents = await nftContract.queryFilter(transferFilter, 0, "latest");
+    
+    const candidates = new Set<number>();
+    for (const event of transferEvents) {
+      if ("args" in event && event.args) {
+        const tokenId = Number(event.args[2]);
+        candidates.add(tokenId);
+      }
+    }
+    
+    const ownedIds: number[] = [];
+    for (const tokenId of candidates) {
+      try {
+        const currentOwner = await nftContract.ownerOf(BigInt(tokenId));
+        if (currentOwner.toLowerCase() === ownerAddress.toLowerCase()) {
+          ownedIds.push(tokenId);
+        }
+      } catch (err) {
+        console.error(`Failed to verify owner of token ${tokenId}`, err);
+      }
+    }
+    
+    return ownedIds.sort((a, b) => a - b);
   }
 }

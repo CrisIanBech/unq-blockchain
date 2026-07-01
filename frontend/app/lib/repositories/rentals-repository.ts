@@ -3,7 +3,9 @@ import {
   getSigner,
   getRentalAgreementFactory,
   getRentalAgreement,
-  getMockUSDC
+  getMockUSDC,
+  getPropertyNFT,
+  CONTRACT_ADDRESSES
 } from "../blockchain-infra";
 
 export interface IRentalsRepository {
@@ -21,6 +23,8 @@ export interface IRentalsRepository {
     baseRent: bigint;
     rentPaidUntil: bigint;
     status: number;
+    startTime: bigint;
+    paymentPeriod: bigint;
   }>;
   getPaymentHistory(agreementAddress: string): Promise<Array<{
     periodIndex: number;
@@ -29,6 +33,8 @@ export interface IRentalsRepository {
     txHash: string;
     blockNumber: number;
   }>>;
+  getRentalAgreementForProperty(propertyId: number): Promise<string | null>;
+  getWithdrawableRent(agreementAddress: string): Promise<bigint>;
 }
 
 export class RentalsRepository implements IRentalsRepository {
@@ -47,9 +53,17 @@ export class RentalsRepository implements IRentalsRepository {
     if (!signer) throw new Error("No signer available.");
 
     const factory = getRentalAgreementFactory(signer);
+    const propertyNFTAddress = CONTRACT_ADDRESSES.propertyNft;
+    const usdcTokenAddress = CONTRACT_ADDRESSES.usdc;
+    const nftContract = getPropertyNFT(signer);
+    const rentalNFTAddress = await nftContract.rentalNFT();
+
     const tx = await factory.createRentalAgreement(
+      propertyNFTAddress,
       params.propertyId,
       params.tenant,
+      usdcTokenAddress,
+      rentalNFTAddress,
       params.baseRent,
       params.securityDeposit,
       params.inflationBps,
@@ -143,21 +157,34 @@ export class RentalsRepository implements IRentalsRepository {
     baseRent: bigint;
     rentPaidUntil: bigint;
     status: number;
+    startTime: bigint;
+    paymentPeriod: bigint;
   }> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
     const agreement = getRentalAgreement(agreementAddress, signer);
-    const [propertyId, tenant, landlord, baseRent, rentPaidUntil, status] = await Promise.all([
+    const [propertyId, tenant, landlord, baseRent, rentPaidUntil, status, startTime, paymentPeriod] = await Promise.all([
       agreement.propertyId(),
       agreement.tenant(),
       agreement.landlord(),
       agreement.baseRent(),
       agreement.rentPaidUntil(),
-      agreement.status()
+      agreement.status(),
+      agreement.startTime(),
+      agreement.paymentPeriod()
     ]);
 
-    return { propertyId, tenant, landlord, baseRent, rentPaidUntil, status: Number(status) };
+    return { 
+      propertyId, 
+      tenant, 
+      landlord, 
+      baseRent, 
+      rentPaidUntil, 
+      status: Number(status),
+      startTime,
+      paymentPeriod
+    };
   }
 
   async getPaymentHistory(agreementAddress: string): Promise<Array<{
@@ -185,5 +212,43 @@ export class RentalsRepository implements IRentalsRepository {
       txHash: log.transactionHash,
       blockNumber: log.blockNumber
     }));
+  }
+
+  async getRentalAgreementForProperty(propertyId: number): Promise<string | null> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const factory = getRentalAgreementFactory(signer);
+    const filter = factory.filters.RentalAgreementCreated(null, BigInt(propertyId));
+    const events = await factory.queryFilter(filter, 0, "latest");
+    
+    if (events.length === 0) return null;
+    
+    const latestEvent = events[events.length - 1];
+    if ("args" in latestEvent && latestEvent.args) {
+      return latestEvent.args[0] as string;
+    }
+    return null;
+  }
+
+  async getWithdrawableRent(agreementAddress: string): Promise<bigint> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const agreement = getRentalAgreement(agreementAddress, signer);
+    const usdc = getMockUSDC(signer);
+    
+    const rawBalance = await usdc.balanceOf(agreementAddress);
+    const rawDepositStatus = await agreement.depositStatus();
+    const rawSecurityDeposit = await agreement.securityDeposit();
+
+    const balance = BigInt(rawBalance);
+    const depositStatus = Number(rawDepositStatus);
+    const securityDeposit = BigInt(rawSecurityDeposit);
+    
+    // DepositStatus.Locked is 1
+    const lockedAmount = (depositStatus === 1) ? securityDeposit : 0n;
+    if (balance <= lockedAmount) return 0n;
+    return balance - lockedAmount;
   }
 }

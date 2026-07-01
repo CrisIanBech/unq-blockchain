@@ -25,7 +25,7 @@ interface ControlCardProps {
   rental?: {
     id: string
     name: string
-    hasKey: boolean
+    hasKey?: boolean
   }
   active: boolean
   accentBg: string

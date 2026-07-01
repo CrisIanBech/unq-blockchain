@@ -6,7 +6,7 @@ const MOCK_WALLET = "0x7A3f...91Cd"
 export function ConnectWallet() {
   const wallet = useUserStore((s) => s.wallet)
   const connectWallet = useUserStore((s) => s.connectWallet)
-  const isConnected = wallet !== MOCK_WALLET
+  const isConnected = !!wallet && wallet !== MOCK_WALLET
 
   if (isConnected) {
     return (
