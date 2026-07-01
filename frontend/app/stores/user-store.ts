@@ -102,8 +102,10 @@ if (typeof window !== "undefined") {
     }).catch(() => {});
 
     // Listen for MetaMask account changes and update active wallet in real-time
-    if ((window as any).ethereum) {
-      (window as any).ethereum.on("accountsChanged", async (accounts: string[]) => {
+    const ethereum = (window as any).ethereum;
+    if (ethereum && !(window as any).__unq_accountsChangedListenerAdded) {
+      (window as any).__unq_accountsChangedListenerAdded = true;
+      ethereum.on("accountsChanged", async (accounts: string[]) => {
         const nextWallet = accounts[0] || "";
         const userStore = useUserStore.getState();
         const currentWallet = userStore.wallet;

@@ -9,11 +9,14 @@ export function useMyRentalsPage() {
   const { rentals, payMonthlyRent, importRental, syncRentals } = usePropertiesStore()
   const [payTargetId, setPayTargetId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [isSyncing, setIsSyncing] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [addRentalOpen, setAddRentalOpen] = useState(false)
 
   useEffect(() => {
-    if (!wallet) return
+    if (!wallet) {
+      setIsSyncing(false)
+      return
+    }
 
     setIsSyncing(true)
     syncRentals().finally(() => setIsSyncing(false))
