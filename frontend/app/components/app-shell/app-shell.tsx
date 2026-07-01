@@ -30,7 +30,8 @@ const NAV = [
 
 interface AppShellProps {
   children: ReactNode
-  wallet: string
+  walletLabel: string
+  walletConnected: boolean
   balance: number
   currentPathname: string
   onNavigate: (href: string) => void
@@ -41,7 +42,8 @@ interface AppShellProps {
 
 export function AppShell({
   children,
-  wallet,
+  walletLabel,
+  walletConnected,
   balance,
   currentPathname,
   onNavigate,
@@ -166,10 +168,11 @@ export function AppShell({
               sx={{ bgcolor: "primaryContainer.main", color: "primaryContainer.contrastText", fontWeight: 700 }}
             />
             <Chip
-              label={wallet}
-              variant="outlined"
+              label={walletLabel}
+              variant={walletConnected ? "outlined" : "filled"}
+              color={walletConnected ? "default" : "primary"}
               onClick={onConnectWallet}
-              sx={{ fontFamily: "monospace", display: { xs: "none", sm: "flex" }, cursor: onConnectWallet ? "pointer" : "default" }}
+              sx={{ fontFamily: "monospace", cursor: onConnectWallet ? "pointer" : "default" }}
             />
             <Tooltip title={mode === "light" ? "Modo oscuro" : "Modo claro"}>
               <IconButton onClick={onToggleTheme} aria-label="cambiar tema">

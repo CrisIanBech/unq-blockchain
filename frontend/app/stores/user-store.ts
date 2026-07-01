@@ -5,6 +5,10 @@ import { WalletService } from "../lib/services/wallet-service";
 const MOCK_WALLET_ADDRESS = "0x7A3f...91Cd";
 const MOCK_INITIAL_BALANCE = 3250;
 
+export function isWalletConnected(wallet: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(wallet);
+}
+
 interface UserState {
   wallet: string;
   balance: number;
@@ -65,7 +69,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   syncOnchainBalance: async () => {
     const address = get().wallet;
-    if (address && address !== MOCK_WALLET_ADDRESS) {
+    if (isWalletConnected(address)) {
       try {
         const balance = await WalletService.getUSDCBalance(address);
         set({ balance });
@@ -79,7 +83,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 // Attempt to load current account on store load if already authorized
 if (typeof window !== "undefined") {
   WalletService.getCurrentAccount().then(async (address) => {
-    if (address) {
+    if (address && isWalletConnected(address)) {
       useUserStore.setState({ wallet: address });
       try {
         const balance = await WalletService.getUSDCBalance(address);

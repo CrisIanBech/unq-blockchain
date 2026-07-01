@@ -39,3 +39,12 @@ export class UnknownBlockchainError extends Error {
     this.name = "UnknownBlockchainError";
   }
 }
+
+export class NoEthereumProvider extends Error {
+  constructor(
+    message = "No se pudo conectar la billetera. En el celular, aprobá la conexión en MetaMask y volvé a Chrome. También podés abrir la página desde MetaMask → Browser."
+  ) {
+    super(message);
+    this.name = "NoEthereumProvider";
+  }
+}

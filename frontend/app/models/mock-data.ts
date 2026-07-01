@@ -30,7 +30,7 @@ export const initialOwnedProperties: OwnedProperty[] = [
     nextChargeDate: "2026-07-01",
     availableToWithdraw: 1440,
     contractStatus: "active",
-    smartlock: { id: "lock-1", installed: true, nfcEnabled: false, unlocked: false },
+    smartlock: { id: "lock-1", installed: true, nfcEnabled: true, unlocked: false },
     payments: [
       { month: isoMonth(2026, 5), amount: 720, status: "overdue" },
       { month: isoMonth(2026, 4), amount: 720, status: "paid", paidAt: "2026-05-03T10:21:00Z", txHash: "0x9a1f…44de" },
@@ -55,7 +55,7 @@ export const initialOwnedProperties: OwnedProperty[] = [
     nextChargeDate: "2026-07-05",
     availableToWithdraw: 0,
     contractStatus: "active",
-    smartlock: { id: "lock-2", installed: true, nfcEnabled: false, unlocked: false },
+    smartlock: { id: "lock-2", installed: true, nfcEnabled: true, unlocked: false },
     payments: [
       { month: isoMonth(2026, 5), amount: 1100, status: "paid", paidAt: "2026-06-04T11:00:00Z", txHash: "0x55ab…77cd" },
       { month: isoMonth(2026, 4), amount: 1100, status: "paid", paidAt: "2026-05-05T08:15:00Z", txHash: "0x12cd…33ef" },
@@ -119,7 +119,7 @@ export const initialRentals: Rental[] = [
     agreementAddress: undefined,
     rentalNFTAddress: undefined,
     smartlockId: "lock-tenant-2",
-    hasKey: false,
+    hasKey: true,
     payments: [
       { month: isoMonth(2026, 4), amount: 480, status: "paid", paidAt: "2026-05-02T12:00:00Z", txHash: "0xcc11…dd22" },
       { month: isoMonth(2026, 3), amount: 480, status: "paid", paidAt: "2026-04-02T12:00:00Z", txHash: "0xee33…ff44" },

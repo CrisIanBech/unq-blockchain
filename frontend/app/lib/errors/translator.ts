@@ -4,7 +4,8 @@ import {
   RentalAlreadyActive,
   AgreementExpired,
   UnauthorizedOperation,
-  UnknownBlockchainError
+  UnknownBlockchainError,
+  NoEthereumProvider,
 } from "./domain-errors";
 
 /**
@@ -42,6 +43,16 @@ export function translateError(error: any): Error {
 
   if (errorMessage.includes("agreementexpired") || errorMessage.includes("deadline")) {
     return new AgreementExpired();
+  }
+
+  if (errorMessage.includes("no ethereum provider") || errorMessage.includes("install metamask")) {
+    return new NoEthereumProvider();
+  }
+
+  if (errorMessage.includes("reading 'create'") || errorMessage.includes("createevmclient")) {
+    return new NoEthereumProvider(
+      "Error al iniciar MetaMask. Probá WalletConnect o abrí la página en MetaMask → Browser."
+    );
   }
 
   // 4. Default fallback

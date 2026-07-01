@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BlockRent Smartlock</string>
+    <string name="page_title">Smartlock</string>
+    <string name="page_subtitle">Cerraduras virtuales con apertura por NFC, vinculadas al contrato on-chain.</string>
+    <string name="mode_lock">Cerradura</string>
+    <string name="mode_key">Llave</string>
+    <string name="chip_lock_registered">Cerradura registrada on-chain</string>
+    <string name="chip_key_linked">Llave vinculada al contrato</string>
+    <string name="hint_property_id">Property NFT token ID</string>
+    <string name="hint_agreement">Rental agreement address (tenant only)</string>
+    <string name="button_read">Leer NFC</string>
+    <string name="button_write">Simular cerradura</string>
+    <string name="button_sign_metamask">Firmar con MetaMask</string>
+    <string name="status_idle">Tocá Leer NFC y acercá el teléfono a la etiqueta.</string>
+    <string name="status_waiting_nfc">Esperando etiqueta NFC…</string>
+    <string name="status_tap_to_write">Acercá el teléfono a una etiqueta NFC para escribir el desafío.</string>
+    <string name="status_written">Desafío escrito en la etiqueta.</string>
+    <string name="status_write_failed">No se pudo escribir en la etiqueta.</string>
+    <string name="status_read_ok">Desafío leído — propiedad %1$s, nonce %2$s…</string>
+    <string name="status_invalid_challenge">Desafío inválido: %1$s</string>
+    <string name="challenge_empty">Sin desafío aún.</string>
+    <string name="nfc_ready">NFC listo</string>
+    <string name="nfc_disabled">Activá NFC en ajustes del sistema</string>
+    <string name="nfc_not_available">Este dispositivo no tiene hardware NFC</string>
+    <string name="error_property_id">Ingresá un property token ID</string>
+    <string name="error_no_challenge">Leé o simulá un desafío primero</string>
+    <string name="toast_written">Desafío escrito</string>
+    <string name="role_landlord">Propietario</string>
+    <string name="role_tenant">Inquilino</string>
+    <string name="flow_hint">1) Simular cerradura escribe la etiqueta · 2) Leer NFC en otro teléfono · 3) Firmar con MetaMask abre BlockRent</string>
+</resources>
