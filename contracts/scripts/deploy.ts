@@ -13,7 +13,7 @@ async function main() {
   // Load custom connection manager to retrieve dynamic ethers instance
   const connection = await (hre.network as any).getOrCreate(networkName);
   const { ethers } = connection;
-  
+
   const chainId = Number(await ethers.provider.send("eth_chainId", []));
   console.log(`Connection established on network: ${networkName} (Chain ID: ${chainId})`);
 
@@ -26,7 +26,7 @@ async function main() {
   let nextVersion = 1;
   const files = fs.readdirSync(deploymentsDir);
   const versionFiles = files.filter(f => f.startsWith("deploy-v") && f.endsWith(".json"));
-  
+
   if (versionFiles.length > 0) {
     const versions = versionFiles.map(f => {
       const match = f.match(/deploy-v(\d+)\.json/);
@@ -144,7 +144,7 @@ async function main() {
       `VITE_RENTAL_FACTORY_ADDRESS=${factoryAddress}`,
       `VITE_USDC_ADDRESS=${mockUSDCAddress}`
     ].join("\n") + "\n";
-    
+
     const envExamplePath = path.join(frontendDir, ".env.example");
     fs.writeFileSync(envExamplePath, envExampleContent, "utf8");
     console.log(`Frontend example environment file written to: ${envExamplePath}`);
