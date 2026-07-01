@@ -3,32 +3,31 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/IReview.sol";
-import "./interfaces/IRentalAgreementFactory.sol";
+import "./interfaces/IRentalNFT.sol";
 import "./interfaces/IRentalAgreement.sol";
 
 /**
  * @title Review
  * @notice On-chain review system for rental properties.
  * @dev Reviews are linked to verified rental agreements. Only tenants with
- *      active or completed agreements can post reviews, and only one per agreement.
+ *      active or completed agreements can post reviews.
  */
 contract Review is IReview {
     address public immutable override propertyNFT;
-    address public immutable override factory;
+    address public immutable override rentalNFT;
 
     uint256 public constant MAX_COMMENT_LENGTH = 280;
 
     mapping(uint256 => Review[]) private _reviews;
-    mapping(address => bool) public override hasReviewed;
 
     modifier validRating(uint8 rating) {
         if (rating < 1 || rating > 5) revert InvalidRating();
         _;
     }
 
-    constructor(address _propertyNFT, address _factory) {
+    constructor(address _propertyNFT, address _rentalNFT) {
         propertyNFT = _propertyNFT;
-        factory = _factory;
+        rentalNFT = _rentalNFT;
     }
 
     function postReview(
@@ -38,7 +37,7 @@ contract Review is IReview {
     ) external override validRating(rating) {
         if (bytes(comment).length > MAX_COMMENT_LENGTH) revert CommentTooLong();
 
-        address agreementAddr = IRentalAgreementFactory(factory).activeRentals(propertyId);
+        address agreementAddr = IRentalNFT(rentalNFT).userOf(propertyId);
 
         if (agreementAddr == address(0)) revert NoActiveOrCompletedRental();
 
@@ -50,10 +49,6 @@ contract Review is IReview {
             status != IRentalAgreement.AgreementStatus.Completed) {
             revert NoActiveOrCompletedRental();
         }
-
-        if (hasReviewed[agreementAddr]) revert ReviewAlreadyPosted();
-
-        hasReviewed[agreementAddr] = true;
 
         _reviews[propertyId].push(Review({
             author: msg.sender,

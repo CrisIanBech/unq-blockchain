@@ -37,10 +37,7 @@ export class ReviewsService {
       if (agreementAddr === "0x0000000000000000000000000000000000000000") return false;
 
       const tenant = await ReviewsRepository.getAgreementTenant(agreementAddr);
-      if (tenant.toLowerCase() !== accountAddress.toLowerCase()) return false;
-
-      const alreadyReviewed = await ReviewsRepository.hasReviewed(agreementAddr);
-      return !alreadyReviewed;
+      return tenant.toLowerCase() === accountAddress.toLowerCase();
     } catch (error) {
       throw translateError(error);
     }

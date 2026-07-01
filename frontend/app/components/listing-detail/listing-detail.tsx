@@ -180,7 +180,7 @@ export function ListingDetail({
 
         {isConnected && !onChain.canPostReview && (
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 3 }}>
-            Solo inquilinos con contrato activo pueden dejar review
+            Solo inquilinos con contrato activo pueden dejar reviews
           </Typography>
         )}
         {(!isConnected || onChain.canPostReview) && (

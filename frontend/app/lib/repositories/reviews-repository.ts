@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { getReview, getRentalAgreementFactory, getRentalAgreement, getBrowserProvider, getSigner } from "../blockchain-infra";
+import { getReview, getRentalNFT, getRentalAgreement, getBrowserProvider, getSigner } from "../blockchain-infra";
 
 export interface OnChainReview {
   author: string;
@@ -62,24 +62,14 @@ export class ReviewsRepository {
     return receipt.hash;
   }
 
-  static async hasReviewed(agreementAddress: string): Promise<boolean> {
-    const provider = getBrowserProvider();
-    if (!provider) return false;
-    try {
-      const rs = getReview(provider);
-      return await rs.hasReviewed(agreementAddress);
-    } catch (error) {
-      console.error("ReviewsRepository: Failed to check hasReviewed", error);
-      return false;
-    }
-  }
-
   static async getActiveRental(propertyId: number): Promise<string> {
     const provider = getBrowserProvider();
     if (!provider) return "0x0000000000000000000000000000000000000000";
     try {
-      const factory = getRentalAgreementFactory(provider);
-      return await factory.activeRentals(propertyId);
+      const rs = getReview(provider);
+      const rentalNFTAddr = await rs.rentalNFT();
+      const rentalNFT = getRentalNFT(rentalNFTAddr, provider);
+      return await rentalNFT.userOf(propertyId);
     } catch (error) {
       console.error("ReviewsRepository: Failed to fetch active rental", error);
       return "0x0000000000000000000000000000000000000000";

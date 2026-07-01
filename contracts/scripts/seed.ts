@@ -10,10 +10,18 @@ async function main() {
 
   console.log("=== Deploying BlockRent ===\n");
 
+  const RentalNFT = await ethers.getContractFactory("RentalNFT");
+  const rentalNFT = await RentalNFT.deploy();
+  const rentalNFTAddr = await rentalNFT.getAddress();
+  console.log("RentalNFT:", rentalNFTAddr);
+
   const PropertyNFT = await ethers.getContractFactory("PropertyNFT");
-  const propertyNFT = await PropertyNFT.deploy();
+  const propertyNFT = await PropertyNFT.deploy(rentalNFTAddr);
   const propertyNFTAddr = await propertyNFT.getAddress();
   console.log("PropertyNFT:", propertyNFTAddr);
+
+  await rentalNFT.setPropertyNFT(propertyNFTAddr);
+  console.log("RentalNFT <-> PropertyNFT linked");
 
   const MockUSDC = await ethers.getContractFactory("MockUSDC");
   const mockUSDC = await MockUSDC.deploy();
@@ -21,12 +29,12 @@ async function main() {
   console.log("MockUSDC:", mockUSDCAddr);
 
   const RentalAgreementFactory = await ethers.getContractFactory("RentalAgreementFactory");
-  const factory = await RentalAgreementFactory.deploy(propertyNFTAddr, mockUSDCAddr);
+  const factory = await RentalAgreementFactory.deploy();
   const factoryAddr = await factory.getAddress();
   console.log("RentalAgreementFactory:", factoryAddr);
 
   const Review = await ethers.getContractFactory("Review");
-  const reviewSystem = await Review.deploy(propertyNFTAddr, factoryAddr);
+  const reviewSystem = await Review.deploy(propertyNFTAddr, rentalNFTAddr);
   const reviewSystemAddr = await reviewSystem.getAddress();
   console.log("Review:", reviewSystemAddr);
 
@@ -36,11 +44,11 @@ async function main() {
   await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
   console.log("MINTER_ROLE granted to landlord:", landlordAddr);
 
-  const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-1");
+  const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-1", 100000n, 200000n);
   await tx.wait();
   console.log("Property #1 minted to landlord");
 
-  const tx2 = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-2");
+  const tx2 = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-2", 150000n, 250000n);
   await tx2.wait();
   console.log("Property #2 minted to landlord");
 
@@ -57,17 +65,21 @@ async function main() {
   const deadline = block!.timestamp + 7 * 24 * 60 * 60;
 
   console.log("Creating rental agreement for property #1...");
-  const tx1 = await factory.connect(landlord).createRentalAgreement(
-    1, tenantAddr, baseRent, securityDeposit,
+  const agreement1Addr = await factory.connect(landlord).createRentalAgreement.staticCall(
+    propertyNFTAddr, 1, tenantAddr, mockUSDCAddr,
+    rentalNFTAddr, baseRent, securityDeposit,
     inflationBps, lateFeeBps, gracePeriod, duration, deadline
   );
-  await tx1.wait();
-
-  const agreement1Addr = await factory.getAgreementAt(0);
+  await factory.connect(landlord).createRentalAgreement(
+    propertyNFTAddr, 1, tenantAddr, mockUSDCAddr,
+    rentalNFTAddr, baseRent, securityDeposit,
+    inflationBps, lateFeeBps, gracePeriod, duration, deadline
+  );
   console.log("Agreement #1:", agreement1Addr);
 
   const agreement1 = await ethers.getContractAt("RentalAgreement", agreement1Addr);
 
+  await propertyNFT.connect(landlord).approve(agreement1Addr, 1);
   await mockUSDC.connect(tenant).approve(agreement1Addr, securityDeposit);
   console.log("USDC approved for agreement #1");
 
@@ -83,17 +95,21 @@ async function main() {
   console.log("\nCreating rental agreement for property #2...");
   block = await ethers.provider.getBlock("latest");
   const deadline2 = block!.timestamp + 7 * 24 * 60 * 60;
-  const tx3 = await factory.connect(landlord).createRentalAgreement(
-    2, tenantAddr, baseRent, securityDeposit,
+  const agreement2Addr = await factory.connect(landlord).createRentalAgreement.staticCall(
+    propertyNFTAddr, 2, tenantAddr, mockUSDCAddr,
+    rentalNFTAddr, baseRent, securityDeposit,
     inflationBps, lateFeeBps, gracePeriod, duration, deadline2
   );
-  await tx3.wait();
-
-  const agreement2Addr = await factory.getAgreementAt(1);
+  await factory.connect(landlord).createRentalAgreement(
+    propertyNFTAddr, 2, tenantAddr, mockUSDCAddr,
+    rentalNFTAddr, baseRent, securityDeposit,
+    inflationBps, lateFeeBps, gracePeriod, duration, deadline2
+  );
   console.log("Agreement #2:", agreement2Addr);
 
   const agreement2 = await ethers.getContractAt("RentalAgreement", agreement2Addr);
 
+  await propertyNFT.connect(landlord).approve(agreement2Addr, 2);
   await mockUSDC.connect(tenant).approve(agreement2Addr, securityDeposit);
   console.log("USDC approved for agreement #2");
 
@@ -107,10 +123,11 @@ async function main() {
   console.log("Status #2:", status2.toString(), "(2=Active)");
 
   console.log("\n=== Contract addresses for frontend ===\n");
-  console.log(`propertyNFT: "${propertyNFTAddr}"`);
-  console.log(`factory: "${factoryAddr}"`);
-  console.log(`reviewSystem: "${reviewSystemAddr}"`);
-  console.log(`mockUsdc: "${mockUSDCAddr}"`);
+  console.log(`VITE_PROPERTY_NFT_ADDRESS="${propertyNFTAddr}"`);
+  console.log(`VITE_RENTAL_FACTORY_ADDRESS="${factoryAddr}"`);
+  console.log(`VITE_RENTAL_NFT_ADDRESS="${rentalNFTAddr}"`);
+  console.log(`VITE_REVIEW_SYSTEM_ADDRESS="${reviewSystemAddr}"`);
+  console.log(`VITE_USDC_ADDRESS="${mockUSDCAddr}"`);
 
   console.log("\n=== Accounts ===\n");
   console.log("Landlord:", landlordAddr);

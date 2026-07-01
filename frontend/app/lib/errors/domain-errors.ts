@@ -33,6 +33,34 @@ export class UnauthorizedOperation extends Error {
   }
 }
 
+export class InvalidRating extends Error {
+  constructor(message = "El rating debe estar entre 1 y 5.") {
+    super(message);
+    this.name = "InvalidRating";
+  }
+}
+
+export class CommentTooLong extends Error {
+  constructor(message = "El comentario no puede superar los 280 caracteres.") {
+    super(message);
+    this.name = "CommentTooLong";
+  }
+}
+
+export class NoActiveRental extends Error {
+  constructor(message = "No hay un contrato de alquiler activo para esta propiedad.") {
+    super(message);
+    this.name = "NoActiveRental";
+  }
+}
+
+export class NotTenantOfRental extends Error {
+  constructor(message = "Solo el inquilino del contrato puede realizar esta acción.") {
+    super(message);
+    this.name = "NotTenantOfRental";
+  }
+}
+
 export class UnknownBlockchainError extends Error {
   constructor(message = "Ocurrió un error inesperado al interactuar con la blockchain.") {
     super(message);

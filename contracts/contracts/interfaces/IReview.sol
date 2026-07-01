@@ -26,11 +26,10 @@ interface IReview {
     error CommentTooLong();
     error NoActiveOrCompletedRental();
     error NotTenantOfRental();
-    error ReviewAlreadyPosted();
     error UnauthorizedCaller();
 
     function propertyNFT() external view returns (address);
-    function factory() external view returns (address);
+    function rentalNFT() external view returns (address);
 
     function postReview(
         uint256 propertyId,
@@ -40,5 +39,4 @@ interface IReview {
 
     function getReviewCount(uint256 propertyId) external view returns (uint256);
     function getReview(uint256 propertyId, uint256 index) external view returns (Review memory);
-    function hasReviewed(address agreement) external view returns (bool);
 }

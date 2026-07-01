@@ -4,6 +4,10 @@ import {
   RentalAlreadyActive,
   AgreementExpired,
   UnauthorizedOperation,
+  InvalidRating,
+  CommentTooLong,
+  NoActiveRental,
+  NotTenantOfRental,
   UnknownBlockchainError
 } from "./domain-errors";
 
@@ -42,6 +46,22 @@ export function translateError(error: any): Error {
 
   if (errorMessage.includes("agreementexpired") || errorMessage.includes("deadline")) {
     return new AgreementExpired();
+  }
+
+  if (errorMessage.includes("invalidrating")) {
+    return new InvalidRating();
+  }
+
+  if (errorMessage.includes("commenttoolong")) {
+    return new CommentTooLong();
+  }
+
+  if (errorMessage.includes("noactiveorcompletedrental")) {
+    return new NoActiveRental();
+  }
+
+  if (errorMessage.includes("nottenantofrental")) {
+    return new NotTenantOfRental();
   }
 
   // 4. Default fallback

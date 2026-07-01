@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react"
 import { ReviewsService, type OnChainReview } from "@/lib/services/reviews-service"
 import { WalletService } from "@/lib/services/wallet-service"
+import { useUserStore } from "@/stores/user-store"
 
 export type { OnChainReview }
 
 export function useReviewSystem(propertyId: number) {
+  const wallet = useUserStore((s) => s.wallet)
   const [reviews, setReviews] = useState<OnChainReview[]>([])
   const [reviewCount, setReviewCount] = useState(0)
   const [canPostReview, setCanPostReview] = useState(false)
@@ -33,13 +35,14 @@ export function useReviewSystem(propertyId: number) {
       if (!account) { setCanPostReview(false); return }
       const can = await ReviewsService.canPostReview(propertyId, account)
       setCanPostReview(can)
-    } catch {
+    } catch (err) {
+      console.error("useReviewSystem: checkCanPost failed", err)
       setCanPostReview(false)
     }
   }, [propertyId])
 
   useEffect(() => { fetchReviews() }, [fetchReviews])
-  useEffect(() => { checkCanPost() }, [checkCanPost])
+  useEffect(() => { checkCanPost() }, [checkCanPost, wallet])
   useEffect(() => {
     setIsWriting(false)
     setIsConfirming(false)

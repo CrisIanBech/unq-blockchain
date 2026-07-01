@@ -16,6 +16,7 @@ describe("Review Tests", function () {
     let strangerAddr: string;
 
     let propertyNFT: any;
+    let rentalNFT: any;
     let mockUSDC: any;
     let factory: any;
     let reviewSystem: any;
@@ -41,28 +42,29 @@ describe("Review Tests", function () {
         tenantAddr = await tenant.getAddress();
         strangerAddr = await stranger.getAddress();
 
+        const RentalNFT = await ethers.getContractFactory("RentalNFT");
+        rentalNFT = await RentalNFT.deploy();
+
         const PropertyNFT = await ethers.getContractFactory("PropertyNFT");
-        propertyNFT = await PropertyNFT.deploy();
+        propertyNFT = await PropertyNFT.deploy(await rentalNFT.getAddress());
+        await rentalNFT.setPropertyNFT(await propertyNFT.getAddress());
 
         const MockUSDC = await ethers.getContractFactory("MockUSDC");
         mockUSDC = await MockUSDC.deploy();
 
-        const RentalAgreementFactory = await ethers.getContractFactory("RentalAgreementFactory");
-        factory = await RentalAgreementFactory.deploy(
-            await propertyNFT.getAddress(),
-            await mockUSDC.getAddress()
-        );
+        const Factory = await ethers.getContractFactory("RentalAgreementFactory");
+        factory = await Factory.deploy();
 
         const Review = await ethers.getContractFactory("Review");
         reviewSystem = await Review.deploy(
             await propertyNFT.getAddress(),
-            await factory.getAddress()
+            await rentalNFT.getAddress()
         );
 
         const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
         await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
 
-        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-metadata-1");
+        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-metadata-1", 100000n, 200000n);
         await tx.wait();
         propertyId = 1;
 
@@ -73,13 +75,25 @@ describe("Review Tests", function () {
     });
 
     async function createAndActivateAgreement(): Promise<string> {
-        await factory.connect(landlord).createRentalAgreement(
-            propertyId, tenantAddr, baseRent, securityDeposit,
+        const propertyNFTAddr = await propertyNFT.getAddress();
+        const mockUSDCAddr = await mockUSDC.getAddress();
+        const rentalNFTAddr = await rentalNFT.getAddress();
+
+        const agreementAddress = await factory.connect(landlord).createRentalAgreement.staticCall(
+            propertyNFTAddr, propertyId, tenantAddr, mockUSDCAddr,
+            rentalNFTAddr, baseRent, securityDeposit,
             inflationBps, lateFeeBps, gracePeriod, duration, deadline
         );
-        const agreementAddress = await factory.getAgreementAt(0);
+
+        await factory.connect(landlord).createRentalAgreement(
+            propertyNFTAddr, propertyId, tenantAddr, mockUSDCAddr,
+            rentalNFTAddr, baseRent, securityDeposit,
+            inflationBps, lateFeeBps, gracePeriod, duration, deadline
+        );
+
         const agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
+        await propertyNFT.connect(landlord).approve(agreementAddress, propertyId);
         await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit);
         await agreement.connect(landlord).approveAgreement();
         await agreement.connect(tenant).approveAgreement();
@@ -123,13 +137,14 @@ describe("Review Tests", function () {
             ).to.be.revertedWithCustomError(reviewSystem, "NotTenantOfRental");
         });
 
-        it("should revert if the same tenant tries to review the same agreement twice", async function () {
-            const agreementAddress = await createAndActivateAgreement();
+        it("should allow the same tenant to post multiple reviews on the same agreement", async function () {
+            await createAndActivateAgreement();
             await reviewSystem.connect(tenant).postReview(propertyId, 4, "Good place");
-
             await expect(
                 reviewSystem.connect(tenant).postReview(propertyId, 5, "Actually great")
-            ).to.be.revertedWithCustomError(reviewSystem, "ReviewAlreadyPosted");
+            ).to.not.revert(ethers);
+
+            expect(await reviewSystem.getReviewCount(propertyId)).to.equal(2);
         });
     });
 
@@ -156,35 +171,37 @@ describe("Review Tests", function () {
             expect(review.timestamp).to.be.gt(0);
         });
 
-        it("should mark agreement as reviewed in hasReviewed mapping", async function () {
-            const agreementAddress = await createAndActivateAgreement();
-            expect(await reviewSystem.hasReviewed(agreementAddress)).to.be.false;
-
-            await reviewSystem.connect(tenant).postReview(propertyId, 4, "Good");
-
-            expect(await reviewSystem.hasReviewed(agreementAddress)).to.be.true;
-        });
-
         it("should allow multiple reviews for the same property from different agreements", async function () {
             await createAndActivateAgreement();
             await reviewSystem.connect(tenant).postReview(propertyId, 5, "Great!");
 
-            const agreement1 = await factory.getAgreementAt(0);
-            const agreement = await ethers.getContractAt("RentalAgreement", agreement1);
+            const agreement1Addr = await rentalNFT.userOf(propertyId);
+            const agreement1 = await ethers.getContractAt("RentalAgreement", agreement1Addr);
 
-            await agreement.connect(landlord).cancelAgreement();
-            await agreement.connect(tenant).cancelAgreement();
+            await agreement1.connect(landlord).cancelAgreement();
+            await agreement1.connect(tenant).cancelAgreement();
 
             const latestBlock = await ethers.provider.getBlock("latest");
             const newDeadline = latestBlock!.timestamp + 7 * 24 * 60 * 60;
 
-            await factory.connect(landlord).createRentalAgreement(
-                propertyId, tenantAddr, baseRent, securityDeposit,
+            const propertyNFTAddr = await propertyNFT.getAddress();
+            const mockUSDCAddr = await mockUSDC.getAddress();
+            const rentalNFTAddr = await rentalNFT.getAddress();
+
+            const agreement2Addr = await factory.connect(landlord).createRentalAgreement.staticCall(
+                propertyNFTAddr, propertyId, tenantAddr, mockUSDCAddr,
+                rentalNFTAddr, baseRent, securityDeposit,
                 inflationBps, lateFeeBps, gracePeriod, duration, newDeadline
             );
-            const agreement2Addr = await factory.getAgreementAt(1);
-            const agreement2 = await ethers.getContractAt("RentalAgreement", agreement2Addr);
 
+            await factory.connect(landlord).createRentalAgreement(
+                propertyNFTAddr, propertyId, tenantAddr, mockUSDCAddr,
+                rentalNFTAddr, baseRent, securityDeposit,
+                inflationBps, lateFeeBps, gracePeriod, duration, newDeadline
+            );
+
+            const agreement2 = await ethers.getContractAt("RentalAgreement", agreement2Addr);
+            await propertyNFT.connect(landlord).approve(agreement2Addr, propertyId);
             await mockUSDC.connect(tenant).approve(agreement2Addr, securityDeposit);
             await agreement2.connect(landlord).approveAgreement();
             await agreement2.connect(tenant).approveAgreement();
@@ -192,6 +209,30 @@ describe("Review Tests", function () {
             await reviewSystem.connect(tenant).postReview(propertyId, 4, "Second stay");
 
             expect(await reviewSystem.getReviewCount(propertyId)).to.equal(2);
+        });
+    });
+
+    describe("Multiple Reviews Per Agreement", function () {
+        it("should allow tenant to post multiple reviews on the same active agreement", async function () {
+            await createAndActivateAgreement();
+
+            await reviewSystem.connect(tenant).postReview(propertyId, 3, "First review");
+            await reviewSystem.connect(tenant).postReview(propertyId, 4, "Second review");
+            await reviewSystem.connect(tenant).postReview(propertyId, 5, "Third review");
+
+            expect(await reviewSystem.getReviewCount(propertyId)).to.equal(3);
+
+            const r0 = await reviewSystem.getReview(propertyId, 0);
+            expect(r0.rating).to.equal(3);
+            expect(r0.comment).to.equal("First review");
+
+            const r1 = await reviewSystem.getReview(propertyId, 1);
+            expect(r1.rating).to.equal(4);
+            expect(r1.comment).to.equal("Second review");
+
+            const r2 = await reviewSystem.getReview(propertyId, 2);
+            expect(r2.rating).to.equal(5);
+            expect(r2.comment).to.equal("Third review");
         });
     });
 
@@ -219,8 +260,8 @@ describe("Review Tests", function () {
 
         it("should revert review when agreement is Cancelled", async function () {
             await createAndActivateAgreement();
-            const agreement1 = await factory.getAgreementAt(0);
-            const agreement = await ethers.getContractAt("RentalAgreement", agreement1);
+            const agreement1Addr = await rentalNFT.userOf(propertyId);
+            const agreement = await ethers.getContractAt("RentalAgreement", agreement1Addr);
 
             await agreement.connect(landlord).cancelAgreement();
             await agreement.connect(tenant).cancelAgreement();
