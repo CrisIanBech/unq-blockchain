@@ -5,6 +5,7 @@ import { lightTheme, darkTheme } from "@/lib/theme"
 import { useUserStore } from "@stores/user-store"
 import { AppShell } from "@components/app-shell/app-shell"
 import { ToastHost } from "@components/toast-host/toast-host"
+import { ConnectWallet } from "@components/connect-wallet/connect-wallet"
 
 export function AppLayout() {
   const [mode, setMode] = useState<"light" | "dark">(() => {
@@ -43,6 +44,7 @@ export function AppLayout() {
         onNavigate={navigate}
         mode={mode}
         onToggleTheme={handleToggleTheme}
+        connectWalletSlot={<ConnectWallet />}
       >
         <Outlet />
       </AppShell>

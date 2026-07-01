@@ -204,9 +204,9 @@ export function AppShell({
                 color="primary"
                 disableElevation
                 onClick={onConnectWallet}
-                sx={{ 
-                  height: 32, 
-                  textTransform: "none", 
+                sx={{
+                  height: 32,
+                  textTransform: "none",
                   borderRadius: 2,
                   px: 2,
                   fontWeight: 600,
