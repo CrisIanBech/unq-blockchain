@@ -53,11 +53,11 @@ async function main() {
     console.log("MINTER_ROLE granted to landlord:", landlordAddr);
 
     // Mint property tokens with Mercator coordinates (e.g. 100000n, 200000n)
-    const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-1", 100000n, 200000n);
+    const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://mock-property-1", 100000n, 200000n);
     await tx.wait();
     console.log("Property #1 minted to landlord");
 
-    const tx2 = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-2", 300000n, 400000n);
+    const tx2 = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://mock-property-2", 300000n, 400000n);
     await tx2.wait();
     console.log("Property #2 minted to landlord");
 
