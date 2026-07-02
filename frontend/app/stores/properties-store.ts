@@ -57,8 +57,12 @@ interface PropertiesState {
 
 export const usePropertiesStore = create<PropertiesState>()(
   persist(
-    (set, get) => ({
-      ownedProperties: [],
+    (set, get) => {
+      let ownedPropertiesSyncVersion = 0;
+      let rentalsSyncVersion = 0;
+
+      return {
+        ownedProperties: [],
       rentals: [],
       rentalImports: [],
       propertyImports: [],
@@ -216,13 +220,15 @@ export const usePropertiesStore = create<PropertiesState>()(
             })
           }));
 
+          const syncPromise = get().syncRentals();
+
           if (!isMock) {
             await userStore.syncOnchainBalance();
           } else {
             userStore.adjustBalance(-amountToPay);
           }
 
-          await get().syncRentals();
+          await syncPromise;
 
           userStore.pushToast({
             message: `Pago procesado con éxito`,
@@ -440,6 +446,9 @@ export const usePropertiesStore = create<PropertiesState>()(
       },
 
       syncRentals: async () => {
+        rentalsSyncVersion++;
+        const currentVersion = rentalsSyncVersion;
+
         const userStore = useUserStore.getState();
         const wallet = userStore.wallet;
         const { rentalsService, propertiesService } = getServices(wallet);
@@ -499,18 +508,30 @@ export const usePropertiesStore = create<PropertiesState>()(
             return newRental;
           }));
 
+          if (currentVersion !== rentalsSyncVersion) {
+            return;
+          }
+
           set({ rentals: loadedRentals });
         } catch (error: any) {
+          if (currentVersion !== rentalsSyncVersion) {
+            return;
+          }
           console.error("Failed to sync rentals concurrently:", error);
           userStore.pushToast({ message: "Error al cargar alquileres: " + (error.message || error.toString()), severity: "error" });
         }
       },
 
       syncOwnedProperties: async () => {
+        ownedPropertiesSyncVersion++;
+        const currentVersion = ownedPropertiesSyncVersion;
+
         const userStore = useUserStore.getState();
         const wallet = userStore.wallet;
         if (!wallet) {
-          set({ ownedProperties: [] });
+          if (currentVersion === ownedPropertiesSyncVersion) {
+            set({ ownedProperties: [] });
+          }
           return;
         }
 
@@ -656,16 +677,24 @@ export const usePropertiesStore = create<PropertiesState>()(
             return ownedProp;
           }));
 
+          if (currentVersion !== ownedPropertiesSyncVersion) {
+            return;
+          }
+
           set({ ownedProperties: loadedProps });
         } catch (error: any) {
+          if (currentVersion !== ownedPropertiesSyncVersion) {
+            return;
+          }
           console.error("Failed to sync owned properties:", error);
           userStore.pushToast({
             message: "Error al sincronizar propiedades: " + (error.message || error.toString()),
             severity: "error"
           });
         }
-      }
-    }),
+      },
+    };
+  },
     {
       name: "properties-store-storage", // local storage key
       partialize: (state) => ({ rentalImports: state.rentalImports, propertyImports: state.propertyImports || [] }), // persist only rental imports and property imports
