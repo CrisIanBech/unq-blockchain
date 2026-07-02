@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/IReview.sol";
 import "./interfaces/IRentalAgreementFactory.sol";
 import "./interfaces/IRentalAgreement.sol";
+import "./interfaces/IPropertyNFT.sol";
+import "./interfaces/IRentalNFT.sol";
 
 /**
  * @title Review
@@ -38,7 +40,8 @@ contract Review is IReview {
     ) external override validRating(rating) {
         if (bytes(comment).length > MAX_COMMENT_LENGTH) revert CommentTooLong();
 
-        address agreementAddr = IRentalAgreementFactory(factory).activeRentals(propertyId);
+        address rentalNFT = IPropertyNFT(propertyNFT).rentalNFT();
+        address agreementAddr = IRentalNFT(rentalNFT).userOf(propertyId);
 
         if (agreementAddr == address(0)) revert NoActiveOrCompletedRental();
 

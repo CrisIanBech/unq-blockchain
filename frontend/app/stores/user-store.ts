@@ -2,9 +2,6 @@ import { create } from "zustand";
 import type { Toast } from "@models/types";
 import { WalletService } from "../lib/services/wallet-service";
 
-const MOCK_WALLET_ADDRESS = "0x7A3f...91Cd";
-const MOCK_INITIAL_BALANCE = 3250;
-
 interface UserState {
   wallet: string;
   balance: number;
@@ -13,12 +10,13 @@ interface UserState {
   dismissToast: (id: number) => void;
   adjustBalance: (amount: number) => void;
   connectWallet: () => Promise<void>;
+  disconnectWallet: () => void;
   syncOnchainBalance: () => Promise<void>;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
-  wallet: MOCK_WALLET_ADDRESS,
-  balance: MOCK_INITIAL_BALANCE,
+  wallet: "",
+  balance: 0,
   toasts: [],
 
   pushToast: (t) => {
@@ -41,6 +39,13 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   connectWallet: async () => {
     try {
+      const isMock = import.meta.env.VITE_USE_MOCKS === "true";
+      if (isMock) {
+        set({ wallet: "0xMockUser", balance: 3250 });
+        get().pushToast({ message: "Mock wallet conectada", severity: "success" });
+        return;
+      }
+
       const address = await WalletService.connect();
       if (address) {
         set({ wallet: address });
@@ -63,9 +68,14 @@ export const useUserStore = create<UserState>((set, get) => ({
     }
   },
 
+  disconnectWallet: () => {
+    set({ wallet: "", balance: 0 });
+    get().pushToast({ message: "Billetera desconectada", severity: "info" });
+  },
+
   syncOnchainBalance: async () => {
     const address = get().wallet;
-    if (address && address !== MOCK_WALLET_ADDRESS) {
+    if (address && import.meta.env.VITE_USE_MOCKS !== "true") {
       try {
         const balance = await WalletService.getUSDCBalance(address);
         set({ balance });
@@ -78,17 +88,46 @@ export const useUserStore = create<UserState>((set, get) => ({
 
 // Attempt to load current account on store load if already authorized
 if (typeof window !== "undefined") {
-  WalletService.getCurrentAccount().then(async (address) => {
-    if (address) {
-      useUserStore.setState({ wallet: address });
-      try {
-        const balance = await WalletService.getUSDCBalance(address);
-        useUserStore.setState({ balance });
-      } catch (err) {
-        // Silently fail, fall back to mock
+  if (import.meta.env.VITE_USE_MOCKS !== "true") {
+    WalletService.getCurrentAccount().then(async (address) => {
+      if (address) {
+        useUserStore.setState({ wallet: address });
+        try {
+          const balance = await WalletService.getUSDCBalance(address);
+          useUserStore.setState({ balance });
+        } catch (err) {
+          // Silently fail
+        }
       }
+    }).catch(() => {});
+
+    // Listen for MetaMask account changes and update active wallet in real-time
+    const ethereum = (window as any).ethereum;
+    if (ethereum && !(window as any).__unq_accountsChangedListenerAdded) {
+      (window as any).__unq_accountsChangedListenerAdded = true;
+      ethereum.on("accountsChanged", async (accounts: string[]) => {
+        const nextWallet = accounts[0] || "";
+        const userStore = useUserStore.getState();
+        const currentWallet = userStore.wallet;
+        
+        if (nextWallet.toLowerCase() !== currentWallet.toLowerCase()) {
+          if (nextWallet) {
+            useUserStore.setState({ wallet: nextWallet });
+            try {
+              const balance = await WalletService.getUSDCBalance(nextWallet);
+              useUserStore.setState({ balance });
+              userStore.pushToast({ message: "Cuenta de MetaMask cambiada", severity: "info" });
+            } catch (err) {
+              // Silently fail
+            }
+          } else {
+            useUserStore.setState({ wallet: "", balance: 0 });
+            userStore.pushToast({ message: "Billetera desconectada", severity: "info" });
+          }
+        }
+      });
     }
-  }).catch(() => {});
+  }
 }
 
 export type UseUserStoreReturn = ReturnType<typeof useUserStore>;

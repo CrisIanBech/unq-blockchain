@@ -32,7 +32,7 @@ export interface OwnedProperty {
   address: string
   imageUrl: string
   /** Real blockchain property NFT token ID */
-  propertyId?: bigint
+  propertyId?: number
   /** Token addresses (simulated/real). */
   realEstateToken: string
   rentalToken: string
@@ -50,25 +50,41 @@ export interface OwnedProperty {
   contractStatus: "draft" | "active" | "cancelled"
 }
 
+export interface RentalContractDetails {
+  baseRent: number
+  securityDeposit: number
+  inflationBps: number
+  lateFeeBps: number
+  gracePeriod: number
+  paymentPeriod: number
+  duration: number
+  deadline: number
+  startTime: number
+  rentPaidUntil: number
+  
+  amountToPay: number
+  lateFeeAmount: number
+  isLate: boolean
+}
+
 /** A property the current user RENTS (is the tenant). */
 export interface Rental {
-  id: string
-  name: string
-  type: PropertyType
-  address: string
-  imageUrl: string
-  landlord: string
-  monthlyRent: number
-  nextPaymentDate: string
-  payments: PaymentRecord[]
-  /** Real blockchain property NFT token ID */
-  propertyId?: bigint
-  /** Dynamically deployed rental agreement contract address */
-  agreementAddress?: string
-  rentalNFTAddress?: string
-  /** Tenant's NFC key for the unit's smartlock */
-  smartlockId: string
-  hasKey: boolean
+  id: string; // The agreementAddress
+  agreementAddress?: string;
+  propertyId: number;
+  name: string;
+  type: PropertyType;
+  address: string; // physical address
+  imageUrl: string;
+  landlord: string;
+  tenant?: string;
+  monthlyRent: number;
+  payments: PaymentRecord[];
+  contractDetails?: RentalContractDetails;
+  nextPaymentDate?: string;
+  hasKey?: boolean;
+  rentalNFTAddress?: string;
+  smartlockId?: string;
 }
 
 export interface Review {

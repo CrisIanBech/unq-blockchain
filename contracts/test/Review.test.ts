@@ -16,6 +16,7 @@ describe("Review Tests", function () {
     let strangerAddr: string;
 
     let propertyNFT: any;
+    let rentalNFT: any;
     let mockUSDC: any;
     let factory: any;
     let reviewSystem: any;
@@ -41,17 +42,21 @@ describe("Review Tests", function () {
         tenantAddr = await tenant.getAddress();
         strangerAddr = await stranger.getAddress();
 
+        const RentalNFT = await ethers.getContractFactory("RentalNFT");
+        rentalNFT = await RentalNFT.deploy();
+        const rentalNFTAddr = await rentalNFT.getAddress();
+
         const PropertyNFT = await ethers.getContractFactory("PropertyNFT");
-        propertyNFT = await PropertyNFT.deploy();
+        propertyNFT = await PropertyNFT.deploy(rentalNFTAddr);
+        const propertyNFTAddr = await propertyNFT.getAddress();
+
+        await rentalNFT.setPropertyNFT(propertyNFTAddr);
 
         const MockUSDC = await ethers.getContractFactory("MockUSDC");
         mockUSDC = await MockUSDC.deploy();
 
         const RentalAgreementFactory = await ethers.getContractFactory("RentalAgreementFactory");
-        factory = await RentalAgreementFactory.deploy(
-            await propertyNFT.getAddress(),
-            await mockUSDC.getAddress()
-        );
+        factory = await RentalAgreementFactory.deploy();
 
         const Review = await ethers.getContractFactory("Review");
         reviewSystem = await Review.deploy(
@@ -62,7 +67,7 @@ describe("Review Tests", function () {
         const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
         await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
 
-        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-metadata-1");
+        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, "ipfs://property-metadata-1", 0n, 0n);
         await tx.wait();
         propertyId = 1;
 
@@ -73,13 +78,38 @@ describe("Review Tests", function () {
     });
 
     async function createAndActivateAgreement(): Promise<string> {
-        await factory.connect(landlord).createRentalAgreement(
-            propertyId, tenantAddr, baseRent, securityDeposit,
-            inflationBps, lateFeeBps, gracePeriod, duration, deadline
+        const agreementAddress = await factory.connect(landlord).createRentalAgreement.staticCall(
+            await propertyNFT.getAddress(),
+            propertyId,
+            tenantAddr,
+            await mockUSDC.getAddress(),
+            await rentalNFT.getAddress(),
+            baseRent,
+            securityDeposit,
+            inflationBps,
+            lateFeeBps,
+            gracePeriod,
+            duration,
+            deadline
         );
-        const agreementAddress = await factory.getAgreementAt(0);
+
+        await factory.connect(landlord).createRentalAgreement(
+            await propertyNFT.getAddress(),
+            propertyId,
+            tenantAddr,
+            await mockUSDC.getAddress(),
+            await rentalNFT.getAddress(),
+            baseRent,
+            securityDeposit,
+            inflationBps,
+            lateFeeBps,
+            gracePeriod,
+            duration,
+            deadline
+        );
         const agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
+        await propertyNFT.connect(landlord).approve(agreementAddress, propertyId);
         await mockUSDC.connect(tenant).approve(agreementAddress, securityDeposit);
         await agreement.connect(landlord).approveAgreement();
         await agreement.connect(tenant).approveAgreement();
@@ -166,11 +196,10 @@ describe("Review Tests", function () {
         });
 
         it("should allow multiple reviews for the same property from different agreements", async function () {
-            await createAndActivateAgreement();
+            const agreementAddress = await createAndActivateAgreement();
             await reviewSystem.connect(tenant).postReview(propertyId, 5, "Great!");
 
-            const agreement1 = await factory.getAgreementAt(0);
-            const agreement = await ethers.getContractAt("RentalAgreement", agreement1);
+            const agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
             await agreement.connect(landlord).cancelAgreement();
             await agreement.connect(tenant).cancelAgreement();
@@ -178,13 +207,38 @@ describe("Review Tests", function () {
             const latestBlock = await ethers.provider.getBlock("latest");
             const newDeadline = latestBlock!.timestamp + 7 * 24 * 60 * 60;
 
-            await factory.connect(landlord).createRentalAgreement(
-                propertyId, tenantAddr, baseRent, securityDeposit,
-                inflationBps, lateFeeBps, gracePeriod, duration, newDeadline
+            const agreement2Addr = await factory.connect(landlord).createRentalAgreement.staticCall(
+                await propertyNFT.getAddress(),
+                propertyId,
+                tenantAddr,
+                await mockUSDC.getAddress(),
+                await rentalNFT.getAddress(),
+                baseRent,
+                securityDeposit,
+                inflationBps,
+                lateFeeBps,
+                gracePeriod,
+                duration,
+                newDeadline
             );
-            const agreement2Addr = await factory.getAgreementAt(1);
+
+            await factory.connect(landlord).createRentalAgreement(
+                await propertyNFT.getAddress(),
+                propertyId,
+                tenantAddr,
+                await mockUSDC.getAddress(),
+                await rentalNFT.getAddress(),
+                baseRent,
+                securityDeposit,
+                inflationBps,
+                lateFeeBps,
+                gracePeriod,
+                duration,
+                newDeadline
+            );
             const agreement2 = await ethers.getContractAt("RentalAgreement", agreement2Addr);
 
+            await propertyNFT.connect(landlord).approve(agreement2Addr, propertyId);
             await mockUSDC.connect(tenant).approve(agreement2Addr, securityDeposit);
             await agreement2.connect(landlord).approveAgreement();
             await agreement2.connect(tenant).approveAgreement();
@@ -218,9 +272,8 @@ describe("Review Tests", function () {
         });
 
         it("should revert review when agreement is Cancelled", async function () {
-            await createAndActivateAgreement();
-            const agreement1 = await factory.getAgreementAt(0);
-            const agreement = await ethers.getContractAt("RentalAgreement", agreement1);
+            const agreementAddress = await createAndActivateAgreement();
+            const agreement = await ethers.getContractAt("RentalAgreement", agreementAddress);
 
             await agreement.connect(landlord).cancelAgreement();
             await agreement.connect(tenant).cancelAgreement();

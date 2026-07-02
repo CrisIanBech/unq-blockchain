@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { RentalsRepository } from "../repositories/rentals-repository";
+import { IRentalsRepository } from "../repositories/rentals-repository";
 import { translateError } from "../errors/translator";
 
 export interface RentalCreationResult {
@@ -12,10 +12,11 @@ export interface TransactionResult {
 }
 
 export class RentalsService {
+  constructor(private repo: IRentalsRepository) {}
   /**
    * Deploys a new RentalAgreement and extracts the address from the receipt log.
    */
-  static async createRental(params: {
+  async createRental(params: {
     propertyId: bigint;
     tenant: string;
     baseRent: number; // in normal USDC unit
@@ -29,30 +30,24 @@ export class RentalsService {
     try {
       const baseRentRaw = ethers.parseUnits(params.baseRent.toString(), 6);
       const depositRaw = ethers.parseUnits(params.securityDeposit.toString(), 6);
-
-      const receipt = await RentalsRepository.createRental({
+      
+      const repoParams = {
         ...params,
         baseRent: baseRentRaw,
         securityDeposit: depositRaw
-      });
+      };
 
-      // Parse the dynamically deployed RentalAgreement address from logs
-      // A simple check is to find the log emitted by factory
-      // (Alternative fallback: search-store logs check)
+      const receipt = await this.repo.createRental(repoParams);
+
+      // If we are using mock repo, we can extract from contractAddress instead of logs
+      if ((receipt as any).contractAddress) {
+        return { agreementAddress: (receipt as any).contractAddress, txHash: receipt.hash };
+      }
+
       let agreementAddress = "";
       for (const log of receipt.logs) {
-        // Factory contract emits RentalAgreementCreated event
-        // The first topic is Keccak-256 hash of "RentalAgreementCreated(uint256,address,address)"
         const eventTopic = ethers.id("RentalAgreementCreated(uint256,address,address)");
         if (log.topics[0] === eventTopic) {
-          // The event signature has (uint256 propertyId, address tenant, address agreementAddress)
-          // The third parameter (address agreementAddress) is indexed, so it's topics[3] or encoded in data
-          // In standard solidity, indexed parameters are stored in topics.
-          // topics[0] = signature
-          // topics[1] = propertyId (indexed)
-          // topics[2] = tenant (indexed)
-          // data = agreementAddress (non-indexed)
-          // Let's decode data using Ethers AbiCoder:
           const coder = ethers.AbiCoder.defaultAbiCoder();
           const decoded = coder.decode(["address"], log.data);
           agreementAddress = decoded[0];
@@ -73,10 +68,7 @@ export class RentalsService {
     }
   }
 
-  /**
-   * Approves a rental agreement on-chain (including tenant USDC approvals).
-   */
-  static async approveAgreement(params: {
+  async approveAgreement(params: {
     agreementAddress: string;
     isTenant: boolean;
     depositAmount?: number;
@@ -86,11 +78,8 @@ export class RentalsService {
         ? ethers.parseUnits(params.depositAmount.toString(), 6) 
         : undefined;
 
-      const receipt = await RentalsRepository.approveRental({
-        agreementAddress: params.agreementAddress,
-        isTenant: params.isTenant,
-        depositAmount: depositRaw
-      });
+      const repoParams = { ...params, depositAmount: depositRaw };
+      const receipt = await this.repo.approveRental(repoParams);
 
       return { txHash: receipt.hash };
     } catch (error) {
@@ -98,50 +87,103 @@ export class RentalsService {
     }
   }
 
-  /**
-   * Pays rent for a specific agreement on-chain.
-   */
-  static async payRent(agreementAddress: string, rentAmount: number): Promise<TransactionResult> {
+  async payRent(agreementAddress: string, rentAmount: number): Promise<TransactionResult> {
     try {
       const rentRaw = ethers.parseUnits(rentAmount.toString(), 6);
-      const receipt = await RentalsRepository.payRent(agreementAddress, rentRaw);
+      const receipt = await this.repo.payRent(agreementAddress, rentRaw);
       return { txHash: receipt.hash };
     } catch (error) {
       throw translateError(error);
     }
   }
 
-  /**
-   * Withdraws collected rent from escrow.
-   */
-  static async withdrawRent(agreementAddress: string): Promise<TransactionResult> {
+  async withdrawRent(agreementAddress: string): Promise<TransactionResult> {
     try {
-      const receipt = await RentalsRepository.withdrawRent(agreementAddress);
+      const receipt = await this.repo.withdrawRent(agreementAddress);
       return { txHash: receipt.hash };
     } catch (error) {
       throw translateError(error);
     }
   }
 
-  /**
-   * Cancels a rental agreement.
-   */
-  static async cancelAgreement(agreementAddress: string): Promise<TransactionResult> {
+  async cancelAgreement(agreementAddress: string): Promise<TransactionResult> {
     try {
-      const receipt = await RentalsRepository.cancelRental(agreementAddress);
+      const receipt = await this.repo.cancelRental(agreementAddress);
       return { txHash: receipt.hash };
     } catch (error) {
       throw translateError(error);
     }
   }
 
-  /**
-   * Triggers expiration checks.
-   */
-  static async checkExpiration(agreementAddress: string): Promise<TransactionResult> {
+  async checkExpiration(agreementAddress: string): Promise<TransactionResult> {
     try {
-      const receipt = await RentalsRepository.checkRentalExpiration(agreementAddress);
+      const receipt = await this.repo.checkRentalExpiration(agreementAddress);
       return { txHash: receipt.hash };
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getRentAmountToPay(agreementAddress: string) {
+    try {
+      const amounts = await this.repo.getRentAmountToPay(agreementAddress);
+        
+      return {
+        currentRent: Number(ethers.formatUnits(amounts.currentRent, 6)),
+        lateFee: Number(ethers.formatUnits(amounts.lateFee, 6)),
+        totalAmount: Number(ethers.formatUnits(amounts.totalAmount, 6))
+      };
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getRentalDetails(agreementAddress: string) {
+    try {
+      const details = await this.repo.getRentalDetails(agreementAddress);
+      return {
+        propertyId: details.propertyId,
+        tenant: details.tenant,
+        landlord: details.landlord,
+        baseRent: Number(ethers.formatUnits(details.baseRent, 6)),
+        rentPaidUntil: Number(details.rentPaidUntil),
+        status: details.status,
+        startTime: Number(details.startTime),
+        paymentPeriod: Number(details.paymentPeriod)
+      };
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getPaymentHistory(agreementAddress: string) {
+    try {
+      const events = await this.repo.getPaymentHistory(agreementAddress);
+        
+      return events.map(e => ({
+        periodIndex: e.periodIndex,
+        amount: Number(ethers.formatUnits(e.amount, 6)),
+        lateFee: Number(ethers.formatUnits(e.lateFee, 6)),
+        txHash: e.txHash,
+        blockNumber: e.blockNumber
+      }));
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getRentalAgreementForProperty(propertyId: number): Promise<string | null> {
+    try {
+      return await this.repo.getRentalAgreementForProperty(propertyId);
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async getWithdrawableRent(agreementAddress: string): Promise<number> {
+    try {
+      const balance = await this.repo.getWithdrawableRent(agreementAddress);
+      return Number(ethers.formatUnits(balance, 6));
     } catch (error) {
       throw translateError(error);
     }

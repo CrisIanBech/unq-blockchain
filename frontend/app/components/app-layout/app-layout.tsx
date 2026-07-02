@@ -20,7 +20,7 @@ export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const { wallet, balance, toasts, dismissToast, connectWallet } = useUserStore()
+  const { wallet, balance, toasts, dismissToast, connectWallet, disconnectWallet } = useUserStore()
 
   const theme = useMemo(() => (mode === "light" ? lightTheme : darkTheme), [mode])
 
@@ -39,6 +39,7 @@ export function AppLayout() {
         wallet={wallet}
         balance={balance}
         onConnectWallet={connectWallet}
+        onDisconnectWallet={disconnectWallet}
         currentPathname={location.pathname}
         onNavigate={navigate}
         mode={mode}

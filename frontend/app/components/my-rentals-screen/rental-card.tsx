@@ -79,7 +79,7 @@ export function RentalCard({
               </IconButton>
             </Tooltip>
             <Button size="small" variant="contained" startIcon={<PaymentsRoundedIcon />} onClick={() => onSetPayTarget(rental)}>
-              Pagar mes
+              Pagar periodo
             </Button>
             <Button
               size="small"
