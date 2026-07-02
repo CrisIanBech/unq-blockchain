@@ -1,9 +1,11 @@
 import { useState } from "react"
 import { usePropertiesStore } from "@stores/properties-store"
+import { useRentalsStore } from "@stores/rentals-store"
 import { useSmartlockStore } from "@stores/smartlock-store"
 
 export function useSmartlockPage() {
-  const { ownedProperties, rentals } = usePropertiesStore()
+  const { ownedProperties } = usePropertiesStore()
+  const { rentals } = useRentalsStore()
   const {
     installSmartlock,
     toggleNfc,

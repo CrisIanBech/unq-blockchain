@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react"
 import { useUserStore } from "@stores/user-store"
-import { usePropertiesStore } from "@stores/properties-store"
+import { useRentalsStore } from "@stores/rentals-store"
 import type { Rental } from "../models/types"
 import { getBrowserProvider } from "@/lib/blockchain-infra"
 
 export function useMyRentalsPage() {
   const { balance, wallet } = useUserStore()
-  const { rentals, payMonthlyRent, importRental, syncRentals } = usePropertiesStore()
+  const { rentals, payMonthlyRent, importRental, syncRentals } = useRentalsStore()
   const [payTargetId, setPayTargetId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
