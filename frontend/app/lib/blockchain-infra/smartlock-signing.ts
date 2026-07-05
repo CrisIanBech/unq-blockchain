@@ -1,3 +1,4 @@
+import { getAccount, signTypedData } from "@wagmi/core";
 import { ethers } from "ethers";
 import {
   challengeToTypedData,
@@ -10,16 +11,40 @@ import {
 } from "@shared/smartlock-protocol/index";
 import { CONTRACT_ADDRESSES } from "./addresses";
 import { getSigner } from "./provider";
+import { wagmiConfig } from "./wagmi-config";
 
-export async function signUnlockChallenge(challenge: SmartlockChallenge): Promise<SmartlockResponse> {
+async function signWithWagmi(
+  challenge: SmartlockChallenge,
+  verifyingContract: string,
+  signerAddress: string
+): Promise<string> {
+  const typedData = challengeToTypedData(challenge, verifyingContract);
+
+  return signTypedData(wagmiConfig, {
+    account: signerAddress as `0x${string}`,
+    domain: {
+      ...typedData.domain,
+      verifyingContract: verifyingContract as `0x${string}`,
+    },
+    types: { UnlockChallenge: [...UNLOCK_CHALLENGE_TYPES.UnlockChallenge] },
+    primaryType: "UnlockChallenge",
+    message: {
+      propertyId: BigInt(challenge.propertyId),
+      lockId: typedData.message.lockId as `0x${string}`,
+      nonce: typedData.message.nonce as `0x${string}`,
+      timestamp: BigInt(challenge.timestamp),
+      action: challenge.action,
+    },
+  });
+}
+
+async function signWithEthers(
+  challenge: SmartlockChallenge,
+  verifyingContract: string
+): Promise<{ signature: string; signerAddress: string }> {
   const signer = await getSigner();
   if (!signer) {
     throw new Error("No signer available. Connect MetaMask.");
-  }
-
-  const verifyingContract = CONTRACT_ADDRESSES.propertyNft;
-  if (!verifyingContract) {
-    throw new Error("Property NFT contract address is not configured.");
   }
 
   const typedData = challengeToTypedData(challenge, verifyingContract);
@@ -28,8 +53,29 @@ export async function signUnlockChallenge(challenge: SmartlockChallenge): Promis
     { UnlockChallenge: [...UNLOCK_CHALLENGE_TYPES.UnlockChallenge] },
     typedData.message
   );
-
   const signerAddress = await signer.getAddress();
+
+  return { signature, signerAddress };
+}
+
+export async function signUnlockChallenge(challenge: SmartlockChallenge): Promise<SmartlockResponse> {
+  const verifyingContract = CONTRACT_ADDRESSES.propertyNft;
+  if (!verifyingContract) {
+    throw new Error("Property NFT contract address is not configured.");
+  }
+
+  const account = getAccount(wagmiConfig);
+  let signature: string;
+  let signerAddress: string;
+
+  if (account.isConnected && account.address) {
+    signature = await signWithWagmi(challenge, verifyingContract, account.address);
+    signerAddress = account.address;
+  } else {
+    const ethersResult = await signWithEthers(challenge, verifyingContract);
+    signature = ethersResult.signature;
+    signerAddress = ethersResult.signerAddress;
+  }
 
   return {
     v: 1,

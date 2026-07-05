@@ -63,7 +63,7 @@ export function ControlCard({
   mockMode = false,
   walletAvailable = true,
 }: ControlCardProps) {
-  const { wallet, connectWallet } = useUserStore()
+  const { wallet, connectWallet, isConnecting } = useUserStore()
   const walletConnected = isWalletConnected(wallet)
 
   return (
@@ -177,10 +177,11 @@ export function ControlCard({
               variant="outlined"
               size="large"
               startIcon={<AccountBalanceWalletRoundedIcon />}
+              disabled={isConnecting}
               onClick={() => void connectWallet()}
               sx={{ mb: 2 }}
             >
-              Conectar MetaMask
+              {isConnecting ? "Conectando…" : "Conectar MetaMask"}
             </Button>
           )}
 

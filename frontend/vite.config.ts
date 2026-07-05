@@ -30,6 +30,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ["@walletconnect/ethereum-provider"],
+    include: ["@walletconnect/ethereum-provider", "@reown/appkit"],
   },
 })

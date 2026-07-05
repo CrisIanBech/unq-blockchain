@@ -36,6 +36,9 @@ export class PropertyDashboardService {
   }
 
   async verifyPropertyOwnership(wallet: string, propertyId: number): Promise<void> {
+    if (import.meta.env.VITE_USE_MOCKS === "true") {
+      return;
+    }
     const { propertiesService } = getServices(wallet);
     const owner = await propertiesService.getPropertyOwner(propertyId);
     if (owner.toLowerCase() !== wallet.toLowerCase()) {

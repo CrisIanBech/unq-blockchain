@@ -1,7 +1,8 @@
 import { getConnection, getWalletClient } from "@wagmi/core";
+import type { Address } from "viem";
 import { ethers } from "ethers";
 import type { WalletClient } from "viem";
-import { wagmiConfig } from "./wagmi-config";
+import { isMetaMaskInAppBrowser, isMobileBrowser, wagmiConfig } from "./wagmi-config";
 
 const SEPOLIA_RPC = "https://sepolia.drpc.org";
 
@@ -36,7 +37,9 @@ export async function getSigner(): Promise<ethers.JsonRpcSigner | null> {
   const connection = getConnection(wagmiConfig);
   if (connection.isConnected && connection.address) {
     try {
-      const walletClient = await getWalletClient(wagmiConfig);
+      const walletClient = await getWalletClient(wagmiConfig, {
+        account: connection.address as Address,
+      });
       if (walletClient) {
         return walletClientToSigner(walletClient);
       }
@@ -45,7 +48,10 @@ export async function getSigner(): Promise<ethers.JsonRpcSigner | null> {
     }
   }
 
-  if (typeof window !== "undefined" && (window as Window & { ethereum?: unknown }).ethereum) {
+  const useInjectedFallback =
+    isMetaMaskInAppBrowser() || (!isMobileBrowser() && typeof window !== "undefined");
+
+  if (useInjectedFallback && typeof window !== "undefined" && (window as Window & { ethereum?: unknown }).ethereum) {
     try {
       const provider = new ethers.BrowserProvider(
         (window as unknown as { ethereum: ethers.Eip1193Provider }).ethereum

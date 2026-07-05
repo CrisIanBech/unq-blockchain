@@ -5,6 +5,7 @@ import { SmartlockService } from "@/lib/services/smartlock-service"
 import { hasEthereumProvider } from "@/lib/blockchain-infra/wallet"
 import { isSmartlockMockMode } from "@/lib/smartlock/config"
 import { useRentalsStore } from "@stores/rentals-store"
+import { useUserStore, isWalletConnected } from "@stores/user-store"
 
 export function useSmartlockPage() {
   const { ownedProperties } = usePropertiesStore()
@@ -36,6 +37,15 @@ export function useSmartlockPage() {
   const nfcApiPresent = SmartlockService.isNfcApiPresent()
   const mockMode = isSmartlockMockMode()
   const walletAvailable = typeof window !== "undefined" && hasEthereumProvider()
+
+  const wallet = useUserStore((state) => state.wallet)
+  const syncOwnedProperties = usePropertiesStore((state) => state.syncOwnedProperties)
+
+  useEffect(() => {
+    if (isWalletConnected(wallet)) {
+      void syncOwnedProperties()
+    }
+  }, [wallet, syncOwnedProperties])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)

@@ -1,6 +1,6 @@
 import { connect, getChainId as getWagmiChainId, getConnection, getConnectors, switchChain } from "@wagmi/core";
 import { sepolia } from "wagmi/chains";
-import { isMobileBrowser, isWalletConnectConfigured, wagmiConfig } from "./wagmi-config";
+import { isMetaMaskInAppBrowser, isMobileBrowser, isWalletConnectConfigured, wagmiConfig } from "./wagmi-config";
 
 function hasInjectedProvider(): boolean {
   return typeof window !== "undefined" && !!(window as Window & { ethereum?: unknown }).ethereum;
@@ -8,20 +8,31 @@ function hasInjectedProvider(): boolean {
 
 function pickConnectConnector() {
   const connectors = getConnectors(wagmiConfig);
+  const injectedConnector = connectors.find((connector) => connector.id === "injected");
+  const walletConnectConnector = connectors.find((connector) => connector.id === "walletConnect");
 
-  if (hasInjectedProvider()) {
-    return connectors.find((connector) => connector.id === "injected") ?? connectors[0];
+  // MetaMask in-app browser: injected provider works.
+  if (isMetaMaskInAppBrowser() && injectedConnector) {
+    return injectedConnector;
   }
 
-  const walletConnectConnector = connectors.find((connector) => connector.id === "walletConnect");
+  // Mobile Chrome/Safari: never use injected — it is often a broken stub.
+  // WalletConnect deep-links into the MetaMask app.
+  if (isMobileBrowser()) {
+    if (walletConnectConnector) {
+      return walletConnectConnector;
+    }
+    throw new Error(
+      "Para conectar MetaMask desde el celular, configurá VITE_WALLETCONNECT_PROJECT_ID o abrí la página en MetaMask → Browser."
+    );
+  }
+
+  if (hasInjectedProvider() && injectedConnector) {
+    return injectedConnector;
+  }
+
   if (walletConnectConnector) {
     return walletConnectConnector;
-  }
-
-  if (isMobileBrowser()) {
-    throw new Error(
-      "Para conectar MetaMask desde el celular, agregá VITE_WALLETCONNECT_PROJECT_ID en .env o abrí la página en MetaMask → Browser."
-    );
   }
 
   return connectors[0];
@@ -29,7 +40,8 @@ function pickConnectConnector() {
 
 export function hasEthereumProvider(): boolean {
   if (typeof window === "undefined") return false;
-  return hasInjectedProvider() || isWalletConnectConfigured();
+  if (isMetaMaskInAppBrowser() || hasInjectedProvider()) return true;
+  return isWalletConnectConfigured();
 }
 
 export async function connectWallet(): Promise<string | null> {
@@ -55,7 +67,7 @@ export async function getCurrentAccount(): Promise<string | null> {
     return connection.address;
   }
 
-  if (hasInjectedProvider()) {
+  if (isMetaMaskInAppBrowser() || (!isMobileBrowser() && hasInjectedProvider())) {
     try {
       const accounts: string[] = await (
         window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }

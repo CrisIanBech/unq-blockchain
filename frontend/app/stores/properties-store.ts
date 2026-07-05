@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { OwnedProperty, Smartlock } from "@models/types";
-import { useUserStore } from "./user-store";
+import { useUserStore, isWalletConnected } from "./user-store";
 import { getServices } from "@/lib/services/service-registry";
 import { PropertyDashboardService, type AddPropertyInput } from "@/lib/services/property-dashboard-service";
 import { loadOwnedProperties } from "@/lib/services/sync/owned-properties-sync";
+import { usesMockRepositories } from "@/lib/config/mock-mode";
+import { ensureMockDemoProperty } from "@/lib/repositories/mock-properties-repository";
 
 const propertyDashboardService = new PropertyDashboardService();
 
@@ -292,7 +294,14 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
 
           try {
-            const imports = get().propertyImports || [];
+            let imports = get().propertyImports || [];
+
+            if (usesMockRepositories() && isWalletConnected(wallet) && imports.length === 0) {
+              const demoId = ensureMockDemoProperty(wallet);
+              imports = [demoId];
+              set({ propertyImports: imports });
+            }
+
             const existingProps = get().ownedProperties;
             const loadedProps = await loadOwnedProperties(wallet, imports, existingProps);
 

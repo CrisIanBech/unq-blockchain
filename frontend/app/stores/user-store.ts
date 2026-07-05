@@ -1,10 +1,9 @@
 import { create } from "zustand";
 import type { Toast } from "@models/types";
 import { WalletService } from "../lib/services/wallet-service";
+import { usesMockRepositories } from "../lib/config/mock-mode";
 
-const MOCK_WALLET_ADDRESS = "0x7A3f...91Cd";
-const MOCK_INITIAL_BALANCE = 3250;
-
+const MOCK_USDC_BALANCE = 3250;
 export function isWalletConnected(wallet: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(wallet);
 }
@@ -12,6 +11,7 @@ export function isWalletConnected(wallet: string): boolean {
 interface UserState {
   wallet: string;
   balance: number;
+  isConnecting: boolean;
   toasts: Toast[];
   pushToast: (t: Omit<Toast, "id">) => void;
   dismissToast: (id: number) => void;
@@ -24,6 +24,7 @@ interface UserState {
 export const useUserStore = create<UserState>((set, get) => ({
   wallet: "",
   balance: 0,
+  isConnecting: false,
   toasts: [],
 
   pushToast: (t) => {
@@ -45,33 +46,41 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 
   connectWallet: async () => {
+    if (get().isConnecting) return;
+
+    set({ isConnecting: true });
     try {
-      const isMock = import.meta.env.VITE_USE_MOCKS === "true";
-      if (isMock) {
-        set({ wallet: "0xMockUser", balance: 3250 });
-        get().pushToast({ message: "Mock wallet conectada", severity: "success" });
-        return;
-      }
+      get().pushToast({
+        message: "Abriendo selector de wallet…",
+        severity: "info",
+      });
 
       const address = await WalletService.connect();
       if (address) {
         set({ wallet: address });
-        
-        // Fetch actual on-chain USDC balance
-        const balance = await WalletService.getUSDCBalance(address);
-        set({ balance });
 
+        const balance = usesMockRepositories()
+          ? MOCK_USDC_BALANCE
+          : Number(await WalletService.getUSDCBalance(address));
+        set({ balance });
         get().pushToast({
           message: "Billetera conectada exitosamente a MetaMask",
-          severity: "success"
+          severity: "success",
+        });
+      } else {
+        get().pushToast({
+          message: "No se pudo obtener la dirección de la wallet",
+          severity: "error",
         });
       }
     } catch (error: any) {
       console.error("Wallet connection failed:", error);
       get().pushToast({
         message: error.message || "Error al conectar MetaMask",
-        severity: "error"
+        severity: "error",
       });
+    } finally {
+      set({ isConnecting: false });
     }
   },
 
@@ -82,7 +91,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   syncOnchainBalance: async () => {
     const address = get().wallet;
-    if (isWalletConnected(address) && import.meta.env.VITE_USE_MOCKS !== "true") {
+    if (isWalletConnected(address) && !usesMockRepositories()) {
       try {
         const balance = await WalletService.getUSDCBalance(address);
         set({ balance });
@@ -95,20 +104,19 @@ export const useUserStore = create<UserState>((set, get) => ({
 
 // Attempt to load current account on store load if already authorized
 if (typeof window !== "undefined") {
-if (import.meta.env.VITE_USE_MOCKS !== "true") {
   WalletService.getCurrentAccount().then(async (address) => {
     if (address) {
       useUserStore.setState({ wallet: address });
       try {
-        const balance = await WalletService.getUSDCBalance(address);
+        const balance = usesMockRepositories()
+          ? MOCK_USDC_BALANCE
+          : Number(await WalletService.getUSDCBalance(address));
         useUserStore.setState({ balance });
-      } catch (err) {
+      } catch {
         // Silently fail
       }
     }
   }).catch(() => {});
-}
-
     // Listen for MetaMask account changes and update active wallet in real-time
     const ethereum = (window as any).ethereum;
     if (ethereum && !(window as any).__unq_accountsChangedListenerAdded) {

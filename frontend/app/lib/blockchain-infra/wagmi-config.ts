@@ -27,7 +27,10 @@ export const wagmiConfig = createConfig({
       ? [
           walletConnect({
             projectId: walletConnectProjectId,
-            showQrModal: !isMobileUserAgent(),
+            showQrModal: true,
+            qrModalOptions: {
+              enableMobileFullScreen: true,
+            },
             metadata: {
               name: "BlockRent",
               description: "BlockRent — alquileres con blockchain",
@@ -50,4 +53,12 @@ export function isWalletConnectConfigured(): boolean {
 
 export function isMobileBrowser(): boolean {
   return isMobileUserAgent();
+}
+
+/** True when the page runs inside MetaMask's built-in browser (not Chrome/Firefox). */
+export function isMetaMaskInAppBrowser(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const ethereum = (window as Window & { ethereum?: { isMetaMask?: boolean } }).ethereum;
+  if (!ethereum?.isMetaMask) return false;
+  return /MetaMaskMobile/i.test(navigator.userAgent);
 }

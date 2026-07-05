@@ -7,7 +7,9 @@ import { MockRentalsRepository } from "../repositories/mock-rentals-repository";
 import { GeocodingRepository } from "../repositories/geocoding-repository";
 import { MockGeocodingRepository } from "../repositories/mock-geocoding-repository";
 
-const isMock = import.meta.env.VITE_USE_MOCKS === "true";
+import { usesMockRepositories } from "../config/mock-mode";
+
+const isMock = usesMockRepositories();
 
 export function getServices(wallet?: string) {
   if (isMock) {

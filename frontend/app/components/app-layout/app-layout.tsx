@@ -39,6 +39,7 @@ export function AppLayout() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AppShell
+        wallet={wallet}
         walletLabel={walletLabel}
         walletConnected={isWalletConnected(wallet)}
         balance={balance}

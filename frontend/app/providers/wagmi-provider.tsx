@@ -4,6 +4,9 @@ import { WagmiProvider, useConnection, useReconnect } from "wagmi";
 import { wagmiConfig } from "@/lib/blockchain-infra/wagmi-config";
 import { useUserStore } from "@stores/user-store";
 import { WalletService } from "@/lib/services/wallet-service";
+import { usesMockRepositories } from "@/lib/config/mock-mode";
+
+const MOCK_USDC_BALANCE = 3250;
 
 const queryClient = new QueryClient();
 
@@ -35,9 +38,13 @@ function WalletSync() {
     if (!isConnected || !address) return;
 
     useUserStore.setState({ wallet: address });
-    WalletService.getUSDCBalance(address)
-      .then((balance) => useUserStore.setState({ balance }))
-      .catch(() => {});
+    if (usesMockRepositories()) {
+      useUserStore.setState({ balance: MOCK_USDC_BALANCE });
+    } else {
+      WalletService.getUSDCBalance(address)
+        .then((balance) => useUserStore.setState({ balance: Number(balance) }))
+        .catch(() => {});
+    }
   }, [isConnected, address]);
 
   return null;
