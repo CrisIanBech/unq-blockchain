@@ -5,6 +5,7 @@ import { lightTheme, darkTheme } from "@/lib/theme"
 import { useUserStore, isWalletConnected } from "@stores/user-store"
 import { AppShell } from "@components/app-shell/app-shell"
 import { ToastHost } from "@components/toast-host/toast-host"
+import { ConnectWallet } from "@components/connect-wallet/connect-wallet"
 
 export function AppLayout() {
   const [mode, setMode] = useState<"light" | "dark">(() => {
@@ -19,7 +20,7 @@ export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const { wallet, balance, toasts, dismissToast, connectWallet } = useUserStore()
+  const { wallet, balance, toasts, dismissToast, connectWallet, disconnectWallet } = useUserStore()
   const walletLabel = isWalletConnected(wallet)
     ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}`
     : "Conectar wallet"
@@ -42,10 +43,12 @@ export function AppLayout() {
         walletConnected={isWalletConnected(wallet)}
         balance={balance}
         onConnectWallet={connectWallet}
+        onDisconnectWallet={disconnectWallet}
         currentPathname={location.pathname}
         onNavigate={navigate}
         mode={mode}
         onToggleTheme={handleToggleTheme}
+        connectWalletSlot={<ConnectWallet />}
       >
         <Outlet />
       </AppShell>

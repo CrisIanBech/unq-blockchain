@@ -6,6 +6,7 @@ import RentalAgreementFactoryABI from "./abi/RentalAgreementFactory.json";
 import RentalAgreementABI from "./abi/RentalAgreement.json";
 import RentalNFTABI from "./abi/RentalNFT.json";
 import MockUSDCABI from "./abi/MockUSDC.json";
+import ReviewABI from "./abi/Review.json";
 
 // WeakMap cache: active signer/provider -> (contract address -> Contract instance)
 const contractCache = new WeakMap<ethers.ContractRunner, Map<string, ethers.BaseContract>>();
@@ -52,4 +53,8 @@ export function getRentalAgreement(address: string, runner: ethers.ContractRunne
 
 export function getRentalNFT(address: string, runner: ethers.ContractRunner): ethers.Contract {
   return getCachedContract(address, RentalNFTABI, runner, standardFactory);
+}
+
+export function getReview(runner: ethers.ContractRunner): ethers.Contract {
+  return getCachedContract(CONTRACT_ADDRESSES.reviewSystem, ReviewABI, runner, standardFactory);
 }

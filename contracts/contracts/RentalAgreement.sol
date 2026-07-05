@@ -184,25 +184,34 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
     }
 
     /**
+     * @notice Calculates the rent and late fees for the current period pending payment.
+     */
+    function getRentAmountToPay() public view override returns (uint256 currentRent, uint256 lateFee, uint256 totalAmount) {
+        uint256 periodsElapsed = (rentPaidUntil - startTime) / paymentPeriod;
+        uint256 inflationPeriods = periodsElapsed / inflationAdjustmentInterval;
+        uint256 totalInflationBps = inflationPeriods * inflationBps;
+        currentRent = (baseRent * (10000 + totalInflationBps)) / 10000;
+
+        lateFee = 0;
+        if (block.timestamp > rentPaidUntil + gracePeriod) {
+            lateFee = (currentRent * lateFeeBps) / 10000;
+        }
+
+        totalAmount = currentRent + lateFee;
+    }
+
+    /**
      * @notice Tenant pays the monthly rent (and late fee if applicable).
      */
     function payRent() external override onlyActive nonReentrant {
         if (block.timestamp > startTime + duration) revert LeaseTermNotEnded(); // Lease ended, should terminate
 
-        // Calculate rent amount incorporating period-based inflation
+        (uint256 currentRent, uint256 lateFee, uint256 totalAmount) = getRentAmountToPay();
         uint256 periodsElapsed = (rentPaidUntil - startTime) / paymentPeriod;
-        uint256 inflationPeriods = periodsElapsed / inflationAdjustmentInterval;
-        uint256 totalInflationBps = inflationPeriods * inflationBps;
-        uint256 currentRent = (baseRent * (10000 + totalInflationBps)) / 10000;
 
-        uint256 lateFee = 0;
-        // Check if payment is past the grace period for this payment cycle
-        if (block.timestamp > rentPaidUntil + gracePeriod) {
-            lateFee = (currentRent * lateFeeBps) / 10000;
+        if (lateFee > 0) {
             emit LateFeeApplied(periodsElapsed, lateFee);
         }
-
-        uint256 totalAmount = currentRent + lateFee;
 
         // Escrow funds inside agreement contract
         IERC20(usdcToken).safeTransferFrom(tenant, address(this), totalAmount);

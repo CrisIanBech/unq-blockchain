@@ -4,9 +4,11 @@ import { signChallengeFromUrl, useSmartlockStore } from "@stores/smartlock-store
 import { SmartlockService } from "@/lib/services/smartlock-service"
 import { hasEthereumProvider } from "@/lib/blockchain-infra/wallet"
 import { isSmartlockMockMode } from "@/lib/smartlock/config"
+import { useRentalsStore } from "@stores/rentals-store"
 
 export function useSmartlockPage() {
-  const { ownedProperties, rentals } = usePropertiesStore()
+  const { ownedProperties } = usePropertiesStore()
+  const { rentals } = useRentalsStore()
   const {
     installSmartlock,
     toggleNfc,

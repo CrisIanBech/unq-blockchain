@@ -1,22 +1,30 @@
-import { Box, Typography, Fab } from "@mui/material"
+import { Box, Typography, SpeedDial, SpeedDialIcon, SpeedDialAction } from "@mui/material"
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded"
 import EventRoundedIcon from "@mui/icons-material/EventRounded"
 import PieChartRoundedIcon from "@mui/icons-material/PieChartRounded"
 import AddRoundedIcon from "@mui/icons-material/AddRounded"
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded"
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded"
 import { StatCard } from "@components/stat-card/stat-card"
 import { OwnedPropertyCard } from "@components/owned-property-card/owned-property-card"
 import { AddPropertyDialog } from "@components/add-property-dialog/add-property-dialog"
+import { ImportPropertyDialog } from "@components/import-property-dialog/import-property-dialog"
 import { usdc, dateLabel } from "@/lib/format"
 import type { UseMyPropertiesPageReturn } from "@hooks/use-my-properties-page"
+
+const SafeSpeedDialAction = SpeedDialAction as any;
 
 export function MyPropertiesScreen({
   ownedProperties,
   addOpen,
+  importOpen,
   stats,
   onOpenAdd,
   onCloseAdd,
   onSubmitAdd,
+  onOpenImport,
+  onCloseImport,
+  onSubmitImport,
   onWithdrawRent,
   onSignContract,
   onCancelContract,
@@ -112,16 +120,25 @@ export function MyPropertiesScreen({
         </Box>
       )}
 
-      <Fab
-        variant="extended"
-        onClick={onOpenAdd}
-        sx={{ position: "fixed", bottom: { xs: 88, md: 32 }, right: { xs: 16, md: 32 }, zIndex: 1100 }}
+      <SpeedDial
+        ariaLabel="Acciones de propiedad"
+        sx={{ position: "fixed", bottom: { xs: 88, sm: 32 }, right: { xs: 16, sm: 32 }, zIndex: 1100 }}
+        icon={<SpeedDialIcon />}
       >
-        <AddRoundedIcon sx={{ mr: 1 }} />
-        Cargar propiedad
-      </Fab>
+        <SafeSpeedDialAction
+          icon={<AddRoundedIcon />}
+          tooltipTitle="Registrar propiedad (Mint)"
+          onClick={onOpenAdd}
+        />
+        <SafeSpeedDialAction
+          icon={<DownloadRoundedIcon />}
+          tooltipTitle="Importar propiedad (ID)"
+          onClick={onOpenImport}
+        />
+      </SpeedDial>
 
       <AddPropertyDialog open={addOpen} onClose={onCloseAdd} onSubmit={onSubmitAdd} />
+      <ImportPropertyDialog open={importOpen} onClose={onCloseImport} onSubmit={onSubmitImport} />
     </Box>
   )
 }

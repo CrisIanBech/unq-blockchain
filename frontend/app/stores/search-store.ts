@@ -3,7 +3,6 @@ import type { Listing } from "@models/types"
 import { initialListings } from "@models/mock-data"
 import { useUserStore } from "./user-store"
 
-const WALLET_ADDRESS = "0x7A3f...91Cd"
 const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`
 
 interface SearchState {
@@ -21,7 +20,7 @@ export const useSearchStore = create<SearchState>((set) => ({
           ? {
               ...l,
               reviews: [
-                { id: `r-${Date.now()}`, author: WALLET_ADDRESS, rating, comment, date: new Date().toISOString().slice(0, 10) },
+                { id: `r-${Date.now()}`, author: useUserStore.getState().wallet || "Anonymous", rating, comment, date: new Date().toISOString().slice(0, 10) },
                 ...l.reviews,
               ],
             }

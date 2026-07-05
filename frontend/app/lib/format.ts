@@ -24,7 +24,8 @@ export const TYPE_LABEL: Record<PropertyType, string> = {
   oficina: "Oficina",
 }
 
-export const CURRENT_MONTH = "2026-06"
+const now = new Date();
+export const CURRENT_MONTH = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
 /** Returns the next N months (including given start) as ISO strings. */
 export function nextMonths(count: number, startIso = "2025-09") {

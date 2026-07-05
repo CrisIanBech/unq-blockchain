@@ -1,461 +1,332 @@
 import { create } from "zustand";
-import type { OwnedProperty, Rental, PaymentRecord } from "@models/types";
-import { initialOwnedProperties, initialRentals } from "@models/mock-data";
+import { persist } from "zustand/middleware";
+import type { OwnedProperty, Smartlock } from "@models/types";
 import { useUserStore } from "./user-store";
-import { PropertiesService } from "../lib/services/properties-service";
-import { RentalsService } from "../lib/services/rentals-service";
+import { getServices } from "@/lib/services/service-registry";
+import { PropertyDashboardService, type AddPropertyInput } from "@/lib/services/property-dashboard-service";
+import { loadOwnedProperties } from "@/lib/services/sync/owned-properties-sync";
 
-const MOCK_WALLET_ADDRESS = "0x7A3f...91Cd";
+const propertyDashboardService = new PropertyDashboardService();
 
-const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
-
-const isMockWallet = (wallet: string) => wallet === MOCK_WALLET_ADDRESS || !wallet;
-
-export interface AddPropertyInput {
-  name: string;
-  type: "departamento" | "casa" | "ph" | "local" | "oficina";
-  address: string;
-  monthlyRent: number;
-  realEstateToken: string;
-  rentalToken: string;
-}
+export type { AddPropertyInput };
 
 interface PropertiesState {
   ownedProperties: OwnedProperty[];
-  rentals: Rental[];
+  propertyImports: number[];
   mintAndLoadProperty: (input: AddPropertyInput) => Promise<void>;
   withdrawRent: (propertyId: string) => Promise<void>;
-  payMonthlyRent: (rentalId: string, month: string) => Promise<void>;
   createContract: (propertyId: string, tenant: string, rent: number) => Promise<void>;
   signContract: (propertyId: string) => Promise<void>;
   cancelContract: (propertyId: string) => Promise<void>;
+  importProperty: (propertyId: number) => Promise<void>;
+  syncOwnedProperties: () => Promise<void>;
+  updateSmartlock: (propertyId: string, updates: Partial<Smartlock>) => void;
 }
 
-export const usePropertiesStore = create<PropertiesState>((set, get) => ({
-  ownedProperties: initialOwnedProperties,
-  rentals: initialRentals,
+export const usePropertiesStore = create<PropertiesState>()(
+  persist(
+    (set, get) => {
+      let ownedPropertiesSyncVersion = 0;
 
-  mintAndLoadProperty: async (input) => {
-    const userStore = useUserStore.getState();
-    const wallet = userStore.wallet;
+      return {
+        ownedProperties: [],
+        propertyImports: [],
 
-    if (isMockWallet(wallet)) {
-      // Mock flow
-      const tx = fakeTx();
-      const newProp: OwnedProperty = {
-        id: `own-${Date.now()}`,
-        name: input.name,
-        type: input.type,
-        address: input.address,
-        imageUrl: "/images/prop-5.png",
-        propertyId: BigInt(Date.now()),
-        realEstateToken: input.realEstateToken,
-        rentalToken: input.rentalToken,
-        monthlyRent: input.monthlyRent,
-        tenant: null,
-        availableToWithdraw: 0,
-        contractStatus: "draft",
-        smartlock: { id: `lock-${Date.now()}`, installed: false, nfcEnabled: false, unlocked: false },
-        payments: [],
+        mintAndLoadProperty: async (input) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+
+          try {
+            userStore.pushToast({
+              message: "Minteando NFT de Propiedad en la blockchain...",
+              severity: "info"
+            });
+
+            const result = await propertyDashboardService.mintProperty(wallet, input);
+
+            if (result.tokenId !== undefined) {
+              set((s) => ({ propertyImports: [...(s.propertyImports || []), result.tokenId!] }));
+            }
+
+            await get().syncOwnedProperties();
+
+            userStore.pushToast({
+              message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
+              severity: "success",
+              txHash: result.txHash,
+            });
+          } catch (err: any) {
+            console.error("Failed to mint property NFT:", err);
+            userStore.pushToast({
+              message: err.message || "Error al mintear propiedad en blockchain",
+              severity: "error"
+            });
+          }
+        },
+
+        withdrawRent: async (propertyId) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          const { rentalsService } = getServices(wallet);
+
+          const property = get().ownedProperties.find((p) => p.id === propertyId);
+          if (!property) return;
+
+          const targetAgreement = property.agreementAddress || property.rentalToken;
+          if (!targetAgreement) {
+            userStore.pushToast({ message: "No hay contrato en esta propiedad para retirar", severity: "error" });
+            return;
+          }
+
+          try {
+            userStore.pushToast({
+              message: "Retirando USDC acumulados de la blockchain...",
+              severity: "info"
+            });
+
+            const result = await rentalsService.withdrawRent(targetAgreement);
+
+            set((state) => ({
+              ownedProperties: state.ownedProperties.map((p) =>
+                p.id === propertyId ? { ...p, availableToWithdraw: 0 } : p
+              )
+            }));
+
+            await get().syncOwnedProperties();
+
+            const isMock = import.meta.env.VITE_USE_MOCKS === "true";
+            if (!isMock) {
+              await userStore.syncOnchainBalance();
+            }
+
+            userStore.pushToast({
+              message: `Retiro exitoso de USDC de "${property.name}"`,
+              severity: "success",
+              txHash: result.txHash
+            });
+          } catch (err: any) {
+            console.error("Failed to withdraw rent:", err);
+            userStore.pushToast({
+              message: err.message || "Error al retirar fondos de la blockchain",
+              severity: "error"
+            });
+          }
+        },
+
+        createContract: async (propertyId, tenant, rent) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+
+          const property = get().ownedProperties.find((p) => p.id === propertyId);
+          if (!property) return;
+
+          try {
+            userStore.pushToast({
+              message: "Desplegando contrato de alquiler en blockchain...",
+              severity: "info"
+            });
+
+            const dynamicPropertyId = property.propertyId || 1;
+            const result = await propertyDashboardService.createContract(wallet, dynamicPropertyId, tenant, rent);
+
+            set((s) => ({
+              ownedProperties: s.ownedProperties.map((p) =>
+                p.id === propertyId ? { ...p, contractStatus: "draft", tenant, monthlyRent: rent, agreementAddress: result.agreementAddress } : p
+              )
+            }));
+
+            await get().syncOwnedProperties();
+
+            userStore.pushToast({
+              message: `Contrato de alquiler creado en ${result.agreementAddress}`,
+              severity: "success",
+              txHash: result.txHash
+            });
+          } catch (err: any) {
+            console.error("Failed to deploy rental agreement:", err);
+            userStore.pushToast({
+              message: err.message || "Error al desplegar contrato de alquiler en blockchain",
+              severity: "error"
+            });
+          }
+        },
+
+        signContract: async (propertyId) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          const { rentalsService } = getServices(wallet);
+
+          const property = get().ownedProperties.find((p) => p.id === propertyId);
+          if (!property) return;
+
+          const targetAgreement = property.agreementAddress || property.rentalToken;
+          if (!targetAgreement) {
+            userStore.pushToast({ message: "No hay contrato desplegado para firmar", severity: "error" });
+            return;
+          }
+
+          try {
+            userStore.pushToast({
+              message: "Aprobando contrato de alquiler en blockchain...",
+              severity: "info"
+            });
+
+            const result = await rentalsService.approveAgreement({
+              agreementAddress: targetAgreement,
+              isTenant: false
+            });
+
+            set((s) => ({
+              ownedProperties: s.ownedProperties.map((p) =>
+                p.id === propertyId
+                  ? {
+                    ...p,
+                    contractStatus: "active",
+                    tenantSince: new Date().toISOString().slice(0, 10),
+                    nextChargeDate: "2026-08-01",
+                  }
+                  : p
+              )
+            }));
+
+            await get().syncOwnedProperties();
+
+            userStore.pushToast({
+              message: "Contrato firmado exitosamente on-chain",
+              severity: "success",
+              txHash: result.txHash
+            });
+          } catch (err: any) {
+            console.error("Failed to sign contract:", err);
+            userStore.pushToast({
+              message: err.message || "Error al firmar contrato en blockchain",
+              severity: "error"
+            });
+          }
+        },
+
+        cancelContract: async (propertyId) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          const { rentalsService } = getServices(wallet);
+
+          const property = get().ownedProperties.find((p) => p.id === propertyId);
+          if (!property) return;
+
+          const targetAgreement = property.agreementAddress || property.rentalToken;
+          if (!targetAgreement) {
+            userStore.pushToast({ message: "No hay contrato para cancelar", severity: "error" });
+            return;
+          }
+
+          try {
+            userStore.pushToast({
+              message: "Cancelando contrato en blockchain...",
+              severity: "info"
+            });
+
+            const result = await rentalsService.cancelAgreement(targetAgreement);
+
+            set((s) => ({
+              ownedProperties: s.ownedProperties.map((p) =>
+                p.id === propertyId ? { ...p, contractStatus: "cancelled", tenant: null, nextChargeDate: undefined } : p
+              )
+            }));
+
+            await get().syncOwnedProperties();
+
+            userStore.pushToast({
+              message: "Contrato cancelado cooperativamente on-chain",
+              severity: "info",
+              txHash: result.txHash
+            });
+          } catch (err: any) {
+            console.error("Failed to cancel contract:", err);
+            userStore.pushToast({
+              message: err.message || "Error al cancelar contrato en blockchain",
+              severity: "error"
+            });
+          }
+        },
+
+        importProperty: async (propertyId: number) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          if (!wallet) return;
+
+          try {
+            userStore.pushToast({ message: "Verificando propiedad en la blockchain...", severity: "info" });
+
+            await propertyDashboardService.verifyPropertyOwnership(wallet, propertyId);
+
+            const currentImports = get().propertyImports || [];
+            if (currentImports.includes(propertyId)) {
+              userStore.pushToast({ message: "La propiedad ya está en tu lista", severity: "warning" });
+              return;
+            }
+
+            set({ propertyImports: [...currentImports, propertyId] });
+            await get().syncOwnedProperties();
+
+            userStore.pushToast({ message: "Propiedad importada con éxito", severity: "success" });
+          } catch (err: any) {
+            console.error("Failed to import property:", err);
+            userStore.pushToast({
+              message: err.message || "Error al importar propiedad",
+              severity: "error"
+            });
+          }
+        },
+
+        syncOwnedProperties: async () => {
+          ownedPropertiesSyncVersion++;
+          const currentVersion = ownedPropertiesSyncVersion;
+
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          if (!wallet) {
+            if (currentVersion === ownedPropertiesSyncVersion) {
+              set({ ownedProperties: [] });
+            }
+            return;
+          }
+
+          try {
+            const imports = get().propertyImports || [];
+            const existingProps = get().ownedProperties;
+            const loadedProps = await loadOwnedProperties(wallet, imports, existingProps);
+
+            if (currentVersion !== ownedPropertiesSyncVersion) {
+              return;
+            }
+
+            set({ ownedProperties: loadedProps });
+          } catch (error: any) {
+            if (currentVersion !== ownedPropertiesSyncVersion) {
+              return;
+            }
+            console.error("Failed to sync owned properties:", error);
+            userStore.pushToast({
+              message: "Error al sincronizar propiedades: " + (error.message || error.toString()),
+              severity: "error"
+            });
+          }
+        },
+
+        updateSmartlock: (propertyId, updates) => {
+          set((s) => ({
+            ownedProperties: s.ownedProperties.map((p) =>
+              p.id === propertyId ? { ...p, smartlock: { ...p.smartlock, ...updates } } : p
+            )
+          }));
+        }
       };
-      set((state) => ({
-        ownedProperties: [newProp, ...state.ownedProperties]
-      }));
-      userStore.pushToast({
-        message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
-        severity: "success",
-        txHash: tx,
-      });
-      return;
+    },
+    {
+      name: "properties-store-storage",
+      partialize: (state) => ({ propertyImports: state.propertyImports || [] })
     }
-
-    // Real on-chain flow
-    try {
-      userStore.pushToast({
-        message: "Minteando NFT de Propiedad en la blockchain...",
-        severity: "info"
-      });
-
-      const result = await PropertiesService.mintProperty(wallet, `ipfs://property-metadata-${Date.now()}`);
-      
-      const newProp: OwnedProperty = {
-        id: `own-${Date.now()}`,
-        name: input.name,
-        type: input.type,
-        address: input.address,
-        imageUrl: "/images/prop-5.png",
-        propertyId: BigInt(Date.now()),
-        realEstateToken: result.contractAddress || input.realEstateToken,
-        rentalToken: "",
-        agreementAddress: undefined,
-        monthlyRent: input.monthlyRent,
-        tenant: null,
-        availableToWithdraw: 0,
-        contractStatus: "draft",
-        smartlock: { id: `lock-${Date.now()}`, installed: false, nfcEnabled: false, unlocked: false },
-        payments: [],
-      };
-
-      set((state) => ({
-        ownedProperties: [newProp, ...state.ownedProperties]
-      }));
-
-      userStore.pushToast({
-        message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
-        severity: "success",
-        txHash: result.txHash,
-      });
-    } catch (err: any) {
-      console.error("Failed to mint property NFT:", err);
-      userStore.pushToast({
-        message: err.message || "Error al mintear propiedad en blockchain",
-        severity: "error"
-      });
-    }
-  },
-
-  withdrawRent: async (propertyId) => {
-    const userStore = useUserStore.getState();
-    const wallet = userStore.wallet;
-
-    const property = get().ownedProperties.find((p) => p.id === propertyId);
-    if (!property) return;
-
-    // Use agreementAddress if present, else fallback to rentalToken
-    const targetAgreement = property.agreementAddress || property.rentalToken;
-
-    if (isMockWallet(wallet) || !targetAgreement) {
-      // Mock flow
-      let message = "";
-      let tx = "";
-      let addedBalance = 0;
-      set((state) => {
-        const updated = state.ownedProperties.map((p) => {
-          if (p.id !== propertyId) return p;
-          if (p.availableToWithdraw <= 0) return p;
-          addedBalance = p.availableToWithdraw;
-          tx = fakeTx();
-          message = `Retiraste ${p.availableToWithdraw} USDC de "${p.name}"`;
-          return { ...p, availableToWithdraw: 0 };
-        });
-        return {
-          ownedProperties: updated,
-        };
-      });
-      if (addedBalance > 0) {
-        userStore.adjustBalance(addedBalance);
-      }
-      if (message) {
-        userStore.pushToast({ message, severity: "success", txHash: tx });
-      }
-      return;
-    }
-
-    // Real on-chain flow
-    try {
-      userStore.pushToast({
-        message: "Retirando USDC acumulados de la blockchain...",
-        severity: "info"
-      });
-
-      const result = await RentalsService.withdrawRent(targetAgreement);
-      
-      set((state) => ({
-        ownedProperties: state.ownedProperties.map((p) =>
-          p.id === propertyId ? { ...p, availableToWithdraw: 0 } : p
-        )
-      }));
-
-      // Sync wallet balance
-      await userStore.syncOnchainBalance();
-
-      userStore.pushToast({
-        message: `Retiro exitoso de ${property.availableToWithdraw} USDC de "${property.name}"`,
-        severity: "success",
-        txHash: result.txHash
-      });
-    } catch (err: any) {
-      console.error("Failed to withdraw rent:", err);
-      userStore.pushToast({
-        message: err.message || "Error al retirar fondos de la blockchain",
-        severity: "error"
-      });
-    }
-  },
-
-  payMonthlyRent: async (rentalId, month) => {
-    const userStore = useUserStore.getState();
-    const wallet = userStore.wallet;
-
-    const r = get().rentals.find((x) => x.id === rentalId);
-    if (!r) return;
-
-    const already = r.payments.find((p) => p.month === month && p.status === "paid");
-    if (already) {
-      userStore.pushToast({ message: `El mes ${month} ya estaba pagado`, severity: "warning" });
-      return;
-    }
-
-    // Must use real agreementAddress for Web3 flow
-    const targetAgreement = r.agreementAddress;
-
-    if (isMockWallet(wallet) || !targetAgreement) {
-      // Mock flow
-      const balance = userStore.balance;
-      if (balance < r.monthlyRent) {
-        userStore.pushToast({ message: "Saldo USDC insuficiente", severity: "error" });
-        return;
-      }
-
-      const tx = fakeTx();
-      const record: PaymentRecord = {
-        month,
-        amount: r.monthlyRent,
-        status: "paid",
-        paidAt: new Date().toISOString(),
-        txHash: tx,
-      };
-
-      userStore.adjustBalance(-r.monthlyRent);
-      set((s) => ({
-        rentals: s.rentals.map((item) => {
-          if (item.id !== rentalId) return item;
-          const others = item.payments.filter((p) => p.month !== month);
-          return {
-            ...item,
-            payments: [record, ...others].sort((a, b) => b.month.localeCompare(a.month))
-          };
-        })
-      }));
-
-      userStore.pushToast({
-        message: `Pagaste ${r.monthlyRent} USDC — ${r.name} (${month})`,
-        severity: "success",
-        txHash: tx,
-      });
-      return;
-    }
-
-    // Real on-chain flow
-    try {
-      userStore.pushToast({
-        message: "Enviando pago de alquiler a la blockchain...",
-        severity: "info"
-      });
-
-      const result = await RentalsService.payRent(targetAgreement, r.monthlyRent);
-
-      const record: PaymentRecord = {
-        month,
-        amount: r.monthlyRent,
-        status: "paid",
-        paidAt: new Date().toISOString(),
-        txHash: result.txHash,
-      };
-
-      set((s) => ({
-        rentals: s.rentals.map((item) => {
-          if (item.id !== rentalId) return item;
-          const others = item.payments.filter((p) => p.month !== month);
-          return {
-            ...item,
-            payments: [record, ...others].sort((a, b) => b.month.localeCompare(a.month))
-          };
-        })
-      }));
-
-      await userStore.syncOnchainBalance();
-
-      userStore.pushToast({
-        message: `Pagaste ${r.monthlyRent} USDC — ${r.name} (${month})`,
-        severity: "success",
-        txHash: result.txHash,
-      });
-    } catch (err: any) {
-      console.error("Failed to pay monthly rent:", err);
-      userStore.pushToast({
-        message: err.message || "Error al procesar pago de alquiler en la blockchain",
-        severity: "error"
-      });
-    }
-  },
-
-  createContract: async (propertyId, tenant, rent) => {
-    const userStore = useUserStore.getState();
-    const wallet = userStore.wallet;
-
-    const property = get().ownedProperties.find((p) => p.id === propertyId);
-    if (!property) return;
-
-    if (isMockWallet(wallet)) {
-      // Mock flow
-      set((s) => ({
-        ownedProperties: s.ownedProperties.map((p) =>
-          p.id === propertyId ? { ...p, contractStatus: "draft", tenant, monthlyRent: rent } : p
-        )
-      }));
-      userStore.pushToast({ message: "Contrato de alquiler creado (borrador on-chain)", severity: "info", txHash: fakeTx() });
-      return;
-    }
-
-    // Real on-chain flow using dynamic property.propertyId
-    try {
-      userStore.pushToast({
-        message: "Desplegando contrato de alquiler en blockchain...",
-        severity: "info"
-      });
-
-      const dynamicPropertyId = property.propertyId || 1n;
-      const oneDaySeconds = 24 * 60 * 60;
-      const thirtyDaysSeconds = 30 * oneDaySeconds;
-      
-      const result = await RentalsService.createRental({
-        propertyId: dynamicPropertyId,
-        tenant,
-        baseRent: rent,
-        securityDeposit: rent * 2,
-        inflationBps: 500,
-        lateFeeBps: 100,
-        gracePeriod: 5 * oneDaySeconds,
-        duration: 12 * thirtyDaysSeconds,
-        deadline: Math.floor(Date.now() / 1000) + 7 * oneDaySeconds
-      });
-
-      set((s) => ({
-        ownedProperties: s.ownedProperties.map((p) =>
-          p.id === propertyId ? { ...p, contractStatus: "draft", tenant, monthlyRent: rent, agreementAddress: result.agreementAddress } : p
-        )
-      }));
-
-      userStore.pushToast({
-        message: `Contrato de alquiler creado en ${result.agreementAddress}`,
-        severity: "success",
-        txHash: result.txHash
-      });
-    } catch (err: any) {
-      console.error("Failed to deploy rental agreement:", err);
-      userStore.pushToast({
-        message: err.message || "Error al desplegar contrato de alquiler en blockchain",
-        severity: "error"
-      });
-    }
-  },
-
-  signContract: async (propertyId) => {
-    const userStore = useUserStore.getState();
-    const wallet = userStore.wallet;
-
-    const property = get().ownedProperties.find((p) => p.id === propertyId);
-    if (!property) return;
-
-    // Use agreementAddress if present, else fallback to rentalToken
-    const targetAgreement = property.agreementAddress || property.rentalToken;
-
-    if (isMockWallet(wallet) || !targetAgreement) {
-      // Mock flow
-      set((s) => ({
-        ownedProperties: s.ownedProperties.map((p) =>
-          p.id === propertyId
-            ? {
-                ...p,
-                contractStatus: "active",
-                tenantSince: new Date().toISOString().slice(0, 10),
-                nextChargeDate: "2026-08-01",
-              }
-            : p
-        )
-      }));
-      userStore.pushToast({ message: "Contrato firmado y activado", severity: "success", txHash: fakeTx() });
-      return;
-    }
-
-    // Real on-chain flow
-    try {
-      userStore.pushToast({
-        message: "Aprobando contrato de alquiler en blockchain...",
-        severity: "info"
-      });
-
-      const result = await RentalsService.approveAgreement({
-        agreementAddress: targetAgreement,
-        isTenant: false
-      });
-
-      set((s) => ({
-        ownedProperties: s.ownedProperties.map((p) =>
-          p.id === propertyId
-            ? {
-                ...p,
-                contractStatus: "active",
-                tenantSince: new Date().toISOString().slice(0, 10),
-                nextChargeDate: "2026-08-01",
-              }
-            : p
-        )
-      }));
-
-      userStore.pushToast({
-        message: "Contrato firmado exitosamente on-chain",
-        severity: "success",
-        txHash: result.txHash
-      });
-    } catch (err: any) {
-      console.error("Failed to sign contract:", err);
-      userStore.pushToast({
-        message: err.message || "Error al firmar contrato en blockchain",
-        severity: "error"
-      });
-    }
-  },
-
-  cancelContract: async (propertyId) => {
-    const userStore = useUserStore.getState();
-    const wallet = userStore.wallet;
-
-    const property = get().ownedProperties.find((p) => p.id === propertyId);
-    if (!property) return;
-
-    const targetAgreement = property.agreementAddress || property.rentalToken;
-
-    if (isMockWallet(wallet) || !targetAgreement) {
-      // Mock flow
-      set((s) => ({
-        ownedProperties: s.ownedProperties.map((p) =>
-          p.id === propertyId ? { ...p, contractStatus: "cancelled", tenant: null, nextChargeDate: undefined } : p
-        )
-      }));
-      userStore.pushToast({ message: "Contrato cancelado cooperativamente", severity: "info", txHash: fakeTx() });
-      return;
-    }
-
-    // Real on-chain flow
-    try {
-      userStore.pushToast({
-        message: "Cancelando contrato en blockchain...",
-        severity: "info"
-      });
-
-      const result = await RentalsService.cancelAgreement(targetAgreement);
-
-      set((s) => ({
-        ownedProperties: s.ownedProperties.map((p) =>
-          p.id === propertyId ? { ...p, contractStatus: "cancelled", tenant: null, nextChargeDate: undefined } : p
-        )
-      }));
-
-      userStore.pushToast({
-        message: "Contrato cancelado cooperativamente on-chain",
-        severity: "info",
-        txHash: result.txHash
-      });
-    } catch (err: any) {
-      console.error("Failed to cancel contract:", err);
-      userStore.pushToast({
-        message: err.message || "Error al cancelar contrato en blockchain",
-        severity: "error"
-      });
-    }
-  }
-}));
+  )
+);
 
 export type UsePropertiesStoreReturn = ReturnType<typeof usePropertiesStore>;

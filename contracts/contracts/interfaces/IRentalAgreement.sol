@@ -48,6 +48,14 @@ interface IRentalAgreement {
     function approveAgreement() external;
 
     /**
+     * @notice Calculates the current rent, late fee, and total amount to pay for the current period.
+     * @return currentRent The rent amount with inflation for the current period.
+     * @return lateFee The calculated late fee if applicable.
+     * @return totalAmount The sum of currentRent and lateFee.
+     */
+    function getRentAmountToPay() external view returns (uint256 currentRent, uint256 lateFee, uint256 totalAmount);
+
+    /**
      * @notice Tenant pays the monthly rent (and late fee if applicable).
      * @dev Escrows the funds inside the agreement contract.
      */

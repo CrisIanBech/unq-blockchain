@@ -10,6 +10,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Button,
   useMediaQuery,
   useTheme,
 } from "@mui/material"
@@ -20,6 +21,8 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded"
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded"
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded"
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded"
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded"
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded"
 
 const NAV = [
   { label: "Buscador", href: "/", icon: <TravelExploreRoundedIcon /> },
@@ -38,6 +41,8 @@ interface AppShellProps {
   mode: "light" | "dark"
   onToggleTheme: () => void
   onConnectWallet?: () => void
+  onDisconnectWallet?: () => void
+  connectWalletSlot?: ReactNode
 }
 
 export function AppShell({
@@ -50,6 +55,8 @@ export function AppShell({
   mode,
   onToggleTheme,
   onConnectWallet,
+  onDisconnectWallet,
+  connectWalletSlot,
 }: AppShellProps) {
   const theme = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -167,13 +174,54 @@ export function AppShell({
               label={`${balance.toLocaleString()} USDC`}
               sx={{ bgcolor: "primaryContainer.main", color: "primaryContainer.contrastText", fontWeight: 700 }}
             />
-            <Chip
-              label={walletLabel}
-              variant={walletConnected ? "outlined" : "filled"}
-              color={walletConnected ? "default" : "primary"}
-              onClick={onConnectWallet}
-              sx={{ fontFamily: "monospace", cursor: onConnectWallet ? "pointer" : "default" }}
-            />
+            {wallet ? (
+              <Box
+                sx={{
+                  display: { xs: "none", sm: "flex" },
+                  alignItems: "center",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  pl: 1.5,
+                  pr: 0.5,
+                  height: 32,
+                  gap: 0.5,
+                }}
+              >
+                <Typography variant="body2" sx={{ fontFamily: "monospace", mr: 0.5 }}>
+                  {`${wallet.slice(0, 6)}...${wallet.slice(-4)}`}
+                </Typography>
+                <Tooltip title="Copiar dirección">
+                  <IconButton size="small" onClick={() => navigator.clipboard.writeText(wallet)}>
+                    <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Desconectar">
+                  <IconButton size="small" color="error" onClick={onDisconnectWallet}>
+                    <LogoutRoundedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            ) : (
+              connectWalletSlot || (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disableElevation
+                  onClick={onConnectWallet}
+                  sx={{
+                    height: 32,
+                    textTransform: "none",
+                    borderRadius: 2,
+                    px: 2,
+                    fontWeight: 600,
+                    fontSize: "0.875rem"
+                  }}
+                >
+                  Conectar
+                </Button>
+              )
+            )}
             <Tooltip title={mode === "light" ? "Modo oscuro" : "Modo claro"}>
               <IconButton onClick={onToggleTheme} aria-label="cambiar tema">
                 {mode === "light" ? <DarkModeRoundedIcon /> : <LightModeRoundedIcon />}
