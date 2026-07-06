@@ -11,6 +11,27 @@ interface IRentalAgreement {
 
     // Enums definition needs to be visible in interface imports
     
+    struct AgreementDetails {
+        uint256 propertyId;
+        address tenant;
+        address landlord;
+        uint256 baseRent;
+        uint256 rentPaidUntil;
+        AgreementStatus status;
+        uint256 startTime;
+        uint256 paymentPeriod;
+        uint256 securityDeposit;
+        uint256 inflationBps;
+        uint256 lateFeeBps;
+        uint256 gracePeriod;
+        uint256 duration;
+        uint256 deadline;
+        bool landlordApproved;
+        bool tenantApproved;
+        bool landlordCancelled;
+        bool tenantCancelled;
+    }
+
     function propertyNFT() external view returns (address);
     function rentalNFT() external view returns (address);
     function propertyId() external view returns (uint256);
@@ -40,6 +61,11 @@ interface IRentalAgreement {
      * @notice Dynamically resolves the current owner of the PropertyNFT as the landlord.
      */
     function landlord() external view returns (address);
+
+    /**
+     * @notice Returns all agreement details in a single struct to save RPC calls.
+     */
+    function getAgreementDetails() external view returns (AgreementDetails memory);
 
     /**
      * @notice Allows landlord or tenant to approve the rental terms.
