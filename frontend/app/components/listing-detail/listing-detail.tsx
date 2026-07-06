@@ -8,7 +8,6 @@ import {
   TextField,
   Button,
   IconButton,
-  Avatar,
   Stack,
   CircularProgress,
 } from "@mui/material"
@@ -18,11 +17,11 @@ import BathtubRoundedIcon from "@mui/icons-material/BathtubRounded"
 import SquareFootRoundedIcon from "@mui/icons-material/SquareFootRounded"
 import RateReviewRoundedIcon from "@mui/icons-material/RateReviewRounded"
 import type { Listing, Review } from "@/models/types"
-import { usdc, dateLabel, TYPE_LABEL } from "@/lib/format"
+import { usdc, TYPE_LABEL } from "@/lib/format"
 import { ReviewItem } from "./review-item"
 import { useUserStore } from "@/stores/user-store"
 import { useReviewSystem } from "@/hooks/use-review-system"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 
 function avgRating(reviews: Review[]) {
   if (!reviews.length) return 0

@@ -45,7 +45,7 @@ export function PropertyMenu({
           Crear contrato
         </MenuItem>
       )}
-      {property.contractStatus === "draft" && (
+      {property.contractStatus === "draft" && !property.landlordApproved && (
         <MenuItem
           onClick={() => {
             onCloseMenu()

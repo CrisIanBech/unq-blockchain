@@ -6,7 +6,7 @@ interface UserState {
   wallet: string;
   balance: number;
   toasts: Toast[];
-  pushToast: (t: Omit<Toast, "id">) => void;
+  pushToast: (t: Omit<Toast, "id"> & { id?: number }) => number;
   dismissToast: (id: number) => void;
   adjustBalance: (amount: number) => void;
   connectWallet: () => Promise<void>;
@@ -20,9 +20,15 @@ export const useUserStore = create<UserState>((set, get) => ({
   toasts: [],
 
   pushToast: (t) => {
-    set((state) => ({
-      toasts: [...state.toasts, { ...t, id: Date.now() + Math.random() }]
-    }));
+    const id = t.id ?? (Date.now() + Math.random());
+    set((state) => {
+      const exists = state.toasts.find(toast => toast.id === id);
+      if (exists) {
+        return { toasts: state.toasts.map(toast => toast.id === id ? { ...t, id } : toast) };
+      }
+      return { toasts: [...state.toasts, { ...t, id }] };
+    });
+    return id;
   },
 
   dismissToast: (id) => {
@@ -95,7 +101,7 @@ if (typeof window !== "undefined") {
         try {
           const balance = await WalletService.getUSDCBalance(address);
           useUserStore.setState({ balance });
-        } catch (err) {
+        } catch (_err) {
           // Silently fail
         }
       }
@@ -117,7 +123,7 @@ if (typeof window !== "undefined") {
               const balance = await WalletService.getUSDCBalance(nextWallet);
               useUserStore.setState({ balance });
               userStore.pushToast({ message: "Cuenta de MetaMask cambiada", severity: "info" });
-            } catch (err) {
+            } catch (_err) {
               // Silently fail
             }
           } else {

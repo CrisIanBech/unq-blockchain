@@ -25,6 +25,16 @@ export interface IRentalsRepository {
     status: number;
     startTime: bigint;
     paymentPeriod: bigint;
+    securityDeposit: bigint;
+    inflationBps: bigint;
+    lateFeeBps: bigint;
+    gracePeriod: bigint;
+    duration: bigint;
+    deadline: bigint;
+    landlordApproved: boolean;
+    tenantApproved: boolean;
+    landlordCancelled: boolean;
+    tenantCancelled: boolean;
   }>;
   getPaymentHistory(agreementAddress: string): Promise<Array<{
     periodIndex: number;
@@ -159,31 +169,42 @@ export class RentalsRepository implements IRentalsRepository {
     status: number;
     startTime: bigint;
     paymentPeriod: bigint;
+    securityDeposit: bigint;
+    inflationBps: bigint;
+    lateFeeBps: bigint;
+    gracePeriod: bigint;
+    duration: bigint;
+    deadline: bigint;
+    landlordApproved: boolean;
+    tenantApproved: boolean;
+    landlordCancelled: boolean;
+    tenantCancelled: boolean;
   }> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
     const agreement = getRentalAgreement(agreementAddress, signer);
-    const [propertyId, tenant, landlord, baseRent, rentPaidUntil, status, startTime, paymentPeriod] = await Promise.all([
-      agreement.propertyId(),
-      agreement.tenant(),
-      agreement.landlord(),
-      agreement.baseRent(),
-      agreement.rentPaidUntil(),
-      agreement.status(),
-      agreement.startTime(),
-      agreement.paymentPeriod()
-    ]);
+    const details = await agreement.getAgreementDetails();
 
-    return { 
-      propertyId, 
-      tenant, 
-      landlord, 
-      baseRent, 
-      rentPaidUntil, 
-      status: Number(status),
-      startTime,
-      paymentPeriod
+    return {
+      propertyId: details.propertyId,
+      tenant: details.tenant,
+      landlord: details.landlord,
+      baseRent: details.baseRent,
+      rentPaidUntil: details.rentPaidUntil,
+      status: Number(details.status),
+      startTime: details.startTime,
+      paymentPeriod: details.paymentPeriod,
+      securityDeposit: details.securityDeposit,
+      inflationBps: details.inflationBps,
+      lateFeeBps: details.lateFeeBps,
+      gracePeriod: details.gracePeriod,
+      duration: details.duration,
+      deadline: details.deadline,
+      landlordApproved: details.landlordApproved,
+      tenantApproved: details.tenantApproved,
+      landlordCancelled: details.landlordCancelled,
+      tenantCancelled: details.tenantCancelled
     };
   }
 
@@ -198,13 +219,11 @@ export class RentalsRepository implements IRentalsRepository {
     if (!signer) throw new Error("No signer available.");
 
     const agreement = getRentalAgreement(agreementAddress, signer);
-    
-    // Create filter for the RentPaid event
+
     const filter = agreement.filters.RentPaid();
-    
-    // Query logs from block 0 to latest
+
     const logs = await agreement.queryFilter(filter, 0, "latest");
-    
+
     return logs.map((log: any) => ({
       periodIndex: Number(log.args[0]),
       amount: log.args[1],
@@ -221,9 +240,9 @@ export class RentalsRepository implements IRentalsRepository {
     const factory = getRentalAgreementFactory(signer);
     const filter = factory.filters.RentalAgreementCreated(null, BigInt(propertyId));
     const events = await factory.queryFilter(filter, 0, "latest");
-    
+
     if (events.length === 0) return null;
-    
+
     const latestEvent = events[events.length - 1];
     if ("args" in latestEvent && latestEvent.args) {
       return latestEvent.args[0] as string;
@@ -237,7 +256,7 @@ export class RentalsRepository implements IRentalsRepository {
 
     const agreement = getRentalAgreement(agreementAddress, signer);
     const usdc = getMockUSDC(signer);
-    
+
     const rawBalance = await usdc.balanceOf(agreementAddress);
     const rawDepositStatus = await agreement.depositStatus();
     const rawSecurityDeposit = await agreement.securityDeposit();
@@ -245,8 +264,7 @@ export class RentalsRepository implements IRentalsRepository {
     const balance = BigInt(rawBalance);
     const depositStatus = Number(rawDepositStatus);
     const securityDeposit = BigInt(rawSecurityDeposit);
-    
-    // DepositStatus.Locked is 1
+
     const lockedAmount = (depositStatus === 1) ? securityDeposit : 0n;
     if (balance <= lockedAmount) return 0n;
     return balance - lockedAmount;

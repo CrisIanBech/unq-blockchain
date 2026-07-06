@@ -1,4 +1,5 @@
-import { Snackbar, Alert, Typography, Box } from "@mui/material"
+import { Snackbar, Alert, Typography, Box, IconButton, Tooltip } from "@mui/material"
+import ContentCopyIcon from "@mui/icons-material/ContentCopy"
 import type { Toast } from "@models/types"
 
 interface ToastHostProps {
@@ -13,7 +14,7 @@ export function ToastHost({ toasts, onDismissToast }: ToastHostProps) {
         <Snackbar
           key={t.id}
           open
-          autoHideDuration={4000}
+          autoHideDuration={t.txHash ? null : 4000}
           onClose={() => onDismissToast(t.id)}
           anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
           sx={{ bottom: { xs: 96 + i * 70, md: 24 + i * 70 } }}
@@ -29,9 +30,21 @@ export function ToastHost({ toasts, onDismissToast }: ToastHostProps) {
                 {t.message}
               </Typography>
               {t.txHash && (
-                <Typography variant="caption" sx={{ fontFamily: "monospace", opacity: 0.85 }}>
-                  tx {t.txHash}
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontFamily: "monospace", opacity: 0.85 }}>
+                    tx {t.txHash.length > 14 ? `${t.txHash.slice(0, 8)}...${t.txHash.slice(-6)}` : t.txHash}
+                  </Typography>
+                  <Tooltip title="Copiar hash">
+                    <IconButton 
+                      size="small" 
+                      color="inherit" 
+                      onClick={() => navigator.clipboard.writeText(t.txHash!)}
+                      sx={{ p: 0.5 }}
+                    >
+                      <ContentCopyIcon fontSize="small" sx={{ fontSize: '1rem' }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               )}
             </Box>
           </Alert>

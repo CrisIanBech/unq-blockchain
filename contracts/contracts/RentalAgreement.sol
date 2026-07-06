@@ -145,6 +145,32 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
     }
 
     /**
+     * @notice Returns all agreement details in a single struct to save RPC calls on the frontend.
+     */
+    function getAgreementDetails() external view override returns (AgreementDetails memory) {
+        return AgreementDetails({
+            propertyId: propertyId,
+            tenant: tenant,
+            landlord: landlord(),
+            baseRent: baseRent,
+            rentPaidUntil: rentPaidUntil,
+            status: status,
+            startTime: startTime,
+            paymentPeriod: paymentPeriod,
+            securityDeposit: securityDeposit,
+            inflationBps: inflationBps,
+            lateFeeBps: lateFeeBps,
+            gracePeriod: gracePeriod,
+            duration: duration,
+            deadline: deadline,
+            landlordApproved: landlordApproved,
+            tenantApproved: tenantApproved,
+            landlordCancelled: landlordCancelled,
+            tenantCancelled: tenantCancelled
+        });
+    }
+
+    /**
      * @notice Allows landlord or tenant to approve the rental terms.
      * @dev Once both approve, the contract assigns the ERC4907 occupancy user.
      */

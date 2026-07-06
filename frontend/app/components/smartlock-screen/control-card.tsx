@@ -5,7 +5,6 @@ import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded"
 import NfcRoundedIcon from "@mui/icons-material/NfcRounded"
 import AddModeratorRoundedIcon from "@mui/icons-material/AddModeratorRounded"
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
-import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded"
 import { dateLabel } from "@/lib/format"
 import { PowerIcon } from "./power-icon"
 

@@ -3,7 +3,7 @@ import { IPropertiesRepository } from "./properties-repository";
 const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
 
 export class MockPropertiesRepository implements IPropertiesRepository {
-  async createProperty(recipient: string, metadataURI: string): Promise<any> {
+  async createProperty(_recipient: string, _metadataURI: string): Promise<any> {
     await new Promise((res) => setTimeout(res, 500));
     return {
       hash: fakeTx(),
@@ -17,7 +17,7 @@ export class MockPropertiesRepository implements IPropertiesRepository {
     return `ipfs://mock-property-${propertyId.toString()}`;
   }
 
-  async getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }> {
+  async getPropertyLocation(_propertyId: number): Promise<{ lat: number; lng: number }> {
     await new Promise((res) => setTimeout(res, 500));
     // Mock location in Web Mercator (e.g., somewhere in Buenos Aires)
     // Buenos Aires lat/lng: -34.6037, -58.3816
@@ -33,7 +33,7 @@ export class MockPropertiesRepository implements IPropertiesRepository {
     return [];
   }
 
-  async ownerOf(propertyId: number): Promise<string> {
+  async ownerOf(_propertyId: number): Promise<string> {
     await new Promise((res) => setTimeout(res, 100));
     return "0xMockUser";
   }

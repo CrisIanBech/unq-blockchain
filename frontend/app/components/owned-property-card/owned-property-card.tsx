@@ -10,7 +10,6 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material"
-import { alpha } from "@mui/material/styles"
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded"
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded"
@@ -70,7 +69,11 @@ export function OwnedPropertyCard({
         type={property.type}
         isOverdue={isOverdue}
         statusColor={s.color}
-        statusLabel={s.label}
+        statusLabel={
+          property.contractStatus === "draft" && property.landlordApproved
+            ? "Esperando al inquilino"
+            : s.label
+        }
       />
 
       <CardContent>
