@@ -17,7 +17,7 @@ import BathtubRoundedIcon from "@mui/icons-material/BathtubRounded"
 import SquareFootRoundedIcon from "@mui/icons-material/SquareFootRounded"
 import RateReviewRoundedIcon from "@mui/icons-material/RateReviewRounded"
 import type { Listing, Review } from "@/models/types"
-import { usdc, TYPE_LABEL } from "@/lib/format"
+import { TYPE_LABEL } from "@/lib/format"
 import { ReviewItem } from "./review-item"
 import { useUserStore } from "@/stores/user-store"
 import { useReviewSystem } from "@/hooks/use-review-system"
@@ -133,29 +133,11 @@ export function ListingDetail({
           )}
         </Box>
 
-        <Box
-          sx={{
-            mt: 2.5,
-            p: 2,
-            borderRadius: 4,
-            bgcolor: "primaryContainer.main",
-            color: "primaryContainer.contrastText",
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-          }}
-        >
-          <Typography variant="body2">Alquiler mensual</Typography>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            {usdc(listing?.monthlyRent ?? 0)}
-          </Typography>
-        </Box>
-
         <Button 
           variant="contained" 
           fullWidth 
           size="large" 
-          sx={{ mt: 2 }}
+          sx={{ mt: 3 }}
           onClick={() => listing && onRequestContract?.(listing)}
         >
           Solicitar contrato on-chain
