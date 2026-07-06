@@ -6,7 +6,7 @@ import { getBrowserProvider } from "@/lib/blockchain-infra"
 
 export function useMyRentalsPage() {
   const { balance, wallet } = useUserStore()
-  const { rentals, payMonthlyRent, importRental, syncRentals } = useRentalsStore()
+  const { rentals, payMonthlyRent, importRental, syncRentals, signAgreement, removeRental, cancelAgreement } = useRentalsStore()
   const [payTargetId, setPayTargetId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -21,7 +21,6 @@ export function useMyRentalsPage() {
     setIsSyncing(true)
     syncRentals().finally(() => setIsSyncing(false))
 
-    // Listen for new blocks to reload rental details automatically
     const provider = getBrowserProvider()
     if (provider) {
       const listener = () => {
@@ -66,9 +65,13 @@ export function useMyRentalsPage() {
     onSetPayTarget: handleSetPayTarget,
     onToggleExpand: handleToggleExpand,
     onPayRent: payMonthlyRent,
+    onSignAgreement: signAgreement,
+    onCancelAgreement: cancelAgreement,
+    onNavigateToSmartlock: (id: string) => { },
     onOpenAddRental: handleOpenAddRental,
     onCloseAddRental: handleCloseAddRental,
     onImportRental: handleImportRental,
+    onRemoveRental: removeRental,
   }
 }
 export type UseMyRentalsPageReturn = ReturnType<typeof useMyRentalsPage>

@@ -3,9 +3,11 @@ export type PropertyType = "departamento" | "casa" | "ph" | "local" | "oficina"
 export type PaymentStatus = "paid" | "pending" | "overdue"
 
 export interface PaymentRecord {
-  /** ISO month, e.g. "2026-06" */
+  /** ISO month, e.g. "2026-06" or unique period ID */
   month: string
+  periodLabel?: string
   amount: number
+  lateFee?: number
   status: PaymentStatus
   /** ISO datetime when paid */
   paidAt?: string
@@ -31,23 +33,21 @@ export interface OwnedProperty {
   type: PropertyType
   address: string
   imageUrl: string
-  /** Real blockchain property NFT token ID */
   propertyId?: number
-  /** Token addresses (simulated/real). */
   realEstateToken: string
   rentalToken: string
   agreementAddress?: string
   rentalNFTAddress?: string
   monthlyRent: number
-  /** null when vacant */
   tenant: string | null
   tenantSince?: string
   nextChargeDate?: string
   payments: PaymentRecord[]
-  /** Stablecoin (USDC) collected and available to withdraw */
   availableToWithdraw: number
   smartlock: Smartlock
   contractStatus: "draft" | "active" | "cancelled"
+  landlordApproved?: boolean
+  tenantApproved?: boolean
 }
 
 export interface RentalContractDetails {
@@ -61,20 +61,29 @@ export interface RentalContractDetails {
   deadline: number
   startTime: number
   rentPaidUntil: number
-  
   amountToPay: number
   lateFeeAmount: number
   isLate: boolean
+  status: number
+  landlordApproved: boolean
+  tenantApproved: boolean
+  landlordCancelled: boolean
+  tenantCancelled: boolean
+  totalPeriods: number
+  periodsPaid: number
+  periodStart: string
+  periodEnd: string
+  periodLabel: string
+  monthLabelForRecord: string
 }
 
-/** A property the current user RENTS (is the tenant). */
 export interface Rental {
-  id: string; // The agreementAddress
+  id: string;
   agreementAddress?: string;
   propertyId: number;
   name: string;
   type: PropertyType;
-  address: string; // physical address
+  address: string;
   imageUrl: string;
   landlord: string;
   tenant?: string;
@@ -95,7 +104,6 @@ export interface Review {
   date: string
 }
 
-/** A property listed on the marketplace map (available to rent). */
 export interface Listing {
   id: string
   name: string

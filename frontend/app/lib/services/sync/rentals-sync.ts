@@ -20,15 +20,31 @@ export async function loadRentals(
     const addrAttr = metadata.attributes?.find((a: any) => a.trait_type === "address")?.value || "Dirección desconocida";
 
     const payments: PaymentRecord[] = history.map((e) => {
-      const payDate = new Date((Number(details.startTime) + e.periodIndex * 30 * 24 * 60 * 60) * 1000);
+      const paymentPeriod = Number(details.paymentPeriod) || 30 * 24 * 60 * 60;
+      const periodStart = new Date((Number(details.startTime) + e.periodIndex * paymentPeriod) * 1000);
+      const periodEnd = new Date((Number(details.startTime) + (e.periodIndex + 1) * paymentPeriod) * 1000);
+      
+      const dateOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+      const periodLabel = `${periodStart.toLocaleDateString("es-ES", dateOpts)} - ${periodEnd.toLocaleDateString("es-ES", dateOpts)}`;
+
       return {
-        month: `${payDate.getFullYear()}-${String(payDate.getMonth() + 1).padStart(2, "0")}`,
-        amount: e.amount,
+        month: `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, "0")}-${e.periodIndex}`, // unique id for the period
+        periodLabel,
+        amount: e.amount + (e.lateFee || 0),
+        lateFee: e.lateFee,
         status: "paid" as const,
         txHash: e.txHash,
-        paidAt: payDate.toISOString()
+        paidAt: periodStart.toISOString()
       };
     });
+
+    const totalPeriods = Math.floor(details.duration / details.paymentPeriod) || 12;
+    const periodsPaid = Math.floor((details.rentPaidUntil - details.startTime) / details.paymentPeriod) || 0;
+    const periodStart = new Date((details.startTime + periodsPaid * details.paymentPeriod) * 1000);
+    const periodEnd = new Date((details.startTime + (periodsPaid + 1) * details.paymentPeriod) * 1000);
+    const dateOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+    const periodLabel = `${periodStart.toLocaleDateString("es-ES", dateOpts)} - ${periodEnd.toLocaleDateString("es-ES", dateOpts)}`;
+    const monthLabelForRecord = periodStart.toISOString().slice(0, 7);
 
     const newRental: Rental = {
       id: address,
@@ -45,18 +61,29 @@ export async function loadRentals(
       nextPaymentDate: new Date(details.rentPaidUntil * 1000).toISOString().slice(0, 10),
       contractDetails: {
         baseRent: amounts.currentRent,
-        securityDeposit: amounts.currentRent,
-        inflationBps: 0,
-        lateFeeBps: 1000,
-        gracePeriod: 5 * 86400,
+        securityDeposit: details.securityDeposit,
+        inflationBps: details.inflationBps,
+        lateFeeBps: details.lateFeeBps,
+        gracePeriod: details.gracePeriod,
         paymentPeriod: details.paymentPeriod,
-        duration: 12 * details.paymentPeriod,
-        deadline: 0,
+        duration: details.duration,
+        deadline: details.deadline,
         startTime: details.startTime,
         rentPaidUntil: details.rentPaidUntil,
         amountToPay: amounts.totalAmount,
         lateFeeAmount: amounts.lateFee,
-        isLate: amounts.lateFee > 0
+        isLate: amounts.lateFee > 0,
+        status: Number(details.status),
+        landlordApproved: details.landlordApproved,
+        tenantApproved: details.tenantApproved,
+        landlordCancelled: details.landlordCancelled,
+        tenantCancelled: details.tenantCancelled,
+        totalPeriods,
+        periodsPaid,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        periodLabel,
+        monthLabelForRecord
       }
     };
 

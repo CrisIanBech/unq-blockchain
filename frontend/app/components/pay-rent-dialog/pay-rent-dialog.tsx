@@ -11,11 +11,12 @@ import {
 } from "@mui/material"
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded"
-import type { Rental } from "@/models/types"
+import type { Rental, OwnedProperty } from "@/models/types"
 import { usdc } from "@/lib/format"
+import { getRentalAmountToPay } from "@/models/rental-utils"
 
 interface PayRentDialogProps {
-  rental: Rental | null
+  rental: Rental | OwnedProperty | null
   open: boolean
   onClose: () => void
   onPay: (rentalId: string, month: string, amount?: number) => void
@@ -31,9 +32,9 @@ export function PayRentDialog({
 }: PayRentDialogProps) {
   if (!rental) return null
 
-  const details = rental.contractDetails
+  const details = "contractDetails" in rental ? rental.contractDetails : undefined
 
-  if (!details) {
+  if (!details && "contractDetails" in rental) {
     return (
       <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
         <DialogTitle>Cargando...</DialogTitle>
@@ -42,20 +43,29 @@ export function PayRentDialog({
     )
   }
 
-  const totalPeriods = Math.floor(details.duration / details.paymentPeriod) || 12
-  const periodsPaid = Math.floor((details.rentPaidUntil - details.startTime) / details.paymentPeriod) || 0
+  const totalPeriods = details?.totalPeriods ?? 12
+  const periodsPaid = details?.periodsPaid ?? 0
 
-  const periodStart = new Date((details.startTime + periodsPaid * details.paymentPeriod) * 1000)
-  const periodEnd = new Date((details.startTime + (periodsPaid + 1) * details.paymentPeriod) * 1000)
-  const dateOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
-  const periodLabel = `${periodStart.toLocaleDateString("es-ES", dateOpts)} - ${periodEnd.toLocaleDateString("es-ES", dateOpts)}`
+  let periodLabel = details?.periodLabel ?? ""
+  if (!periodLabel) {
+    const periodStart = new Date()
+    const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    const dateOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
+    periodLabel = `${periodStart.toLocaleDateString("es-ES", dateOpts)} - ${periodEnd.toLocaleDateString("es-ES", dateOpts)}`
+  }
 
-  const enoughBalance = balance >= details.amountToPay
+  const amountToPay = getRentalAmountToPay(rental)
+  const baseRent = details?.baseRent ?? rental.monthlyRent
+  const isLate = details?.isLate ?? false
+  const lateFeeAmount = details?.lateFeeAmount ?? 0
+  const lateFeeBps = details?.lateFeeBps ?? 0
+
+  const enoughBalance = balance >= amountToPay
 
   function confirm() {
-    if (!rental || !details) return
-    const monthLabelForRecord = new Date((details.startTime + periodsPaid * details.paymentPeriod) * 1000).toISOString().slice(0, 7)
-    onPay(rental.id, monthLabelForRecord, details.amountToPay)
+    if (!rental) return
+    const monthLabelForRecord = details?.monthLabelForRecord ?? new Date().toISOString().slice(0, 7)
+    onPay(rental.id, monthLabelForRecord, amountToPay)
     onClose()
   }
 
@@ -69,7 +79,7 @@ export function PayRentDialog({
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {rental.name} — Cuota base: {usdc(details.baseRent)}
+          {rental.name} — Cuota base: {usdc(baseRent)}
         </Typography>
 
         <Box sx={{ bgcolor: "surfaceContainer.highest", p: 2, borderRadius: 1.5, mt: 2, mb: 1, display: "flex", flexDirection: "column", gap: 1.5, border: "1px solid", borderColor: "divider" }}>
@@ -82,7 +92,7 @@ export function PayRentDialog({
                 {periodLabel}
               </Typography>
             </Box>
-            {details.isLate ? (
+            {isLate ? (
               <Chip size="small" color="error" label="Con mora" />
             ) : (
               <Chip size="small" color="success" label="Al día" />
@@ -95,17 +105,17 @@ export function PayRentDialog({
                 Cuota original
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {usdc(details.baseRent)}
+                {usdc(baseRent)}
               </Typography>
             </Box>
 
-            {details.isLate && (
+            {isLate && (
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <Typography variant="body2" color="textDisabled">
-                  Interés por mora (+{details.lateFeeBps / 100}%)
+                  Interés por mora (+{lateFeeBps / 100}%)
                 </Typography>
                 <Typography variant="body2" color="textDisabled" sx={{ fontWeight: 500 }}>
-                  +{usdc(details.lateFeeAmount)}
+                  +{usdc(lateFeeAmount)}
                 </Typography>
               </Box>
             )}
@@ -115,7 +125,7 @@ export function PayRentDialog({
                 Total final
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 700, color: "primary.main" }}>
-                {usdc(details.amountToPay)}
+                {usdc(amountToPay)}
               </Typography>
             </Box>
           </Box>
@@ -141,7 +151,7 @@ export function PayRentDialog({
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
         <Button onClick={onClose}>Cancelar</Button>
         <Button variant="contained" disabled={!enoughBalance || periodsPaid >= totalPeriods} onClick={confirm}>
-          {periodsPaid >= totalPeriods ? "Contrato saldado" : `Pagar ${usdc(details.amountToPay)}`}
+          {periodsPaid >= totalPeriods ? "Contrato saldado" : `Pagar ${usdc(amountToPay)}`}
         </Button>
       </DialogActions>
     </Dialog>

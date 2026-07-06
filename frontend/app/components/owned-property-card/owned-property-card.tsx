@@ -70,7 +70,11 @@ export function OwnedPropertyCard({
         type={property.type}
         isOverdue={isOverdue}
         statusColor={s.color}
-        statusLabel={s.label}
+        statusLabel={
+          property.contractStatus === "draft" && property.landlordApproved
+            ? "Esperando al inquilino"
+            : s.label
+        }
       />
 
       <CardContent>

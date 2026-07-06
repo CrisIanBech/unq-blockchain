@@ -65,10 +65,14 @@ export async function loadOwnedProperties(
     let nextChargeDate: string | undefined = undefined;
     let payments: PaymentRecord[] = [];
     let monthlyRent = baseProp.monthlyRent;
+    let landlordApproved = false;
+    let tenantApproved = false;
 
     if (agreementAddress) {
       const details = await rentalsService.getRentalDetails(agreementAddress);
       const statusNum = details.status;
+      landlordApproved = details.landlordApproved;
+      tenantApproved = details.tenantApproved;
       
       if (statusNum === 2 /* Active */) {
         contractStatus = "active";
@@ -142,6 +146,8 @@ export async function loadOwnedProperties(
       availableToWithdraw,
       smartlock,
       contractStatus,
+      landlordApproved,
+      tenantApproved,
     };
 
     return ownedProp;

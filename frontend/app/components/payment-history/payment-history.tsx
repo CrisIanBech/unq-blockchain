@@ -1,9 +1,11 @@
-import { Box, Typography, Chip, Stack } from "@mui/material"
+import { Box, Typography, Chip, Stack, IconButton } from "@mui/material"
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded"
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded"
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded"
 import type { PaymentRecord } from "@/models/types"
 import { usdc, monthLabel } from "@/lib/format"
+import { useUserStore } from "@/stores/user-store"
 
 const STATUS = {
   paid: {
@@ -41,31 +43,17 @@ export function PaymentHistory({ payments }: { payments: PaymentRecord[] }) {
             key={p.month}
             sx={{
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 1.5,
-              p: 2.5, // Increased padding to make items spacious
-              borderRadius: "12px", // Fixed: Use explicit 12px instead of theme-multiplied 3 (48px capsule)
+              flexDirection: "column",
+              gap: 0.5,
+              p: 2,
+              borderRadius: "12px",
               bgcolor: "surfaceContainer.main",
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="subtitle2" sx={{ textTransform: "capitalize", fontWeight: 700 }}>
-                {monthLabel(p.month)}
-              </Typography>
-              {p.txHash && (
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontFamily: "monospace", display: "block", mt: 0.5 }}
-                >
-                  tx {p.txHash}
-                </Typography>
-              )}
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                {usdc(p.amount)}
+            {/* Row 1: Period Label and Status */}
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: "capitalize", fontWeight: 600 }}>
+                {p.periodLabel || monthLabel(p.month)}
               </Typography>
               <Chip
                 size="small"
@@ -80,6 +68,46 @@ export function PaymentHistory({ payments }: { payments: PaymentRecord[] }) {
                 }}
               />
             </Box>
+            
+            {/* Row 2: Amount */}
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, mt: 0.5 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800, color: "primary.main" }}>
+                {usdc(p.amount)}
+              </Typography>
+            </Box>
+            
+            {p.txHash && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5, width: "100%" }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    fontFamily: "monospace",
+                    display: "block",
+                    flex: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  tx {p.txHash}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(p.txHash!);
+                    useUserStore.getState().pushToast({
+                      message: "Hash de transacción copiado",
+                      severity: "success"
+                    });
+                  }}
+                  sx={{ p: 0.25, color: "text.secondary", flexShrink: 0 }}
+                >
+                  <ContentCopyRoundedIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Box>
+            )}
           </Box>
         )
       })}

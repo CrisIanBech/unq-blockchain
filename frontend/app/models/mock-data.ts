@@ -94,8 +94,8 @@ export const initialRentals: Rental[] = [
     monthlyRent: 640,
     nextPaymentDate: "2026-07-01",
     propertyId: 4,
-    agreementAddress: undefined,
-    rentalNFTAddress: undefined,
+    agreementAddress: "0x3A5B8c9dE01f2345678901234567890abcdeF456",
+    rentalNFTAddress: "0x7F2a9B0cD4e5F6012345678901234567890abcDE",
     smartlockId: "lock-tenant-1",
     hasKey: true,
     payments: [
@@ -114,8 +114,8 @@ export const initialRentals: Rental[] = [
     monthlyRent: 480,
     nextPaymentDate: "2026-06-30",
     propertyId: 5,
-    agreementAddress: undefined,
-    rentalNFTAddress: undefined,
+    agreementAddress: "0x9E8d7C6bA50f12345678901234567890abcDEF12",
+    rentalNFTAddress: "0x4B1a2C3dE90f12345678901234567890abcDEF98",
     smartlockId: "lock-tenant-2",
     hasKey: false,
     payments: [

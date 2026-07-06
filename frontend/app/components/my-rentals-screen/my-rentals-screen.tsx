@@ -21,10 +21,13 @@ export function MyRentalsScreen({
   onSetPayTarget,
   onToggleExpand,
   onPayRent,
+  onSignAgreement,
+  onCancelAgreement,
   onNavigateToSmartlock,
   onImportRental,
   onOpenAddRental,
   onCloseAddRental,
+  onRemoveRental,
 }: MyRentalsScreenProps) {
   const [importName, setImportName] = useState("")
   const [importAddress, setImportAddress] = useState("")
@@ -93,8 +96,11 @@ export function MyRentalsScreen({
               rental={r}
               isOpen={expanded === r.id}
               onSetPayTarget={onSetPayTarget}
+              onSignAgreement={onSignAgreement}
+              onCancelAgreement={onCancelAgreement}
               onNavigateToSmartlock={onNavigateToSmartlock}
               onToggleExpand={onToggleExpand}
+              onRemoveRental={onRemoveRental}
             />
           ))}
         </Box>

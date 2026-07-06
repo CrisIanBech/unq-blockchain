@@ -254,24 +254,26 @@ export const usePropertiesStore = create<PropertiesState>()(
           const wallet = userStore.wallet;
           if (!wallet) return;
 
+          let toastId: number | undefined;
           try {
-            userStore.pushToast({ message: "Verificando propiedad en la blockchain...", severity: "info" });
+            toastId = userStore.pushToast({ message: "Verificando propiedad en la blockchain...", severity: "info" });
 
             await propertyDashboardService.verifyPropertyOwnership(wallet, propertyId);
 
             const currentImports = get().propertyImports || [];
             if (currentImports.includes(propertyId)) {
-              userStore.pushToast({ message: "La propiedad ya está en tu lista", severity: "warning" });
+              userStore.pushToast({ id: toastId, message: "La propiedad ya está en tu lista", severity: "warning" });
               return;
             }
 
             set({ propertyImports: [...currentImports, propertyId] });
             await get().syncOwnedProperties();
 
-            userStore.pushToast({ message: "Propiedad importada con éxito", severity: "success" });
+            userStore.pushToast({ id: toastId, message: "Propiedad importada con éxito", severity: "success" });
           } catch (err: any) {
             console.error("Failed to import property:", err);
             userStore.pushToast({
+              id: toastId,
               message: err.message || "Error al importar propiedad",
               severity: "error"
             });

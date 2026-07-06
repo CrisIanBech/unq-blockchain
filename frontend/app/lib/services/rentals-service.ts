@@ -149,7 +149,17 @@ export class RentalsService {
         rentPaidUntil: Number(details.rentPaidUntil),
         status: details.status,
         startTime: Number(details.startTime),
-        paymentPeriod: Number(details.paymentPeriod)
+        paymentPeriod: Number(details.paymentPeriod),
+        securityDeposit: Number(ethers.formatUnits(details.securityDeposit, 6)),
+        inflationBps: Number(details.inflationBps),
+        lateFeeBps: Number(details.lateFeeBps),
+        gracePeriod: Number(details.gracePeriod),
+        duration: Number(details.duration),
+        deadline: Number(details.deadline),
+        landlordApproved: details.landlordApproved,
+        tenantApproved: details.tenantApproved,
+        landlordCancelled: details.landlordCancelled,
+        tenantCancelled: details.tenantCancelled
       };
     } catch (error) {
       throw translateError(error);
