@@ -29,25 +29,17 @@ export class Property {
   @Prop({ required: true })
   monthlyRent: number;
 
-  @Prop({
-    type: {
-      type: String,
-      enum: ['Point'],
-      required: true,
-      default: 'Point',
-    },
-    coordinates: {
-      type: [Number],
-      required: true,
-    },
-  })
-  location: {
-    type: string;
-    coordinates: number[]; // [longitude, latitude]
-  };
+  @Prop({ type: [Number], required: true })
+  location: number[]; // [lng, lat] Web Mercator meters
+
+  @Prop({ default: '0x0000000000000000000000000000000000000000', index: true })
+  user: string;
+
+  @Prop({ default: 0, index: true })
+  expires: number;
 }
 
 export const PropertySchema = SchemaFactory.createForClass(Property);
 
-// Create standard index for MongoDB spatial queries
-PropertySchema.index({ location: '2dsphere' });
+// Create flat index for MongoDB flat geometry queries with custom bounds for Web Mercator
+PropertySchema.index({ location: '2d' }, { min: -30000000, max: 30000000 });

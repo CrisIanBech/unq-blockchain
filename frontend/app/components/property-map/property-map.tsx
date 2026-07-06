@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { GoogleMap, useJsApiLoader, MarkerF } from "@react-google-maps/api"
 import { Box, CircularProgress, useTheme } from "@mui/material"
 import type { Listing } from "@/models/types"
-import { MAP_CENTER } from "@/models/mock-data"
+import { MAP_CENTER } from "@stores/search-store"
 
 const MAP_STYLE_LIGHT = [
   { elementType: "geometry", stylers: [{ color: "#f6fbf3" }] },
@@ -54,6 +54,18 @@ export function PropertyMap({
     })
   }, [isLoaded])
 
+  const centerGPS = useMemo(() => {
+    const isMercator = Math.abs(MAP_CENTER.lat) > 180 || Math.abs(MAP_CENTER.lng) > 180;
+    if (isMercator) {
+      const x = MAP_CENTER.lng;
+      const y = MAP_CENTER.lat;
+      const lngGPS = (x / 20037508.34) * 180;
+      const latGPS = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360) / Math.PI - 90;
+      return { lat: latGPS, lng: lngGPS };
+    }
+    return MAP_CENTER;
+  }, []);
+
   if (!isLoaded) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", height: "100%" }}>
@@ -65,7 +77,7 @@ export function PropertyMap({
   return (
     <GoogleMap
       mapContainerStyle={{ width: "100%", height: "100%" }}
-      center={MAP_CENTER}
+      center={centerGPS}
       zoom={12}
       options={{
         styles: theme.palette.mode === "dark" ? MAP_STYLE_DARK : MAP_STYLE_LIGHT,
@@ -74,15 +86,27 @@ export function PropertyMap({
         clickableIcons: false,
       }}
     >
-      {listings.map((l) => (
-        <MarkerF
-          key={l.id}
-          position={{ lat: l.lat, lng: l.lng }}
-          icon={pinIcon ? pinIcon(l.id === selectedId) : undefined}
-          onClick={() => onSelect(l)}
-          title={l.name}
-        />
-      ))}
+      {listings.map((l) => {
+        const isMercator = Math.abs(l.lat) > 180 || Math.abs(l.lng) > 180;
+        let latGPS = l.lat;
+        let lngGPS = l.lng;
+        if (isMercator) {
+          const x = l.lng;
+          const y = l.lat;
+          lngGPS = (x / 20037508.34) * 180;
+          latGPS = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360) / Math.PI - 90;
+        }
+
+        return (
+          <MarkerF
+            key={l.id}
+            position={{ lat: latGPS, lng: lngGPS }}
+            icon={pinIcon ? pinIcon(l.id === selectedId) : undefined}
+            onClick={() => onSelect(l)}
+            title={l.name}
+          />
+        );
+      })}
     </GoogleMap>
   )
 }

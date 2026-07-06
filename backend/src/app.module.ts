@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PropertiesModule } from './properties/properties.module';
+import { BlockchainModule } from './blockchain/blockchain.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PropertiesModule } from './properties/properties.module';
       inject: [ConfigService],
     }),
     PropertiesModule,
+    BlockchainModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react"
 import { useSearchStore } from "@stores/search-store"
 import { usePropertiesStore } from "@stores/properties-store"
 import type { Listing, PropertyType } from "../models/types"
-import { MAP_CENTER } from "../models/mock-data"
+import { MAP_CENTER } from "@stores/search-store"
 
 export function useSearchPage() {
   const { listings, fetchListings, leaveReview } = useSearchStore()

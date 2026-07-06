@@ -1,7 +1,8 @@
 import { create } from "zustand"
 import type { Listing } from "@models/types"
-import { initialListings } from "@models/mock-data"
 import { useUserStore } from "./user-store"
+
+export const MAP_CENTER = { lat: -4126290, lng: -6485112 }
 
 const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`
 
@@ -12,7 +13,7 @@ interface SearchState {
 }
 
 export const useSearchStore = create<SearchState>((set) => ({
-  listings: initialListings,
+  listings: [],
 
   fetchListings: async (lat, lng, radius = 15000) => {
     try {
@@ -27,23 +28,15 @@ export const useSearchStore = create<SearchState>((set) => ({
           address: p.address,
           imageUrl: p.image || `/images/prop-${(p.tokenId % 5) + 1}.png`,
           monthlyRent: p.monthlyRent,
-          lat: p.location.coordinates[1],
-          lng: p.location.coordinates[0],
+          lat: p.location[1],
+          lng: p.location[0],
           beds: 2,
           baths: 1,
           m2: 70,
           reviews: []
         }));
 
-        set(() => {
-          const combined = [...fetchedListings];
-          for (const initial of initialListings) {
-            if (!combined.some((c) => c.id === initial.id)) {
-              combined.push(initial);
-            }
-          }
-          return { listings: combined };
-        });
+        set(() => ({ listings: fetchedListings }));
       }
     } catch (e) {
       console.error("Error fetching listings from backend:", e);

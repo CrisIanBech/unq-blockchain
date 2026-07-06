@@ -45,28 +45,6 @@ export const usePropertiesStore = create<PropertiesState>()(
             const result = await propertyDashboardService.mintProperty(wallet, input);
 
             if (result.tokenId !== undefined) {
-              try {
-                const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-                await fetch(`${backendUrl}/properties`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    tokenId: result.tokenId,
-                    owner: wallet,
-                    name: input.name,
-                    description: `Tokenized property: ${input.name}`,
-                    image: `/images/prop-${(result.tokenId % 5) + 1}.png`,
-                    type: input.type,
-                    address: input.address,
-                    monthlyRent: Number(input.monthlyRent),
-                    lat: result.lat,
-                    lng: result.lng
-                  })
-                });
-              } catch (e) {
-                console.error("Error saving property metadata to backend:", e);
-              }
-
               set((s) => ({ propertyImports: [...(s.propertyImports || []), result.tokenId!] }));
             }
 

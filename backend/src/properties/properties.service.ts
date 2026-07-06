@@ -1,8 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Property, PropertyDocument } from './properties.schema';
-import { CreatePropertyDto } from './dto/create-property.dto';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
 
 @Injectable()
@@ -12,19 +11,26 @@ export class PropertiesService {
     private propertyModel: Model<PropertyDocument>,
   ) {}
 
-  async createOrUpdate(createDto: CreatePropertyDto): Promise<Property> {
-    const { lat, lng, ...rest } = createDto;
-    const propertyData = {
+  async upsertProperty(tokenId: number, propertyData: {
+    owner: string;
+    name: string;
+    description?: string;
+    image?: string;
+    type: string;
+    address: string;
+    monthlyRent: number;
+    lat: number;
+    lng: number;
+  }): Promise<Property> {
+    const { lat, lng, ...rest } = propertyData;
+    const finalData = {
       ...rest,
-      location: {
-        type: 'Point',
-        coordinates: [lng, lat], // [longitude, latitude]
-      },
+      tokenId,
+      location: [lng, lat], // [x, y] Web Mercator meters
     };
 
-    // Upsert based on tokenId to handle retries/re-mint scenarios gracefully
     return this.propertyModel
-      .findOneAndUpdate({ tokenId: createDto.tokenId }, propertyData, {
+      .findOneAndUpdate({ tokenId }, finalData, {
         upsert: true,
         new: true,
         setDefaultsOnInsert: true,
@@ -32,39 +38,32 @@ export class PropertiesService {
       .exec();
   }
 
+  async updateRentalUser(tokenId: number, user: string, expires: number): Promise<Property | null> {
+    return this.propertyModel
+      .findOneAndUpdate(
+        { tokenId },
+        { user, expires },
+        { new: true },
+      )
+      .exec();
+  }
+
   async search(searchDto: SearchPropertiesDto): Promise<Property[]> {
     const { lat, lng, radius } = searchDto;
+    const currentTimestamp = Math.floor(Date.now() / 1000);
 
     return this.propertyModel
       .find({
         location: {
-          $nearSphere: {
-            $geometry: {
-              type: 'Point',
-              coordinates: [lng, lat],
-            },
-            $maxDistance: radius,
-          },
+          $near: [lng, lat],
+          $maxDistance: radius,
         },
+        $or: [
+          { user: { $exists: false } },
+          { user: '0x0000000000000000000000000000000000000000' },
+          { expires: { $lte: currentTimestamp } },
+        ],
       })
       .exec();
-  }
-
-  async getMetadata(tokenId: number) {
-    const property = await this.propertyModel.findOne({ tokenId }).exec();
-    if (!property) {
-      throw new NotFoundException(`Property with token ID ${tokenId} not found`);
-    }
-
-    return {
-      name: property.name,
-      description: property.description || `Tokenized property: ${property.name}`,
-      image: property.image || `/images/prop-${(property.tokenId % 5) + 1}.png`,
-      attributes: [
-        { trait_type: 'type', value: property.type },
-        { trait_type: 'address', value: property.address },
-        { trait_type: 'monthlyRent', value: property.monthlyRent },
-      ],
-    };
   }
 }

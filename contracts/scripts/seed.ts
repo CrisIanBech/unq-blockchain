@@ -42,11 +42,17 @@ async function main() {
     const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
     await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
     
+    const baseLat = -4126290; // Quilmes latitude in Web Mercator
+    const baseLng = -6485112; // Quilmes longitude in Web Mercator
     for (let i = 1; i <= 8; i++) {
-        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, `ipfs://mock-property-${i}`, BigInt(100000 + i), BigInt(200000 + i));
+        const latOffset = i * 400 - 1600;
+        const lngOffset = i * 300 - 1200;
+        const propLat = BigInt(baseLat + latOffset);
+        const propLng = BigInt(baseLng + lngOffset);
+        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, `ipfs://mock-property-${i}`, propLat, propLng);
         await tx.wait();
     }
-    console.log("Minted 8 properties");
+    console.log("Minted 8 properties in Quilmes");
 
     await mockUSDC.mint(tenantAddr, ethers.parseUnits("1000000", 6));
 
