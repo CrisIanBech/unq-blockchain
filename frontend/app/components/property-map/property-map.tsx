@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { GoogleMap, useJsApiLoader, MarkerF } from "@react-google-maps/api"
-import { Box, Typography, CircularProgress, useTheme } from "@mui/material"
+import { Box, CircularProgress, useTheme } from "@mui/material"
 import type { Listing } from "@/models/types"
 import { MAP_CENTER } from "@/models/mock-data"
 

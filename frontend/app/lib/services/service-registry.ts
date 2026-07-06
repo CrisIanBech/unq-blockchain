@@ -9,7 +9,7 @@ import { MockGeocodingRepository } from "../repositories/mock-geocoding-reposito
 
 const isMock = import.meta.env.VITE_USE_MOCKS === "true";
 
-export function getServices(wallet?: string) {
+export function getServices(_wallet?: string) {
   if (isMock) {
     return {
       propertiesService: new PropertiesService(new MockPropertiesRepository(), new MockGeocodingRepository()),

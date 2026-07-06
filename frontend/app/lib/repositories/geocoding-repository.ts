@@ -9,7 +9,7 @@ export class GeocodingRepository implements IGeocodingRepository {
     return { lat, lon };
   }
 
-  async reverseGeocodeMercator(latMercator: number, lonMercator: number): Promise<string | null> {
+  async reverseGeocodeMercator(_latMercator: number, _lonMercator: number): Promise<string | null> {
     return null;
   }
 }

@@ -61,7 +61,7 @@ export class MockRentalsRepository implements IRentalsRepository {
     };
   }
 
-  async approveRental(params: any): Promise<any> {
+  async approveRental(_params: any): Promise<any> {
     await new Promise((res) => setTimeout(res, 500));
     return { hash: fakeTx() };
   }
@@ -97,17 +97,17 @@ export class MockRentalsRepository implements IRentalsRepository {
     return { hash: txHash };
   }
 
-  async withdrawRent(agreementAddress: string): Promise<any> {
+  async withdrawRent(_agreementAddress: string): Promise<any> {
     await new Promise((res) => setTimeout(res, 500));
     return { hash: fakeTx() };
   }
 
-  async cancelRental(agreementAddress: string): Promise<any> {
+  async cancelRental(_agreementAddress: string): Promise<any> {
     await new Promise((res) => setTimeout(res, 500));
     return { hash: fakeTx() };
   }
 
-  async checkRentalExpiration(agreementAddress: string): Promise<any> {
+  async checkRentalExpiration(_agreementAddress: string): Promise<any> {
     await new Promise((res) => setTimeout(res, 500));
     return { hash: fakeTx() };
   }
@@ -140,6 +140,16 @@ export class MockRentalsRepository implements IRentalsRepository {
     status: number;
     startTime: bigint;
     paymentPeriod: bigint;
+    securityDeposit: bigint;
+    inflationBps: bigint;
+    lateFeeBps: bigint;
+    gracePeriod: bigint;
+    duration: bigint;
+    deadline: bigint;
+    landlordApproved: boolean;
+    tenantApproved: boolean;
+    landlordCancelled: boolean;
+    tenantCancelled: boolean;
   }> {
     await new Promise((res) => setTimeout(res, 500));
     const contract = mockContracts[agreementAddress];
@@ -153,7 +163,17 @@ export class MockRentalsRepository implements IRentalsRepository {
          rentPaidUntil: BigInt(Math.floor(Date.now() / 1000)),
          status: 2, // Active
          startTime: BigInt(Math.floor(Date.now() / 1000) - 30 * 86400),
-         paymentPeriod: 30n * 86400n
+         paymentPeriod: 30n * 86400n,
+         securityDeposit: 500000000n,
+         inflationBps: 0n,
+         lateFeeBps: 1000n,
+         gracePeriod: 5n * 86400n,
+         duration: 12n * 30n * 86400n,
+         deadline: BigInt(Math.floor(Date.now() / 1000) + 7 * 86400),
+         landlordApproved: true,
+         tenantApproved: true,
+         landlordCancelled: false,
+         tenantCancelled: false
        };
     }
     return {
@@ -164,7 +184,17 @@ export class MockRentalsRepository implements IRentalsRepository {
       rentPaidUntil: BigInt(contract.rentPaidUntil),
       status: 2, // Active
       startTime: BigInt(contract.startTime),
-      paymentPeriod: BigInt(contract.paymentPeriod)
+      paymentPeriod: BigInt(contract.paymentPeriod),
+      securityDeposit: contract.baseRent, // mock
+      inflationBps: 0n, // mock
+      lateFeeBps: BigInt(contract.lateFeeBps),
+      gracePeriod: 5n * 86400n, // mock
+      duration: BigInt(contract.duration),
+      deadline: BigInt(contract.startTime + 7 * 86400), // mock
+      landlordApproved: true,
+      tenantApproved: true,
+      landlordCancelled: false,
+      tenantCancelled: false
     };
   }
 
@@ -194,7 +224,7 @@ export class MockRentalsRepository implements IRentalsRepository {
     return null;
   }
 
-  async getWithdrawableRent(agreementAddress: string): Promise<bigint> {
+  async getWithdrawableRent(_agreementAddress: string): Promise<bigint> {
     await new Promise((res) => setTimeout(res, 200));
     return ethers.parseUnits("720", 6);
   }

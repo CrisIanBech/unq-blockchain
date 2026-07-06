@@ -31,7 +31,7 @@ export class PropertiesService {
                 break;
               }
             }
-          } catch (e) {
+          } catch (_e) {
             // Ignore
           }
         }

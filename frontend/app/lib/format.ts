@@ -10,7 +10,7 @@ export function monthLabel(iso: string) {
   return d.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
 }
 
-export function dateLabel(iso?: string) {
+export function dateLabel(iso?: string | number) {
   if (!iso) return "—"
   const d = new Date(iso)
   return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })

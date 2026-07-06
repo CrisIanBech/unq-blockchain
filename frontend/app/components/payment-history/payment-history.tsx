@@ -70,9 +70,9 @@ export function PaymentHistory({ payments }: { payments: PaymentRecord[] }) {
             </Box>
             
             {/* Row 2: Amount */}
-            <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, mt: 0.5 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", mt: 0.5 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, color: "primary.main" }}>
-                {usdc(p.amount)}
+                {usdc(p.amount + (p.lateFee || 0))}
               </Typography>
             </Box>
             

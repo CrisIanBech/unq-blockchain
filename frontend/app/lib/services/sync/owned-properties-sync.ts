@@ -48,7 +48,7 @@ export async function loadOwnedProperties(
       if (owner.toLowerCase() === wallet.toLowerCase()) {
         baseProps.push(baseProp);
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip if owner check fails (e.g. token burned or node reset)
     }
   }

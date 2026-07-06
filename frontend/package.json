@@ -2,11 +2,13 @@
   "name": "blockrent",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "sync-abi": "node scripts/sync-abi.js"
   },
   "dependencies": {
@@ -34,14 +36,21 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "^17.7.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
-    "typescript": "5.7.3",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.62.1",
     "vite": "^6.0.7"
   },
   "pnpm": {

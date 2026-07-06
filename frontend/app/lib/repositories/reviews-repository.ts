@@ -1,4 +1,3 @@
-import { ethers } from "ethers";
 import { getReview, getRentalAgreementFactory, getRentalAgreement, getBrowserProvider, getSigner } from "../blockchain-infra";
 
 export interface OnChainReview {

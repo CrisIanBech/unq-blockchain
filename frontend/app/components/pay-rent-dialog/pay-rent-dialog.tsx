@@ -1,4 +1,3 @@
-import { useState, useMemo } from "react"
 import {
   Dialog,
   DialogTitle,
@@ -13,7 +12,14 @@ import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded"
 import type { Rental, OwnedProperty } from "@/models/types"
 import { usdc } from "@/lib/format"
-import { getRentalAmountToPay } from "@/models/rental-utils"
+import { 
+  getRentalAmountToPay,
+  getRentalTotalPeriods,
+  getRentalPeriodsPaid,
+  getRentalPeriodLabel,
+  isRentalLate,
+  getRentalPeriodIdForRecord
+} from "@/models/rental-utils"
 
 interface PayRentDialogProps {
   rental: Rental | OwnedProperty | null
@@ -32,9 +38,9 @@ export function PayRentDialog({
 }: PayRentDialogProps) {
   if (!rental) return null
 
-  const details = "contractDetails" in rental ? rental.contractDetails : undefined
+  const isRentalLoaded = "baseRent" in rental ? rental.baseRent !== undefined : true;
 
-  if (!details && "contractDetails" in rental) {
+  if (!isRentalLoaded) {
     return (
       <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
         <DialogTitle>Cargando...</DialogTitle>
@@ -43,29 +49,22 @@ export function PayRentDialog({
     )
   }
 
-  const totalPeriods = details?.totalPeriods ?? 12
-  const periodsPaid = details?.periodsPaid ?? 0
-
-  let periodLabel = details?.periodLabel ?? ""
-  if (!periodLabel) {
-    const periodStart = new Date()
-    const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    const dateOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
-    periodLabel = `${periodStart.toLocaleDateString("es-ES", dateOpts)} - ${periodEnd.toLocaleDateString("es-ES", dateOpts)}`
-  }
+  const totalPeriods = getRentalTotalPeriods(rental)
+  const periodsPaid = getRentalPeriodsPaid(rental)
+  const periodLabel = getRentalPeriodLabel(rental)
 
   const amountToPay = getRentalAmountToPay(rental)
-  const baseRent = details?.baseRent ?? rental.monthlyRent
-  const isLate = details?.isLate ?? false
-  const lateFeeAmount = details?.lateFeeAmount ?? 0
-  const lateFeeBps = details?.lateFeeBps ?? 0
+  const baseRent = ("baseRent" in rental && rental.baseRent !== undefined) ? rental.baseRent : (rental as OwnedProperty).monthlyRent
+  const isLate = isRentalLate(rental)
+  const lateFeeAmount = ("lateFeeAmount" in rental) ? (rental.lateFeeAmount ?? 0) : 0
+  const lateFeeBps = ("lateFeeBps" in rental) ? (rental.lateFeeBps ?? 0) : 0
 
   const enoughBalance = balance >= amountToPay
 
   function confirm() {
     if (!rental) return
-    const monthLabelForRecord = details?.monthLabelForRecord ?? new Date().toISOString().slice(0, 7)
-    onPay(rental.id, monthLabelForRecord, amountToPay)
+    const periodId = getRentalPeriodIdForRecord(rental)
+    onPay(rental.id, periodId, amountToPay)
     onClose()
   }
 

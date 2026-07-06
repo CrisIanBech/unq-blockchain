@@ -101,7 +101,7 @@ if (typeof window !== "undefined") {
         try {
           const balance = await WalletService.getUSDCBalance(address);
           useUserStore.setState({ balance });
-        } catch (err) {
+        } catch (_err) {
           // Silently fail
         }
       }
@@ -123,7 +123,7 @@ if (typeof window !== "undefined") {
               const balance = await WalletService.getUSDCBalance(nextWallet);
               useUserStore.setState({ balance });
               userStore.pushToast({ message: "Cuenta de MetaMask cambiada", severity: "info" });
-            } catch (err) {
+            } catch (_err) {
               // Silently fail
             }
           } else {

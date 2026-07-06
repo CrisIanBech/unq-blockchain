@@ -50,36 +50,8 @@ export interface OwnedProperty {
   tenantApproved?: boolean
 }
 
-export interface RentalContractDetails {
-  baseRent: number
-  securityDeposit: number
-  inflationBps: number
-  lateFeeBps: number
-  gracePeriod: number
-  paymentPeriod: number
-  duration: number
-  deadline: number
-  startTime: number
-  rentPaidUntil: number
-  amountToPay: number
-  lateFeeAmount: number
-  isLate: boolean
-  status: number
-  landlordApproved: boolean
-  tenantApproved: boolean
-  landlordCancelled: boolean
-  tenantCancelled: boolean
-  totalPeriods: number
-  periodsPaid: number
-  periodStart: string
-  periodEnd: string
-  periodLabel: string
-  monthLabelForRecord: string
-}
-
 export interface Rental {
-  id: string;
-  agreementAddress?: string;
+  id: string; // Used as the agreement address
   propertyId: number;
   name: string;
   type: PropertyType;
@@ -87,13 +59,28 @@ export interface Rental {
   imageUrl: string;
   landlord: string;
   tenant?: string;
-  monthlyRent: number;
-  payments: PaymentRecord[];
-  contractDetails?: RentalContractDetails;
-  nextPaymentDate?: string;
   hasKey?: boolean;
   rentalNFTAddress?: string;
   smartlockId?: string;
+
+  // Contract Details (optional if it's just a listing without contract)
+  baseRent: number;
+  securityDeposit: number;
+  inflationBps: number;
+  lateFeeBps: number;
+  gracePeriod: number;
+  paymentPeriod: number;
+  duration: number;
+  deadline: number;
+  startTime: number;
+  rentPaidUntil: number;
+  amountToPay: number;
+  lateFeeAmount: number;
+  status: number;
+  landlordApproved: boolean;
+  tenantApproved: boolean;
+  landlordCancelled: boolean;
+  tenantCancelled: boolean;
 }
 
 export interface Review {

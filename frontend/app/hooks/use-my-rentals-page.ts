@@ -67,7 +67,7 @@ export function useMyRentalsPage() {
     onPayRent: payMonthlyRent,
     onSignAgreement: signAgreement,
     onCancelAgreement: cancelAgreement,
-    onNavigateToSmartlock: (id: string) => { },
+    onNavigateToSmartlock: (_id: string) => { },
     onOpenAddRental: handleOpenAddRental,
     onCloseAddRental: handleCloseAddRental,
     onImportRental: handleImportRental,
