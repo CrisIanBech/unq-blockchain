@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useSearchStore } from "@stores/search-store"
 import { usePropertiesStore } from "@stores/properties-store"
 import type { Listing, PropertyType } from "../models/types"
+import { MAP_CENTER } from "../models/mock-data"
 
 export function useSearchPage() {
-  const { listings, leaveReview } = useSearchStore()
+  const { listings, fetchListings, leaveReview } = useSearchStore()
   const { createContract } = usePropertiesStore()
   const [query, setQuery] = useState("")
   const [cat, setCat] = useState<"todos" | PropertyType>("todos")
@@ -12,6 +13,10 @@ export function useSearchPage() {
   const [listOpen, setListOpen] = useState(true)
   const [rating, setRating] = useState<number | null>(4)
   const [comment, setComment] = useState("")
+
+  useEffect(() => {
+    fetchListings(MAP_CENTER.lat, MAP_CENTER.lng, 15000)
+  }, [fetchListings])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

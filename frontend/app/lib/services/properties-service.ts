@@ -16,9 +16,20 @@ export class PropertiesService {
   /**
    * Mints a new property NFT and returns plain domain transaction details.
    */
-  async mintProperty(recipient: string, metadataURI: string): Promise<PropertyMintResult & { tokenId?: number }> {
+  async mintProperty(
+    recipient: string,
+    metadataURI: string,
+    lat?: number,
+    lng?: number
+  ): Promise<PropertyMintResult & { tokenId?: number; lat: number; lng: number }> {
     try {
-      const receipt = await this.repo.createProperty(recipient, metadataURI);
+      const finalLat = lat ?? (-34.6037 + (Math.random() - 0.5) * 0.08);
+      const finalLng = lng ?? (-58.4 + (Math.random() - 0.5) * 0.08);
+
+      const lonMercator = Math.round((finalLng / 180) * 20037508.34);
+      const latMercator = Math.round(Math.log(Math.tan(((finalLat + 90) * Math.PI) / 360)) * (20037508.34 / Math.PI));
+
+      const receipt = await this.repo.createProperty(recipient, metadataURI, latMercator, lonMercator);
         
       let tokenId: number | undefined;
       if (receipt && receipt.logs) {
@@ -40,7 +51,9 @@ export class PropertiesService {
       return {
         txHash: receipt.hash || receipt.transactionHash || "",
         contractAddress: receipt.contractAddress || "",
-        tokenId
+        tokenId,
+        lat: finalLat,
+        lng: finalLng
       };
     } catch (error) {
       throw translateError(error);

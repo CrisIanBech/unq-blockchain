@@ -3,7 +3,7 @@ import { IPropertiesRepository } from "./properties-repository";
 const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
 
 export class MockPropertiesRepository implements IPropertiesRepository {
-  async createProperty(_recipient: string, _metadataURI: string): Promise<any> {
+  async createProperty(_recipient: string, _metadataURI: string, _latMercator?: number, _lonMercator?: number): Promise<any> {
     await new Promise((res) => setTimeout(res, 500));
     return {
       hash: fakeTx(),

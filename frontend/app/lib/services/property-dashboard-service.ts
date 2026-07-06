@@ -11,8 +11,11 @@ export interface AddPropertyInput {
 }
 
 export class PropertyDashboardService {
-  async mintProperty(wallet: string, input: AddPropertyInput): Promise<{ tokenId?: number; txHash: string }> {
+  async mintProperty(wallet: string, input: AddPropertyInput): Promise<{ tokenId?: number; txHash: string; lat: number; lng: number }> {
     const { propertiesService } = getServices(wallet);
+
+    const lat = -34.6037 + (Math.random() - 0.5) * 0.08;
+    const lng = -58.4 + (Math.random() - 0.5) * 0.08;
 
     // Construct base64 metadata URI to store name, address, rent and type on-chain
     const metadata = {
@@ -28,10 +31,12 @@ export class PropertyDashboardService {
     const base64Metadata = btoa(unescape(encodeURIComponent(JSON.stringify(metadata))));
     const metadataURI = `data:application/json;base64,${base64Metadata}`;
 
-    const result = await propertiesService.mintProperty(wallet, metadataURI);
+    const result = await propertiesService.mintProperty(wallet, metadataURI, lat, lng);
     return {
       tokenId: result.tokenId,
-      txHash: result.txHash
+      txHash: result.txHash,
+      lat: result.lat,
+      lng: result.lng
     };
   }
 
