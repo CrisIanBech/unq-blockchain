@@ -10,12 +10,13 @@ import { getRentalPeriodLabelByIndex } from "@/models/rental-utils";
 interface RentalsState {
   rentals: Rental[];
   rentalImports: { name: string; address: string }[];
+  isSyncing: boolean;
   payMonthlyRent: (rentalId: string, month: string) => Promise<void>;
   signAgreement: (rentalId: string) => Promise<void>;
   cancelAgreement: (rentalId: string) => Promise<void>;
   importRental: (name: string, agreementAddress: string) => Promise<void>;
   removeRental: (rentalId: string) => void;
-  syncRentals: () => Promise<void>;
+  syncRentals: (background?: boolean) => Promise<void>;
   updateRentalKey: (rentalId: string, hasKey: boolean) => void;
   fetchPaymentHistory: (rentalId: string) => Promise<import("@models/types").PaymentRecord[]>;
 }
@@ -24,10 +25,12 @@ export const useRentalsStore = create<RentalsState>()(
   persist(
     (set, get) => {
       let rentalsSyncVersion = 0;
+      let isListening = false;
 
       return {
         rentals: [],
         rentalImports: [],
+        isSyncing: true,
 
         payMonthlyRent: async (rentalId, month) => {
           const userStore = useUserStore.getState();
@@ -59,11 +62,7 @@ export const useRentalsStore = create<RentalsState>()(
             const { rentalsService } = getServices(wallet);
             const result = await rentalsService.payRent(targetAgreement, amountToPay);
 
-            const syncPromise = get().syncRentals();
-
             await userStore.syncOnchainBalance();
-
-            await syncPromise;
 
             userStore.pushToast({
               message: "Pago procesado con éxito",
@@ -95,7 +94,6 @@ export const useRentalsStore = create<RentalsState>()(
             const tx = await rentalsService.approveAgreement({ agreementAddress: r.id, depositAmount, isTenant });
             userStore.pushToast({ message: "Contrato firmado con éxito", severity: "success", txHash: tx.txHash });
             
-            await get().syncRentals();
             await userStore.syncOnchainBalance();
           } catch (err: any) {
             console.error("Failed to sign agreement:", err);
@@ -119,8 +117,6 @@ export const useRentalsStore = create<RentalsState>()(
             const { rentalsService } = getServices(wallet);
             const tx = await rentalsService.cancelAgreement(r.id);
             userStore.pushToast({ message: "Cancelación procesada con éxito", severity: "success", txHash: tx.txHash });
-            
-            await get().syncRentals();
           } catch (err: any) {
             console.error("Failed to cancel agreement:", err);
             userStore.pushToast({
@@ -173,9 +169,22 @@ export const useRentalsStore = create<RentalsState>()(
           userStore.pushToast({ message: "Se ha eliminado tu contrato de tu listado", severity: "success" });
         },
 
-        syncRentals: async () => {
+        syncRentals: async (background = false) => {
+          if (!isListening) {
+            const provider = getBrowserProvider();
+            if (provider) {
+              isListening = true;
+              provider.on("block", () => {
+                get().syncRentals(true);
+              });
+            }
+          }
+
           rentalsSyncVersion++;
           const currentVersion = rentalsSyncVersion;
+          if (!background) {
+            set({ isSyncing: true });
+          }
 
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
@@ -188,10 +197,17 @@ export const useRentalsStore = create<RentalsState>()(
               return;
             }
 
-            set({ rentals: loadedRentals });
+            if (!background) {
+              set({ rentals: loadedRentals, isSyncing: false });
+            } else {
+              set({ rentals: loadedRentals });
+            }
           } catch (error: any) {
             if (currentVersion !== rentalsSyncVersion) {
               return;
+            }
+            if (!background) {
+              set({ isSyncing: false });
             }
             console.error("Failed to sync rentals concurrently:", error);
             userStore.pushToast({

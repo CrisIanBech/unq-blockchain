@@ -5,33 +5,15 @@ import type { Rental } from "../models/types"
 import { getBrowserProvider } from "@/lib/blockchain-infra"
 
 export function useMyRentalsPage() {
-  const { balance, wallet } = useUserStore()
-  const { rentals, payMonthlyRent, importRental, syncRentals, signAgreement, removeRental, cancelAgreement } = useRentalsStore()
+  const { balance } = useUserStore()
+  const { rentals, isSyncing, payMonthlyRent, importRental, syncRentals, signAgreement, removeRental, cancelAgreement } = useRentalsStore()
   const [payTargetId, setPayTargetId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [addRentalOpen, setAddRentalOpen] = useState(false)
 
   useEffect(() => {
-    if (!wallet) {
-      setIsSyncing(false)
-      return
-    }
-
-    setIsSyncing(true)
-    syncRentals().finally(() => setIsSyncing(false))
-
-    const provider = getBrowserProvider()
-    if (provider) {
-      const listener = () => {
-        syncRentals()
-      }
-      provider.on("block", listener)
-      return () => {
-        provider.off("block", listener)
-      }
-    }
-  }, [wallet, syncRentals])
+    syncRentals()
+  }, [syncRentals])
 
   const payTarget = rentals.find(r => r.id === payTargetId) || null
 

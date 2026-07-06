@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import {
   getSigner,
+  getBrowserProvider,
   getRentalAgreementFactory,
   getRentalAgreement,
   getMockUSDC,
@@ -152,10 +153,10 @@ export class RentalsRepository implements IRentalsRepository {
   }
 
   async getRentAmountToPay(agreementAddress: string): Promise<{ currentRent: bigint, lateFee: bigint, totalAmount: bigint }> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
+    const agreement = getRentalAgreement(agreementAddress, runner);
     const [currentRent, lateFee, totalAmount] = await agreement.getRentAmountToPay();
     return { currentRent, lateFee, totalAmount };
   }
@@ -180,10 +181,10 @@ export class RentalsRepository implements IRentalsRepository {
     landlordCancelled: boolean;
     tenantCancelled: boolean;
   }> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
+    const agreement = getRentalAgreement(agreementAddress, runner);
     const details = await agreement.getAgreementDetails();
 
     return {
@@ -215,10 +216,10 @@ export class RentalsRepository implements IRentalsRepository {
     txHash: string;
     blockNumber: number;
   }>> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
+    const agreement = getRentalAgreement(agreementAddress, runner);
 
     const filter = agreement.filters.RentPaid();
 
@@ -234,10 +235,10 @@ export class RentalsRepository implements IRentalsRepository {
   }
 
   async getRentalAgreementForProperty(propertyId: number): Promise<string | null> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const factory = getRentalAgreementFactory(signer);
+    const factory = getRentalAgreementFactory(runner);
     const filter = factory.filters.RentalAgreementCreated(null, BigInt(propertyId));
     const events = await factory.queryFilter(filter, 0, "latest");
 
@@ -251,11 +252,11 @@ export class RentalsRepository implements IRentalsRepository {
   }
 
   async getWithdrawableRent(agreementAddress: string): Promise<bigint> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
-    const usdc = getMockUSDC(signer);
+    const agreement = getRentalAgreement(agreementAddress, runner);
+    const usdc = getMockUSDC(runner);
 
     const rawBalance = await usdc.balanceOf(agreementAddress);
     const rawDepositStatus = await agreement.depositStatus();
