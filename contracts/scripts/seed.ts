@@ -42,11 +42,11 @@ async function main() {
     const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
     await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
     
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 8; i++) {
         const tx = await propertyNFT.connect(landlord).mint(landlordAddr, `ipfs://mock-property-${i}`, BigInt(100000 + i), BigInt(200000 + i));
         await tx.wait();
     }
-    console.log("Minted 7 properties");
+    console.log("Minted 8 properties");
 
     await mockUSDC.mint(tenantAddr, ethers.parseUnits("1000000", 6));
 
@@ -150,6 +150,18 @@ async function main() {
     const statusPago = await agrPago.status();
     console.log("Status:", statusPago.toString(), "(2=Active, rent paid)");
 
+    // 8. Cancelación en progreso (Landlord canceló, falta Tenant) -> Prop 8
+    console.log("\n8. Creating 'Cancelación en progreso' Agreement (Property #8)...");
+    const agrCancelProgress = await createAgreement(8, dl);
+    await propertyNFT.connect(landlord).approve(await agrCancelProgress.getAddress(), 8);
+    await mockUSDC.connect(tenant).approve(await agrCancelProgress.getAddress(), securityDeposit);
+    await agrCancelProgress.connect(landlord).approveAgreement();
+    await agrCancelProgress.connect(tenant).approveAgreement();
+    // It's active now. Landlord initiates cancel.
+    await agrCancelProgress.connect(landlord).cancelAgreement();
+    const statusCancelProgress = await agrCancelProgress.status();
+    console.log("Status:", statusCancelProgress.toString(), "(2=Active, Cancel in progress)");
+
 
     console.log("\n=== Contract addresses for frontend ===\n");
     console.log(`propertyNFT: "${propertyNFTAddr}"`);
@@ -165,6 +177,7 @@ async function main() {
     console.log("5. Pago (Al día):       ", await agrPago.getAddress());
     console.log("6. Atrasado (Multa):    ", await agrAtrasado.getAddress());
     console.log("7. Por Firmar (Falta Inq):", await agrPorFirmarInq.getAddress());
+    console.log("8. Cancelando (Falta Inq):", await agrCancelProgress.getAddress());
 
     console.log("\n=== Accounts ===\n");
     console.log("Landlord:", landlordAddr);
