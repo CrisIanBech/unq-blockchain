@@ -3,6 +3,7 @@ import { readChallengeFromNfc, canUseWebNfc, isWebNfcSupported } from "../blockc
 import { createChallenge, type SmartlockChallenge } from "@shared/smartlock-protocol/index";
 import { SmartlockRepository, type AuthorizationResult, type SmartlockRole } from "../repositories/smartlock-repository";
 import { WalletService } from "./wallet-service";
+import { ensureNetwork } from "../blockchain-infra/wallet";
 import { isSmartlockMockMode } from "../smartlock/config";
 export interface UnlockResult {
   authorized: boolean;
@@ -32,9 +33,9 @@ export class SmartlockService {
     }
 
     if (!isSmartlockMockMode()) {
-      const switched = await WalletService.switchToSepolia();
+      const switched = await ensureNetwork();
       if (!switched) {
-        throw new Error("Switch MetaMask to Sepolia testnet.");
+        throw new Error("Switch MetaMask to the configured network to continue.");
       }
     }
 

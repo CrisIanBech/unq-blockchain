@@ -8,6 +8,7 @@ import { loadOwnedProperties } from "@/lib/services/sync/owned-properties-sync";
 import { usesMockRepositories } from "@/lib/config/mock-mode";
 import { ensureMockDemoProperty } from "@/lib/repositories/mock-properties-repository";
 import { getBrowserProvider } from "@/lib/blockchain-infra";
+import { isNonexistentTokenError } from "@/lib/errors/error-utils";
 
 const propertyDashboardService = new PropertyDashboardService();
 
@@ -361,9 +362,28 @@ export const usePropertiesStore = create<PropertiesState>()(
               set({ propertyImports: rawImports });
             }
 
+            const { propertiesService } = getServices(wallet);
+            const validImports: { id: number; name: string }[] = [];
+            for (const imp of rawImports) {
+              try {
+                const owner = await propertiesService.getPropertyOwner(imp.id);
+                if (owner.toLowerCase() === wallet.toLowerCase()) {
+                  validImports.push(imp);
+                }
+              } catch (error) {
+                if (!isNonexistentTokenError(error)) {
+                  console.warn(`Could not verify ownership for token ${imp.id}:`, error);
+                }
+              }
+            }
+
+            if (validImports.length !== rawImports.length) {
+              set({ propertyImports: validImports });
+            }
+
             const customContracts = get().customContracts || {};
             const existingProps = get().ownedProperties;
-            const loadedProps = await loadOwnedProperties(wallet, rawImports, customContracts, existingProps);
+            const loadedProps = await loadOwnedProperties(wallet, validImports, customContracts, existingProps);
 
             if (currentVersion !== ownedPropertiesSyncVersion) {
               return;

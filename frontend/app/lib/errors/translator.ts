@@ -50,8 +50,17 @@ export function translateError(error: any): Error {
     return new ReviewAlreadyPosted();
   }
 
-  if (errorMessage.includes("notpropertyowner") || errorMessage.includes("notowner") || errorMessage.includes("unauthorized")) {
-    return new UnauthorizedOperation();
+  if (
+    errorMessage.includes("notpropertyowner") ||
+    errorMessage.includes("notowner") ||
+    errorMessage.includes("unauthorized") ||
+    errorMessage.includes("accesscontrol") ||
+    errorMessage.includes("minter_role") ||
+    errorMessage.includes("onlyrole")
+  ) {
+    return new UnauthorizedOperation(
+      "No tenés permiso para mintear propiedades. En local, usá una cuenta Hardhat con MINTER_ROLE o ejecutá scripts/grant-minter.ts."
+    );
   }
 
   if (errorMessage.includes("propertyalreadyrented") || errorMessage.includes("already active")) {

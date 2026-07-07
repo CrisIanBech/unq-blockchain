@@ -1,8 +1,9 @@
 import { createConfig, http } from "wagmi";
-import { sepolia } from "wagmi/chains";
+import { hardhat, sepolia } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
 
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim() ?? "";
+const localRpcUrl = import.meta.env.VITE_RPC_URL?.trim() || "http://127.0.0.1:8545";
 
 function dappOrigin(): string {
   return typeof window !== "undefined" ? window.location.origin : "https://blockrent.com";
@@ -20,7 +21,7 @@ if (isMobileUserAgent() && !walletConnectProjectId) {
 }
 
 export const wagmiConfig = createConfig({
-  chains: [sepolia],
+  chains: [sepolia, hardhat],
   connectors: [
     injected({ shimDisconnect: true }),
     ...(walletConnectProjectId
@@ -43,6 +44,7 @@ export const wagmiConfig = createConfig({
   ],
   transports: {
     [sepolia.id]: http("https://sepolia.drpc.org"),
+    [hardhat.id]: http(localRpcUrl),
   },
   ssr: false,
 });

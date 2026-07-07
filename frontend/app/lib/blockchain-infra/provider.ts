@@ -6,11 +6,18 @@ import { isMetaMaskInAppBrowser, isMobileBrowser, wagmiConfig } from "./wagmi-co
 
 const SEPOLIA_RPC = "https://sepolia.drpc.org";
 
+function configuredRpcUrl(): string {
+  return import.meta.env.VITE_RPC_URL?.trim() || SEPOLIA_RPC;
+}
+
 let publicProvider: ethers.JsonRpcProvider | null = null;
+let publicProviderRpcUrl: string | null = null;
 
 export function getPublicProvider(): ethers.JsonRpcProvider {
-  if (!publicProvider) {
-    publicProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+  const rpcUrl = configuredRpcUrl();
+  if (!publicProvider || publicProviderRpcUrl !== rpcUrl) {
+    publicProvider = new ethers.JsonRpcProvider(rpcUrl);
+    publicProviderRpcUrl = rpcUrl;
   }
   return publicProvider;
 }

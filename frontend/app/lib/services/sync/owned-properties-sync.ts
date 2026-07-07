@@ -4,6 +4,7 @@ import { getLatestBlockTimestamp, CONTRACT_ADDRESSES } from "@/lib/blockchain-in
 import type { Property, PaymentRecord, Smartlock } from "@models/types";
 import { getRentalPeriodLabelByIndex } from "@/models/rental-utils";
 import { formatPropertyImage } from "@/lib/format";
+import { isNonexistentTokenError } from "@/lib/errors/error-utils";
 
 export async function loadOwnedProperties(
   wallet: string,
@@ -36,7 +37,11 @@ export async function loadOwnedProperties(
         longitude: location.lng,
       };
     } catch (err) {
-      console.error(`Failed to fetch metadata for token ${tokenId}`, err);
+      if (isNonexistentTokenError(err)) {
+        console.warn(`Skipping stale property import: token ${tokenId} does not exist on this network.`);
+      } else {
+        console.error(`Failed to fetch metadata for token ${tokenId}`, err);
+      }
       return {
         propertyId: tokenId,
         name: imp.name || `Propiedad #${tokenId}`,
