@@ -36,6 +36,7 @@ export interface IRentalsRepository {
     tenantApproved: boolean;
     landlordCancelled: boolean;
     tenantCancelled: boolean;
+    inflationAdjustmentInterval: bigint;
   }>;
   getPaymentHistory(agreementAddress: string): Promise<Array<{
     periodIndex: number;
@@ -190,12 +191,14 @@ export class RentalsRepository implements IRentalsRepository {
     tenantApproved: boolean;
     landlordCancelled: boolean;
     tenantCancelled: boolean;
+    inflationAdjustmentInterval: bigint;
   }> {
     const runner = getBrowserProvider();
     if (!runner) throw new Error("No provider available.");
 
     const agreement = getRentalAgreement(agreementAddress, runner);
     const details = await agreement.getAgreementDetails();
+    const inflationAdjustmentInterval = await agreement.inflationAdjustmentInterval();
 
     return {
       propertyId: details.propertyId,
@@ -215,7 +218,8 @@ export class RentalsRepository implements IRentalsRepository {
       landlordApproved: details.landlordApproved,
       tenantApproved: details.tenantApproved,
       landlordCancelled: details.landlordCancelled,
-      tenantCancelled: details.tenantCancelled
+      tenantCancelled: details.tenantCancelled,
+      inflationAdjustmentInterval
     };
   }
 

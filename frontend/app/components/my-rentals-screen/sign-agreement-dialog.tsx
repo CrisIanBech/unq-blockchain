@@ -79,6 +79,11 @@ export function SignAgreementDialog({
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>Aumento por Inflación</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   {rental.inflationBps !== undefined ? `${(rental.inflationBps / 100).toFixed(1)}%` : "—"}
+                  {rental.inflationAdjustmentInterval !== undefined && rental.inflationAdjustmentInterval > 0 && (
+                    <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                      (cada {rental.inflationAdjustmentInterval} periodos)
+                    </Typography>
+                  )}
                 </Typography>
               </Box>
               <Box>
