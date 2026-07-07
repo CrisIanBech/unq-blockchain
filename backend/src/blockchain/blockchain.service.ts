@@ -74,21 +74,42 @@ export class BlockchainService implements OnModuleInit {
       this.logger.error('Error replaying past UpdateUser events', err);
     }
 
-    // 3. Register Live Event Listeners
-    this.propertyContract.on(
-      'PropertyMinted',
-      async (propertyId: bigint, owner: string, tokenURI: string, latitude: bigint, longitude: bigint) => {
-        this.logger.log(`Live PropertyMinted event received: propertyId=${propertyId.toString()}`);
-        await this.processPropertyMinted(propertyId, owner, tokenURI, latitude, longitude);
-      },
-    );
+    // 3. Register Live Event Listeners (Using manual polling to avoid ethers v6 FilterIdEventSubscriber bug with Hardhat)
+    let lastBlock = await this.provider.getBlockNumber();
+    setInterval(async () => {
+      try {
+        const currentBlock = await this.provider.getBlockNumber();
+        if (currentBlock > lastBlock) {
+          const propFilter = this.propertyContract.filters.PropertyMinted();
+          const propEvents = await this.propertyContract.queryFilter(propFilter, lastBlock + 1, currentBlock);
+          
+          for (const event of propEvents) {
+            if ('args' in event && event.args) {
+              const { propertyId, owner, tokenURI, latitude, longitude } = event.args as any;
+              this.logger.log(`Live PropertyMinted event received: propertyId=${propertyId.toString()}`);
+              await this.processPropertyMinted(propertyId, owner, tokenURI, latitude, longitude);
+            }
+          }
 
-    this.rentalContract.on('UpdateUser', async (tokenId: bigint, user: string, expires: bigint) => {
-      this.logger.log(`Live UpdateUser event received: tokenId=${tokenId.toString()}, user=${user}`);
-      await this.processUpdateUser(tokenId, user, expires);
-    });
+          const rentalFilter = this.rentalContract.filters.UpdateUser();
+          const rentalEvents = await this.rentalContract.queryFilter(rentalFilter, lastBlock + 1, currentBlock);
+          
+          for (const event of rentalEvents) {
+            if ('args' in event && event.args) {
+              const { tokenId, user, expires } = event.args as any;
+              this.logger.log(`Live UpdateUser event received: tokenId=${tokenId.toString()}, user=${user}`);
+              await this.processUpdateUser(tokenId, user, expires);
+            }
+          }
 
-    this.logger.log('Blockchain event listeners registered successfully.');
+          lastBlock = currentBlock;
+        }
+      } catch (err) {
+        this.logger.error('Error polling for new events', err);
+      }
+    }, 5000);
+
+    this.logger.log('Blockchain manual event polling registered successfully.');
   }
 
   private async processPropertyMinted(
@@ -107,7 +128,6 @@ export class BlockchainService implements OnModuleInit {
         if (tokenURI.startsWith('ipfs://mock-property-')) {
           const id = Number(tokenURI.replace('ipfs://mock-property-', ''));
           const types = ['departamento', 'casa', 'ph', 'local', 'departamento', 'casa', 'casa', 'departamento'];
-          const monthlyRents = [900, 1000, 1100, 1200, 1300, 1400, 1500, 1600];
           const surfaces = [50, 69, 81, 93, 105, 117, 129, 141];
           const roomsList = [2, 3, 4, 1, 3, 2, 4, 3];
           const bathroomsList = [1, 1, 2, 1, 1, 1, 2, 2];
@@ -118,7 +138,6 @@ export class BlockchainService implements OnModuleInit {
             name: `Inmueble #${id} (${types[id - 1]})`,
             description: `Hermoso/a ${types[id - 1]} en excelente ubicación en Quilmes.`,
             type: types[id - 1],
-            monthlyRent: monthlyRents[id - 1],
             surface: surfaces[id - 1],
             rooms: roomsList[id - 1],
             bathrooms: bathroomsList[id - 1],
@@ -155,7 +174,6 @@ export class BlockchainService implements OnModuleInit {
       metadata = metadata || {};
 
       const type = metadata.type || metadata.attributes?.find((a: any) => a.trait_type === 'type')?.value || 'departamento';
-      const monthlyRent = Number(metadata.monthlyRent || metadata.attributes?.find((a: any) => a.trait_type === 'monthlyRent')?.value || 0);
 
       const surface = Number(metadata.surface || metadata.attributes?.find((a: any) => a.trait_type === 'surface')?.value || 0);
       const rooms = Number(metadata.rooms || metadata.attributes?.find((a: any) => a.trait_type === 'rooms')?.value || 0);
@@ -182,7 +200,6 @@ export class BlockchainService implements OnModuleInit {
         image: images.length > 0 ? images[0] : '',
         type,
         address,
-        monthlyRent,
         lat,
         lng,
         metadata,

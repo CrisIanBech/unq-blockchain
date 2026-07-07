@@ -9,7 +9,7 @@ export class PropertiesService {
   constructor(
     @InjectModel(Property.name)
     private propertyModel: Model<PropertyDocument>,
-  ) {}
+  ) { }
 
   async getPropertyById(tokenId: number): Promise<Property | null> {
     return this.propertyModel.findOne({ tokenId }).exec();
@@ -21,7 +21,6 @@ export class PropertiesService {
     image?: string;
     type: string;
     address: string;
-    monthlyRent: number;
     lat: number;
     lng: number;
     metadata?: any;
@@ -140,7 +139,6 @@ export class PropertiesService {
   async prepareMetadata(files: any[], body: any): Promise<{ tokenURI: string }> {
     const ipfsUrls = await this.uploadImagesToPinata(files);
 
-    const monthlyRent = Number(body.monthlyRent || 0);
     const surface = Number(body.surface || 0);
     const rooms = Number(body.rooms || 0);
     const bathrooms = Number(body.bathrooms || 0);
@@ -149,7 +147,6 @@ export class PropertiesService {
 
     const metadata = {
       type: body.type,
-      monthlyRent,
       surface,
       rooms,
       bathrooms,
@@ -159,7 +156,6 @@ export class PropertiesService {
       image: ipfsUrls.length > 0 ? ipfsUrls[0] : '',
       attributes: [
         { trait_type: 'type', value: body.type },
-        { trait_type: 'monthlyRent', value: monthlyRent },
         { trait_type: 'surface', value: surface },
         { trait_type: 'rooms', value: rooms },
         { trait_type: 'bathrooms', value: bathrooms },

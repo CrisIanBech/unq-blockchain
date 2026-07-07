@@ -35,7 +35,6 @@ export class PropertyDashboardService {
     name: string;
     type: string;
     address: string;
-    monthlyRent: number;
     surface: number;
     rooms: number;
     bathrooms: number;
@@ -47,7 +46,6 @@ export class PropertyDashboardService {
     formData.append("name", input.name);
     formData.append("type", input.type);
     formData.append("address", input.address);
-    formData.append("monthlyRent", input.monthlyRent.toString());
     formData.append("surface", input.surface.toString());
     formData.append("rooms", input.rooms.toString());
     formData.append("bathrooms", input.bathrooms.toString());

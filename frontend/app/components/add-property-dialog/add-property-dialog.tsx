@@ -88,7 +88,6 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
 
   // ── Upload metadata tab ───────────────────────────────────────────────────
   const [propertyType, setPropertyType] = useState("departamento")
-  const [monthlyRent, setMonthlyRent] = useState("")
   const [surface, setSurface] = useState("")
   const [rooms, setRooms] = useState("")
   const [bathrooms, setBathrooms] = useState("")
@@ -197,11 +196,10 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
   const manualValid = nameValid && uriValid && locationValid
 
   // Upload tab validation
-  const rentValid = Number(monthlyRent) > 0
-  const surfaceValid = Number(surface) > 0
-  const roomsValid = Number(rooms) > 0
-  const bathroomsValid = Number(bathrooms) > 0
-  const uploadValid = nameValid && locationValid && rentValid && surfaceValid && roomsValid && bathroomsValid
+  const surfaceValid = Number(surface) > 0 && !isNaN(Number(surface))
+  const roomsValid = Number(rooms) > 0 && Number.isInteger(Number(rooms))
+  const bathroomsValid = bathrooms !== "" && Number(bathrooms) >= 0 && Number.isInteger(Number(bathrooms))
+  const uploadValid = nameValid && locationValid && surfaceValid && roomsValid && bathroomsValid
 
   const valid = tabIndex === 0 ? uploadValid : manualValid
 
@@ -213,7 +211,6 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
     setSelectedCoords(null)
     setTouched(false)
     setPropertyType("departamento")
-    setMonthlyRent("")
     setSurface("")
     setRooms("")
     setBathrooms("")
@@ -235,7 +232,6 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
           name: name.trim(),
           type: propertyType,
           address: selectedCoords.description,
-          monthlyRent: Number(monthlyRent),
           surface: Number(surface),
           rooms: Number(rooms),
           bathrooms: Number(bathrooms),
@@ -393,21 +389,16 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
 
               <Stack direction="row" spacing={2}>
                 <TextField
-                  label="Renta mensual (USDC)"
-                  type="number"
-                  value={monthlyRent}
-                  onChange={(e) => setMonthlyRent(e.target.value)}
-                  error={touched && !rentValid}
-                  helperText={touched && !rentValid ? "Requerido" : " "}
-                  fullWidth
-                />
-                <TextField
                   label="Superficie (m²)"
                   type="number"
                   value={surface}
                   onChange={(e) => setSurface(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e") e.preventDefault()
+                  }}
+                  slotProps={{ htmlInput: { min: 1 } }}
                   error={touched && !surfaceValid}
-                  helperText={touched && !surfaceValid ? "Requerido" : " "}
+                  helperText={touched && !surfaceValid ? "Requerido y mayor a 0" : " "}
                   fullWidth
                 />
               </Stack>
@@ -418,8 +409,12 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
                   type="number"
                   value={rooms}
                   onChange={(e) => setRooms(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e" || e.key === ".") e.preventDefault()
+                  }}
+                  slotProps={{ htmlInput: { min: 1 } }}
                   error={touched && !roomsValid}
-                  helperText={touched && !roomsValid ? "Requerido" : " "}
+                  helperText={touched && !roomsValid ? "Requerido (entero mayor a 0)" : " "}
                   fullWidth
                 />
                 <TextField
@@ -427,8 +422,12 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
                   type="number"
                   value={bathrooms}
                   onChange={(e) => setBathrooms(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e" || e.key === ".") e.preventDefault()
+                  }}
+                  slotProps={{ htmlInput: { min: 0 } }}
                   error={touched && !bathroomsValid}
-                  helperText={touched && !bathroomsValid ? "Requerido" : " "}
+                  helperText={touched && !bathroomsValid ? "Requerido (0 o más)" : " "}
                   fullWidth
                 />
               </Stack>
@@ -455,6 +454,7 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
                   onChange={handleFileSelect}
                 />
                 <Button
+                  fullWidth
                   variant="outlined"
                   size="small"
                   startIcon={<InsertPhotoRoundedIcon />}

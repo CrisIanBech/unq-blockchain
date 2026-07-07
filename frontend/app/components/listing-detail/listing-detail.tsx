@@ -32,7 +32,6 @@ interface ListingDetailProps {
   listing: Listing | null
   onClose: () => void
   onLeaveReview: (listingId: string, rating: number, comment: string) => void
-  onRequestContract?: (listing: Listing) => void
   rating: number | null
   comment: string
   onRatingChange: (rating: number | null) => void
@@ -43,7 +42,6 @@ export function ListingDetail({
   listing,
   onClose,
   onLeaveReview,
-  onRequestContract,
   rating,
   comment,
   onRatingChange,
@@ -133,17 +131,7 @@ export function ListingDetail({
           )}
         </Box>
 
-        {!(wallet && listing?.user && wallet.toLowerCase() === listing.user.toLowerCase()) && (
-          <Button 
-            variant="contained" 
-            fullWidth 
-            size="large" 
-            sx={{ mt: 3 }}
-            onClick={() => listing && onRequestContract?.(listing)}
-          >
-            Solicitar contrato on-chain
-          </Button>
-        )}
+
 
         <Divider sx={{ my: 3 }} />
 

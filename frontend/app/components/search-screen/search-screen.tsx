@@ -25,7 +25,6 @@ export function SearchScreen({
   onSelect,
   onToggleList,
   onLeaveReview,
-  onRequestContract,
   rating,
   comment,
   onSetRating,
@@ -155,7 +154,6 @@ export function SearchScreen({
         listing={liveSelected}
         onClose={() => onSelect(null)}
         onLeaveReview={onLeaveReview}
-        onRequestContract={onRequestContract}
         rating={rating}
         comment={comment}
         onRatingChange={onSetRating}

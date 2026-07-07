@@ -23,9 +23,6 @@ export class Property {
   @Prop({ required: true })
   address: string;
 
-  @Prop({ required: true })
-  monthlyRent: number;
-
   @Prop({ type: [Number], required: true })
   location: number[]; // [lng, lat] Web Mercator meters
 
