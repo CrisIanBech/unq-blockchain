@@ -39,6 +39,7 @@ export interface Property {
   /** Web Mercator X (longitude axis) in meters, as stored on-chain */
   longitude?: number
   monthlyRent?: number
+  imageUrl?: string
   contract: PropertyContract | null
 }
 

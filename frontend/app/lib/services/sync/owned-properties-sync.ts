@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { getLatestBlockTimestamp, CONTRACT_ADDRESSES } from "@/lib/blockchain-infra";
 import type { Property, PaymentRecord } from "@models/types";
 import { getRentalPeriodLabelByIndex } from "@/models/rental-utils";
+import { formatPropertyImage } from "@/lib/format";
 
 export async function loadOwnedProperties(
   wallet: string,
@@ -28,7 +29,7 @@ export async function loadOwnedProperties(
         name: imp.name || metadata.name || `Propiedad #${tokenId}`,
         type: typeAttr,
         address: addrAttr,
-        imageUrl: metadata.image || `/images/prop-${(tokenId % 5) + 1}.png`,
+        imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
         monthlyRent: rentAttr,
         latitude: location.lat,
         longitude: location.lng,
@@ -208,6 +209,7 @@ export async function loadOwnedProperties(
       name: baseProp.name,
       type: baseProp.type as any,
       address: baseProp.address,
+      imageUrl: baseProp.imageUrl,
       latitude: baseProp.latitude,
       longitude: baseProp.longitude,
       monthlyRent: monthlyRent,

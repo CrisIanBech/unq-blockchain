@@ -1,6 +1,7 @@
 import { IPropertiesRepository } from "../repositories/properties-repository";
 import { IGeocodingRepository } from "../repositories/geocoding-repository";
 import { translateError } from "../errors/translator";
+import { formatPropertyImage } from "@/lib/format";
 
 export interface PropertyMintResult {
   txHash: string;
@@ -141,7 +142,7 @@ export class PropertiesService {
               name: metadata.name || `Propiedad #${tokenId}`,
               type: typeAttr,
               address: addrAttr,
-              imageUrl: metadata.image || `/images/prop-${(tokenId % 5) + 1}.png`,
+              imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
               monthlyRent: rentAttr,
             };
           } catch (err) {

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: blockrent-mongodb
+    network_mode: "host"
+    volumes:
+      - mongo-data:/data/db
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blockrent-backend
+    network_mode: "host"
+    env_file:
+      - .env
+    environment:
+      - MONGO_URI=mongodb://localhost:27017/blockrent
+      - PORT=3000
+      - RPC_URL=http://localhost:8545
+      - PROPERTY_NFT_ADDRESS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+      - RENTAL_NFT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+    depends_on:
+      - mongodb
+
+volumes:
+  mongo-data:

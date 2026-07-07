@@ -37,3 +37,46 @@ export function nextMonths(count: number, startIso = "2025-09") {
   }
   return out
 }
+
+/**
+ * Converts a Google Maps address into a static map image URL.
+ */
+export function getGoogleMapsPhoto(address: string): string {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""
+  return `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(address)}&zoom=17&size=600x400&markers=color:red%7C${encodeURIComponent(address)}&key=${apiKey}`
+}
+
+/**
+ * Resolves an IPFS URI (ipfs://… or bare CID) to an HTTP gateway URL.
+ * If the input is already an HTTP(S) URL it is returned as-is.
+ */
+export function resolveIpfsUrl(ipfsRef: string): string {
+  if (!ipfsRef) return ""
+  if (ipfsRef.startsWith("ipfs://")) {
+    const gateway = import.meta.env.VITE_IPFS_GATEWAY || "https://ipfs.io/ipfs/"
+    return ipfsRef.replace("ipfs://", gateway)
+  }
+  if (/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58,})$/.test(ipfsRef)) {
+    const gateway = import.meta.env.VITE_IPFS_GATEWAY || "https://ipfs.io/ipfs/"
+    return `${gateway}${ipfsRef}`
+  }
+  return ipfsRef
+}
+
+/**
+ * Given an image source (IPFS array, single string, or nothing) returns
+ * the best HTTP URL to display. Falls back to a Google Maps static image
+ * or a placeholder.
+ */
+export function formatPropertyImage(images?: string[] | string, address?: string): string {
+  if (Array.isArray(images) && images.length > 0 && images[0]) {
+    return resolveIpfsUrl(images[0])
+  }
+  if (typeof images === "string" && images.trim().length > 0) {
+    return resolveIpfsUrl(images)
+  }
+  if (address) {
+    return getGoogleMapsPhoto(address)
+  }
+  return "/images/prop-placeholder.png"
+}

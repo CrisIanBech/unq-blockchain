@@ -1,0 +1,33 @@
+# compiled output
+/dist
+/build
+
+# dependencies
+/node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.cproject
+.settings
+/.vscode
+*.sublime-workspace
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
