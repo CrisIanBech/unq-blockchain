@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseInterceptors, UploadedFiles, Body } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { PropertiesService } from './properties.service';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
@@ -12,9 +12,9 @@ export class PropertiesController {
     return this.propertiesService.search(searchDto);
   }
 
-  @Post('upload-images')
+  @Post('metadata')
   @UseInterceptors(FilesInterceptor('files'))
-  async uploadImages(@UploadedFiles() files: any[]) {
-    return this.propertiesService.uploadImagesToPinata(files);
+  async prepareMetadata(@UploadedFiles() files: any[], @Body() body: any) {
+    return this.propertiesService.prepareMetadata(files, body);
   }
 }

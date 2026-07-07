@@ -17,7 +17,6 @@ export class PropertiesService {
 
   async upsertProperty(tokenId: number, propertyData: {
     owner: string;
-    name: string;
     description?: string;
     image?: string;
     type: string;
@@ -108,5 +107,51 @@ export class PropertiesService {
     }
 
     return ipfsUrls;
+  }
+
+  async uploadJsonToPinata(metadata: any): Promise<string> {
+    const jwt = process.env.PINATA_JWT;
+    if (!jwt) {
+      throw new Error('PINATA_JWT environment variable is not defined.');
+    }
+
+    const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({
+        pinataContent: metadata,
+        pinataMetadata: {
+          name: `property-metadata-${Date.now()}.json`,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload JSON to Pinata: ${response.statusText}`);
+    }
+
+    const result: any = await response.json();
+    return `ipfs://${result.IpfsHash}`;
+  }
+
+  async prepareMetadata(files: any[], body: any): Promise<{ tokenURI: string }> {
+    const ipfsUrls = await this.uploadImagesToPinata(files);
+
+    const metadata = {
+      type: body.type,
+      surface: Number(body.surface || 0),
+      rooms: Number(body.rooms || 0),
+      bathrooms: Number(body.bathrooms || 0),
+      pets: body.pets === 'true' || body.pets === true,
+      garage: body.garage === 'true' || body.garage === true,
+      images: ipfsUrls,
+    };
+
+    const tokenURI = await this.uploadJsonToPinata(metadata);
+
+    return { tokenURI };
   }
 }

@@ -154,7 +154,7 @@ export class PropertiesService {
 
             return {
               propertyId: tokenId,
-              name: metadata.name || `Propiedad #${tokenId}`,
+              name: addrAttr,
               type: typeAttr,
               address: addrAttr,
               imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
@@ -164,7 +164,7 @@ export class PropertiesService {
             console.error(`Failed to fetch metadata for token ${tokenId}`, err);
             return {
               propertyId: tokenId,
-              name: `Propiedad #${tokenId}`,
+              name: "Dirección no disponible",
               type: "departamento",
               address: "Dirección no disponible",
               imageUrl: "/images/prop-placeholder.png",

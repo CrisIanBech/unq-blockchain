@@ -51,7 +51,7 @@ export const usePropertiesStore = create<PropertiesState>()(
             await get().syncOwnedProperties();
 
             userStore.pushToast({
-              message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
+              message: `Tokens minteados y propiedad en "${input.address}" cargada on-chain`,
               severity: "success",
               txHash: result.txHash,
             });

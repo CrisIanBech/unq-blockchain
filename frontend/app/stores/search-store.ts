@@ -24,7 +24,7 @@ export const useSearchStore = create<SearchState>((set) => ({
         const data = await response.json();
         const fetchedListings: Listing[] = data.map((p: any) => ({
           id: p.tokenId.toString(),
-          name: p.name,
+          name: p.address,
           type: p.type,
           address: p.address,
           imageUrl: formatPropertyImage(p.images || p.image, p.address),

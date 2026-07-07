@@ -2,7 +2,6 @@ import { getServices } from "@/lib/services/service-registry";
 import { getLatestBlockTimestamp } from "@/lib/blockchain-infra";
 
 export interface AddPropertyInput {
-  name: string;
   type: "departamento" | "casa" | "ph" | "local" | "oficina";
   address: string;
   monthlyRent: number;
@@ -17,25 +16,35 @@ export interface AddPropertyInput {
 }
 
 export class PropertyDashboardService {
-  async uploadImages(files: File[]): Promise<string[]> {
-    if (!files || files.length === 0) return [];
-
+  async preparePropertyMetadata(input: AddPropertyInput): Promise<string> {
     const formData = new FormData();
-    files.forEach((file) => {
+    formData.append("type", input.type);
+    formData.append("address", input.address);
+    formData.append("monthlyRent", input.monthlyRent.toString());
+    formData.append("realEstateToken", input.realEstateToken);
+    formData.append("rentalToken", input.rentalToken);
+    formData.append("surface", input.surface.toString());
+    formData.append("rooms", input.rooms.toString());
+    formData.append("bathrooms", input.bathrooms.toString());
+    formData.append("pets", input.pets.toString());
+    formData.append("garage", input.garage.toString());
+    
+    input.images.forEach((file) => {
       formData.append("files", file);
     });
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-    const response = await fetch(`${backendUrl}/properties/upload-images`, {
+    const response = await fetch(`${backendUrl}/properties/metadata`, {
       method: "POST",
       body: formData,
     });
 
     if (!response.ok) {
-      throw new Error("Error al subir imágenes a IPFS desde el servidor.");
+      throw new Error("Error al preparar la metadata e imágenes en IPFS.");
     }
 
-    return response.json();
+    const data = await response.json();
+    return data.tokenURI;
   }
 
   async mintProperty(wallet: string, input: AddPropertyInput): Promise<{ tokenId?: number; txHash: string; lat: number; lng: number }> {
@@ -44,30 +53,10 @@ export class PropertyDashboardService {
     const lat = -34.6037 + (Math.random() - 0.5) * 0.08;
     const lng = -58.4 + (Math.random() - 0.5) * 0.08;
 
-    // Upload files to backend
-    const ipfsUrls = await this.uploadImages(input.images);
+    // Call backend to upload images and metadata to IPFS, receiving native tokenURI
+    const tokenURI = await this.preparePropertyMetadata(input);
 
-    // Construct base64 metadata URI to store name, address, rent and physical attributes on-chain
-    const metadata = {
-      name: input.name,
-      description: `Tokenized property: ${input.name}`,
-      image: ipfsUrls.length > 0 ? ipfsUrls[0] : "",
-      images: ipfsUrls,
-      attributes: [
-        { trait_type: "type", value: input.type },
-        { trait_type: "address", value: input.address },
-        { trait_type: "monthlyRent", value: input.monthlyRent },
-        { trait_type: "surface", value: input.surface },
-        { trait_type: "rooms", value: input.rooms },
-        { trait_type: "bathrooms", value: input.bathrooms },
-        { trait_type: "pets", value: input.pets },
-        { trait_type: "garage", value: input.garage }
-      ]
-    };
-    const base64Metadata = btoa(unescape(encodeURIComponent(JSON.stringify(metadata))));
-    const metadataURI = `data:application/json;base64,${base64Metadata}`;
-
-    const result = await propertiesService.mintProperty(wallet, metadataURI, lat, lng);
+    const result = await propertiesService.mintProperty(wallet, tokenURI, lat, lng);
     return {
       tokenId: result.tokenId,
       txHash: result.txHash,

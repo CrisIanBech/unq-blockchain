@@ -33,7 +33,7 @@ export async function loadOwnedProperties(
 
       return {
         propertyId: tokenId,
-        name: metadata.name || `Propiedad #${tokenId}`,
+        name: addrAttr,
         type: typeAttr,
         address: addrAttr,
         imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),

@@ -58,20 +58,15 @@ async function main() {
         ] : [];
 
         const metadata = {
-            name: `Inmueble #${i} (${type})`,
             description: `Hermoso/a ${type} en excelente ubicación en Quilmes.`,
-            image: images.length > 0 ? images[0] : "",
-            images,
-            attributes: [
-                { trait_type: "type", value: type },
-                { trait_type: "address", value: `Calle Falsa ${123 + i * 14}, Quilmes` },
-                { trait_type: "monthlyRent", value: (800 + i * 100).toString() },
-                { trait_type: "surface", value: surface },
-                { trait_type: "rooms", value: rooms },
-                { trait_type: "bathrooms", value: bathrooms },
-                { trait_type: "pets", value: pets },
-                { trait_type: "garage", value: garage }
-            ]
+            type,
+            monthlyRent: 800 + i * 100,
+            surface,
+            rooms,
+            bathrooms,
+            pets,
+            garage,
+            images
         };
 
         const jsonStr = JSON.stringify(metadata);

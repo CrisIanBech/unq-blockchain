@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { PropertiesService } from '../properties/properties.service';
+import { GeocodingService } from '../properties/geocoding.service';
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
@@ -13,6 +14,7 @@ export class BlockchainService implements OnModuleInit {
   constructor(
     private readonly configService: ConfigService,
     private readonly propertiesService: PropertiesService,
+    private readonly geocodingService: GeocodingService,
   ) {}
 
   onModuleInit() {
@@ -126,18 +128,17 @@ export class BlockchainService implements OnModuleInit {
       // Default fallback metadata in case fetch fails
       metadata = metadata || {};
 
-      const type = metadata.attributes?.find((a: any) => a.trait_type === 'type')?.value || 'departamento';
-      const address = metadata.attributes?.find((a: any) => a.trait_type === 'address')?.value || 'Dirección Desconocida';
-      const monthlyRent = Number(metadata.attributes?.find((a: any) => a.trait_type === 'monthlyRent')?.value || 0);
+      const type = metadata.type || metadata.attributes?.find((a: any) => a.trait_type === 'type')?.value || 'departamento';
+      const monthlyRent = Number(metadata.monthlyRent || metadata.attributes?.find((a: any) => a.trait_type === 'monthlyRent')?.value || 0);
 
-      const surface = Number(metadata.attributes?.find((a: any) => a.trait_type === 'surface')?.value || 0);
-      const rooms = Number(metadata.attributes?.find((a: any) => a.trait_type === 'rooms')?.value || 0);
-      const bathrooms = Number(metadata.attributes?.find((a: any) => a.trait_type === 'bathrooms')?.value || 0);
+      const surface = Number(metadata.surface || metadata.attributes?.find((a: any) => a.trait_type === 'surface')?.value || 0);
+      const rooms = Number(metadata.rooms || metadata.attributes?.find((a: any) => a.trait_type === 'rooms')?.value || 0);
+      const bathrooms = Number(metadata.bathrooms || metadata.attributes?.find((a: any) => a.trait_type === 'bathrooms')?.value || 0);
       
-      const petsAttr = metadata.attributes?.find((a: any) => a.trait_type === 'pets')?.value;
+      const petsAttr = metadata.pets !== undefined ? metadata.pets : metadata.attributes?.find((a: any) => a.trait_type === 'pets')?.value;
       const pets = petsAttr === true || petsAttr === 'true';
 
-      const garageAttr = metadata.attributes?.find((a: any) => a.trait_type === 'garage')?.value;
+      const garageAttr = metadata.garage !== undefined ? metadata.garage : metadata.attributes?.find((a: any) => a.trait_type === 'garage')?.value;
       const garage = garageAttr === true || garageAttr === 'true';
 
       const images = metadata.images || [];
@@ -146,11 +147,13 @@ export class BlockchainService implements OnModuleInit {
       const lat = Number(latitude);
       const lng = Number(longitude);
 
+      // Reverse geocode address from event coordinates
+      const address = await this.geocodingService.reverseGeocode(lat, lng);
+
       await this.propertiesService.upsertProperty(Number(propertyId), {
         owner: owner.toLowerCase(),
-        name: metadata.name || `Propiedad #${propertyId.toString()}`,
         description: metadata.description || '',
-        image: metadata.image || '',
+        image: images.length > 0 ? images[0] : '',
         type,
         address,
         monthlyRent,

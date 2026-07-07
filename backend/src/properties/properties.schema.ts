@@ -11,9 +11,6 @@ export class Property {
   @Prop({ required: true, index: true })
   owner: string;
 
-  @Prop({ required: true })
-  name: string;
-
   @Prop()
   description: string;
 

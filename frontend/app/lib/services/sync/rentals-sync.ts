@@ -31,7 +31,7 @@ export async function loadRentals(
     const newRental: Rental = {
       id: address,
       propertyId: Number(details.propertyId),
-      name: rentalImport.name || metadata.name || `Propiedad #${details.propertyId.toString()}`,
+      name: addrAttr,
       type: typeAttr as PropertyType,
       address: addrAttr,
       imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),

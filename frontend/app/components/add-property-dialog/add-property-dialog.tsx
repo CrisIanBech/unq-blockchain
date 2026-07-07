@@ -26,7 +26,6 @@ interface AddPropertyDialogProps {
   onSubmit: (input: {
     realEstateToken: string
     rentalToken: string
-    name: string
     type: PropertyType
     address: string
     monthlyRent: number
@@ -42,7 +41,6 @@ interface AddPropertyDialogProps {
 export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialogProps) {
   const [realEstateToken, setRe] = useState("")
   const [rentalToken, setRt] = useState("")
-  const [name, setName] = useState("")
   const [type, setType] = useState<PropertyType>("departamento")
   const [address, setAddress] = useState("")
   const [rent, setRent] = useState("")
@@ -57,17 +55,15 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
   const reValid = ADDR_RE.test(realEstateToken)
   const rtValid = ADDR_RE.test(rentalToken)
   const rentValid = Number(rent) > 0
-  const nameValid = name.trim().length > 1
   const addrValid = address.trim().length > 3
   const surfaceValid = Number(surface) > 0
   const roomsValid = Number(rooms) > 0
   const bathroomsValid = Number(bathrooms) > 0
-  const valid = reValid && rtValid && rentValid && nameValid && addrValid && surfaceValid && roomsValid && bathroomsValid
+  const valid = reValid && rtValid && rentValid && addrValid && surfaceValid && roomsValid && bathroomsValid
 
   function reset() {
     setRe("")
     setRt("")
-    setName("")
     setType("departamento")
     setAddress("")
     setRent("")
@@ -87,7 +83,6 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
     onSubmit({
       realEstateToken,
       rentalToken,
-      name: name.trim(),
       type,
       address: address.trim(),
       monthlyRent: Number(rent),
@@ -135,13 +130,6 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
             helperText={touched && !rtValid ? "Debe ser una address válida (0x + 40 hex)" : " "}
             fullWidth
             slotProps={{ htmlInput: { style: { fontFamily: "monospace" } } }}
-          />
-          <TextField
-            label="Nombre de la propiedad"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            error={touched && !nameValid}
-            fullWidth
           />
           <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
             <TextField select label="Tipo" value={type} onChange={(e) => setType(e.target.value as PropertyType)} sx={{ flex: 1 }}>
