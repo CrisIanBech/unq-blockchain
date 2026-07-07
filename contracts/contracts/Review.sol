@@ -22,6 +22,8 @@ contract Review is IReview {
 
     mapping(uint256 => Review[]) private _reviews;
     mapping(address => bool) public override hasReviewed;
+    mapping(address => bool) public override hasReviewedLandlord;
+    mapping(uint256 => bool) public override hasReviewedLandlordGeneral;
 
     modifier validRating(uint8 rating) {
         if (rating < 1 || rating > 5) revert InvalidRating();
@@ -40,33 +42,54 @@ contract Review is IReview {
     ) external override validRating(rating) {
         if (bytes(comment).length > MAX_COMMENT_LENGTH) revert CommentTooLong();
 
+        address owner = IERC721(propertyNFT).ownerOf(propertyId);
         address rentalNFT = IPropertyNFT(propertyNFT).rentalNFT();
         address agreementAddr = IRentalNFT(rentalNFT).userOf(propertyId);
 
-        if (agreementAddr == address(0)) revert NoActiveOrCompletedRental();
+        if (msg.sender == owner) {
+            if (agreementAddr != address(0)) {
+                if (hasReviewedLandlord[agreementAddr]) revert ReviewAlreadyPosted();
+                hasReviewedLandlord[agreementAddr] = true;
+            } else {
+                if (hasReviewedLandlordGeneral[propertyId]) revert ReviewAlreadyPosted();
+                hasReviewedLandlordGeneral[propertyId] = true;
+            }
 
-        IRentalAgreement agreement = IRentalAgreement(agreementAddr);
-        if (agreement.tenant() != msg.sender) revert NotTenantOfRental();
+            _reviews[propertyId].push(Review({
+                author: msg.sender,
+                agreement: agreementAddr,
+                rating: rating,
+                comment: comment,
+                timestamp: block.timestamp
+            }));
 
-        IRentalAgreement.AgreementStatus status = agreement.status();
-        if (status != IRentalAgreement.AgreementStatus.Active &&
-            status != IRentalAgreement.AgreementStatus.Completed) {
-            revert NoActiveOrCompletedRental();
+            emit ReviewPosted(propertyId, msg.sender, agreementAddr, rating, comment);
+        } else {
+            if (agreementAddr == address(0)) revert NoActiveOrCompletedRental();
+
+            IRentalAgreement agreement = IRentalAgreement(agreementAddr);
+            if (agreement.tenant() != msg.sender) revert NotTenantOfRental();
+
+            IRentalAgreement.AgreementStatus status = agreement.status();
+            if (status != IRentalAgreement.AgreementStatus.Active &&
+                status != IRentalAgreement.AgreementStatus.Completed) {
+                revert NoActiveOrCompletedRental();
+            }
+
+            if (hasReviewed[agreementAddr]) revert ReviewAlreadyPosted();
+
+            hasReviewed[agreementAddr] = true;
+
+            _reviews[propertyId].push(Review({
+                author: msg.sender,
+                agreement: agreementAddr,
+                rating: rating,
+                comment: comment,
+                timestamp: block.timestamp
+            }));
+
+            emit ReviewPosted(propertyId, msg.sender, agreementAddr, rating, comment);
         }
-
-        if (hasReviewed[agreementAddr]) revert ReviewAlreadyPosted();
-
-        hasReviewed[agreementAddr] = true;
-
-        _reviews[propertyId].push(Review({
-            author: msg.sender,
-            agreement: agreementAddr,
-            rating: rating,
-            comment: comment,
-            timestamp: block.timestamp
-        }));
-
-        emit ReviewPosted(propertyId, msg.sender, agreementAddr, rating, comment);
     }
 
     function getReviewCount(uint256 propertyId) external view override returns (uint256) {

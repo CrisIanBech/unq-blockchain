@@ -1,5 +1,6 @@
 import { ReviewsRepository, type OnChainReview } from "../repositories/reviews-repository";
 import { translateError } from "../errors/translator";
+import { getReview, getPropertyNFT, getReadProvider } from "../blockchain-infra";
 
 export type { OnChainReview };
 
@@ -33,13 +34,36 @@ export class ReviewsService {
 
   static async canPostReview(propertyId: number, accountAddress: string): Promise<boolean> {
     try {
+      if (!accountAddress) return false;
+      const provider = getReadProvider();
+      const nft = getPropertyNFT(provider);
+      const owner = await nft.ownerOf(BigInt(propertyId));
+
       const agreementAddr = await ReviewsRepository.getActiveRental(propertyId);
+      const rs = getReview(provider);
+
+      if (owner.toLowerCase() === accountAddress.toLowerCase()) {
+        if (agreementAddr !== "0x0000000000000000000000000000000000000000") {
+          const status = await ReviewsRepository.getAgreementStatus(agreementAddr);
+          if (status !== 2) return false;
+
+          const alreadyReviewed = await rs.hasReviewedLandlord(agreementAddr);
+          return !alreadyReviewed;
+        } else {
+          const alreadyReviewed = await rs.hasReviewedLandlordGeneral(BigInt(propertyId));
+          return !alreadyReviewed;
+        }
+      }
+
       if (agreementAddr === "0x0000000000000000000000000000000000000000") return false;
+
+      const status = await ReviewsRepository.getAgreementStatus(agreementAddr);
+      if (status !== 2) return false;
 
       const tenant = await ReviewsRepository.getAgreementTenant(agreementAddr);
       if (tenant.toLowerCase() !== accountAddress.toLowerCase()) return false;
 
-      const alreadyReviewed = await ReviewsRepository.hasReviewed(agreementAddr);
+      const alreadyReviewed = await rs.hasReviewed(agreementAddr);
       return !alreadyReviewed;
     } catch (error) {
       throw translateError(error);

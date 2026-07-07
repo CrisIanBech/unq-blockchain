@@ -140,31 +140,43 @@ export class MockRentalsRepository implements IRentalsRepository {
     status: number;
     startTime: bigint;
     paymentPeriod: bigint;
+    securityDeposit: bigint;
+    inflationBps: bigint;
+    lateFeeBps: bigint;
+    gracePeriod: bigint;
+    duration: bigint;
+    deadline: bigint;
+    landlordApproved: boolean;
+    tenantApproved: boolean;
+    landlordCancelled: boolean;
+    tenantCancelled: boolean;
+    inflationAdjustmentInterval: bigint;
   }> {
     await new Promise((res) => setTimeout(res, 500));
     const contract = mockContracts[agreementAddress];
-    if (!contract) {
-       // Return dummy data if not found in mock
-       return {
-         propertyId: 1n,
-         tenant: "0xMockTenant",
-         landlord: "0xMockLandlord",
-         baseRent: 500000000n, // 500 USDC
-         rentPaidUntil: BigInt(Math.floor(Date.now() / 1000)),
-         status: 2, // Active
-         startTime: BigInt(Math.floor(Date.now() / 1000) - 30 * 86400),
-         paymentPeriod: 30n * 86400n
-       };
-    }
+    const startTime = contract?.startTime ?? Math.floor(Date.now() / 1000) - 30 * 86400;
+    const paymentPeriod = contract?.paymentPeriod ?? 30 * 86400;
+
     return {
-      propertyId: contract.propertyId,
-      tenant: contract.tenant,
+      propertyId: contract?.propertyId ?? 1n,
+      tenant: contract?.tenant ?? "0xMockTenant",
       landlord: "0xMockLandlord",
-      baseRent: contract.baseRent,
-      rentPaidUntil: BigInt(contract.rentPaidUntil),
-      status: 2, // Active
-      startTime: BigInt(contract.startTime),
-      paymentPeriod: BigInt(contract.paymentPeriod)
+      baseRent: contract?.baseRent ?? 500000000n,
+      rentPaidUntil: BigInt(contract?.rentPaidUntil ?? startTime + paymentPeriod),
+      status: 2,
+      startTime: BigInt(startTime),
+      paymentPeriod: BigInt(paymentPeriod),
+      securityDeposit: 0n,
+      inflationBps: 0n,
+      lateFeeBps: BigInt(contract?.lateFeeBps ?? 1000),
+      gracePeriod: 5n * 86400n,
+      duration: BigInt(contract?.duration ?? 12 * 30 * 86400),
+      deadline: BigInt(startTime + 30 * 86400),
+      landlordApproved: true,
+      tenantApproved: true,
+      landlordCancelled: false,
+      tenantCancelled: false,
+      inflationAdjustmentInterval: 0n,
     };
   }
 
@@ -173,15 +185,15 @@ export class MockRentalsRepository implements IRentalsRepository {
     amount: bigint;
     lateFee: bigint;
     txHash: string;
-    blockNumber: number;
+    timestamp: number;
   }>> {
     await new Promise((res) => setTimeout(res, 500));
-    return mockEvents.filter(e => e.agreementAddress === agreementAddress).map(e => ({
+    return mockEvents.filter((e) => e.agreementAddress === agreementAddress).map((e) => ({
       periodIndex: e.periodIndex,
       amount: e.amount,
       lateFee: e.lateFee,
       txHash: e.txHash,
-      blockNumber: e.blockNumber
+      timestamp: e.blockNumber,
     }));
   }
 

@@ -20,7 +20,7 @@ export function ensureMockDemoProperty(owner: string): number {
 }
 
 export class MockPropertiesRepository implements IPropertiesRepository {
-  async createProperty(recipient: string, metadataURI: string): Promise<any> {
+  async createProperty(recipient: string, metadataURI: string, latitude = 0, longitude = 0): Promise<any> {
     await new Promise((res) => setTimeout(res, 500));
     const tokenId = nextTokenId++;
     mockOwners[tokenId] = recipient;
@@ -66,5 +66,15 @@ export class MockPropertiesRepository implements IPropertiesRepository {
       throw new Error(`Mock token ${propertyId} does not exist`);
     }
     return owner;
+  }
+
+  async getRentalNFTOwner(_propertyId: number): Promise<string> {
+    await new Promise((res) => setTimeout(res, 100));
+    return "0x0000000000000000000000000000000000000000";
+  }
+
+  async getRentalNFTUser(_propertyId: number): Promise<string> {
+    await new Promise((res) => setTimeout(res, 100));
+    return "0x0000000000000000000000000000000000000000";
   }
 }

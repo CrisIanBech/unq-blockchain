@@ -16,6 +16,13 @@ import "./interfaces/IRentalNFT.sol";
 contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    error InvalidBaseRent();
+    error InvalidDuration();
+    error InvalidPaymentPeriod();
+    error InvalidGracePeriod();
+    error InvalidInflationInterval();
+    error InvalidDeadline();
+
     address public immutable override propertyNFT;
     address public override rentalNFT;
     uint256 public immutable override propertyId;
@@ -104,6 +111,12 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
         uint256 _duration,
         uint256 _deadline
     ) {
+        if (_baseRent == 0) revert InvalidBaseRent();
+        if (_duration == 0) revert InvalidDuration();
+        if (_paymentPeriod == 0 || _paymentPeriod > _duration) revert InvalidPaymentPeriod();
+        if (_gracePeriod == 0) revert InvalidGracePeriod();
+        if (_inflationAdjustmentInterval == 0) revert InvalidInflationInterval();
+        if (_deadline <= block.timestamp) revert InvalidDeadline();
         propertyNFT = _propertyNFT;
         propertyId = _propertyId;
         tenant = _tenant;
@@ -142,6 +155,32 @@ contract RentalAgreement is IRentalAgreement, ReentrancyGuard {
             status = AgreementStatus.Expired;
             emit AgreementExpired();
         }
+    }
+
+    /**
+     * @notice Returns all agreement details in a single struct to save RPC calls on the frontend.
+     */
+    function getAgreementDetails() external view override returns (AgreementDetails memory) {
+        return AgreementDetails({
+            propertyId: propertyId,
+            tenant: tenant,
+            landlord: landlord(),
+            baseRent: baseRent,
+            rentPaidUntil: rentPaidUntil,
+            status: status,
+            startTime: startTime,
+            paymentPeriod: paymentPeriod,
+            securityDeposit: securityDeposit,
+            inflationBps: inflationBps,
+            lateFeeBps: lateFeeBps,
+            gracePeriod: gracePeriod,
+            duration: duration,
+            deadline: deadline,
+            landlordApproved: landlordApproved,
+            tenantApproved: tenantApproved,
+            landlordCancelled: landlordCancelled,
+            tenantCancelled: tenantCancelled
+        });
     }
 
     /**

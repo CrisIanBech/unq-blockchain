@@ -30,18 +30,18 @@ contract RentalAgreementFactory is IRentalAgreementFactory {
         uint256 inflationBps,
         uint256 lateFeeBps,
         uint256 gracePeriod,
+        uint256 paymentPeriod,
+        uint256 inflationAdjustmentInterval,
         uint256 duration,
         uint256 deadline
     ) external override returns (address) {
         // Only PropertyNFT owner can list/create the rental agreement
-        if (IERC721(propertyNFT).ownerOf(propertyId) != msg.sender) revert NotPropertyOwner();
-        
-        // Cannot create if there is already an active rental (i.e. the RentalNFT has a non-expired user)
-        if (IRentalNFT(rentalNFT).userOf(propertyId) != address(0)) revert PropertyAlreadyRented();
+        if (IERC721(propertyNFT).ownerOf(propertyId) != msg.sender)
+            revert NotPropertyOwner();
 
-        // Defaults: paymentPeriod is 30 days, adjustment period is every 12 periods
-        uint256 paymentPeriod = 30 days;
-        uint256 inflationAdjustmentInterval = 12;
+        // Cannot create if there is already an active rental (i.e. the RentalNFT has a non-expired user)
+        if (IRentalNFT(rentalNFT).userOf(propertyId) != address(0))
+            revert PropertyAlreadyRented();
 
         RentalAgreement agreement = new RentalAgreement(
             propertyNFT,
@@ -74,4 +74,3 @@ contract RentalAgreementFactory is IRentalAgreementFactory {
         return agreementAddress;
     }
 }
-

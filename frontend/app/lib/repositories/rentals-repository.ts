@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import {
   getSigner,
+  getBrowserProvider,
   getRentalAgreementFactory,
   getRentalAgreement,
   getMockUSDC,
@@ -25,13 +26,24 @@ export interface IRentalsRepository {
     status: number;
     startTime: bigint;
     paymentPeriod: bigint;
+    securityDeposit: bigint;
+    inflationBps: bigint;
+    lateFeeBps: bigint;
+    gracePeriod: bigint;
+    duration: bigint;
+    deadline: bigint;
+    landlordApproved: boolean;
+    tenantApproved: boolean;
+    landlordCancelled: boolean;
+    tenantCancelled: boolean;
+    inflationAdjustmentInterval: bigint;
   }>;
   getPaymentHistory(agreementAddress: string): Promise<Array<{
     periodIndex: number;
     amount: bigint;
     lateFee: bigint;
     txHash: string;
-    blockNumber: number;
+    timestamp: number;
   }>>;
   getRentalAgreementForProperty(propertyId: number): Promise<string | null>;
   getWithdrawableRent(agreementAddress: string): Promise<bigint>;
@@ -46,6 +58,8 @@ export class RentalsRepository implements IRentalsRepository {
     inflationBps: number;
     lateFeeBps: number;
     gracePeriod: number;
+    paymentPeriod: number;
+    inflationAdjustmentInterval: number;
     duration: number;
     deadline: number;
   }): Promise<ethers.TransactionReceipt> {
@@ -69,6 +83,8 @@ export class RentalsRepository implements IRentalsRepository {
       params.inflationBps,
       params.lateFeeBps,
       params.gracePeriod,
+      params.paymentPeriod,
+      params.inflationAdjustmentInterval,
       params.duration,
       params.deadline
     );
@@ -90,6 +106,12 @@ export class RentalsRepository implements IRentalsRepository {
       const usdc = getMockUSDC(signer);
       // Step 1: Approve allowance
       const approveTx = await usdc.approve(params.agreementAddress, params.depositAmount);
+      await approveTx.wait();
+    } else {
+      const agreement = getRentalAgreement(params.agreementAddress, signer);
+      const propertyId = await agreement.propertyId();
+      const propertyNft = getPropertyNFT(signer);
+      const approveTx = await propertyNft.approve(params.agreementAddress, propertyId);
       await approveTx.wait();
     }
 
@@ -142,10 +164,10 @@ export class RentalsRepository implements IRentalsRepository {
   }
 
   async getRentAmountToPay(agreementAddress: string): Promise<{ currentRent: bigint, lateFee: bigint, totalAmount: bigint }> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
+    const agreement = getRentalAgreement(agreementAddress, runner);
     const [currentRent, lateFee, totalAmount] = await agreement.getRentAmountToPay();
     return { currentRent, lateFee, totalAmount };
   }
@@ -159,31 +181,45 @@ export class RentalsRepository implements IRentalsRepository {
     status: number;
     startTime: bigint;
     paymentPeriod: bigint;
+    securityDeposit: bigint;
+    inflationBps: bigint;
+    lateFeeBps: bigint;
+    gracePeriod: bigint;
+    duration: bigint;
+    deadline: bigint;
+    landlordApproved: boolean;
+    tenantApproved: boolean;
+    landlordCancelled: boolean;
+    tenantCancelled: boolean;
+    inflationAdjustmentInterval: bigint;
   }> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
-    const [propertyId, tenant, landlord, baseRent, rentPaidUntil, status, startTime, paymentPeriod] = await Promise.all([
-      agreement.propertyId(),
-      agreement.tenant(),
-      agreement.landlord(),
-      agreement.baseRent(),
-      agreement.rentPaidUntil(),
-      agreement.status(),
-      agreement.startTime(),
-      agreement.paymentPeriod()
-    ]);
+    const agreement = getRentalAgreement(agreementAddress, runner);
+    const details = await agreement.getAgreementDetails();
+    const inflationAdjustmentInterval = await agreement.inflationAdjustmentInterval();
 
-    return { 
-      propertyId, 
-      tenant, 
-      landlord, 
-      baseRent, 
-      rentPaidUntil, 
-      status: Number(status),
-      startTime,
-      paymentPeriod
+    return {
+      propertyId: details.propertyId,
+      tenant: details.tenant,
+      landlord: details.landlord,
+      baseRent: details.baseRent,
+      rentPaidUntil: details.rentPaidUntil,
+      status: Number(details.status),
+      startTime: details.startTime,
+      paymentPeriod: details.paymentPeriod,
+      securityDeposit: details.securityDeposit,
+      inflationBps: details.inflationBps,
+      lateFeeBps: details.lateFeeBps,
+      gracePeriod: details.gracePeriod,
+      duration: details.duration,
+      deadline: details.deadline,
+      landlordApproved: details.landlordApproved,
+      tenantApproved: details.tenantApproved,
+      landlordCancelled: details.landlordCancelled,
+      tenantCancelled: details.tenantCancelled,
+      inflationAdjustmentInterval
     };
   }
 
@@ -192,38 +228,40 @@ export class RentalsRepository implements IRentalsRepository {
     amount: bigint;
     lateFee: bigint;
     txHash: string;
-    blockNumber: number;
+    timestamp: number;
   }>> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
-    
-    // Create filter for the RentPaid event
+    const agreement = getRentalAgreement(agreementAddress, runner);
+
     const filter = agreement.filters.RentPaid();
-    
-    // Query logs from block 0 to latest
+
     const logs = await agreement.queryFilter(filter, 0, "latest");
-    
-    return logs.map((log: any) => ({
-      periodIndex: Number(log.args[0]),
-      amount: log.args[1],
-      lateFee: log.args[2],
-      txHash: log.transactionHash,
-      blockNumber: log.blockNumber
+
+    const logsWithTime = await Promise.all(logs.map(async (log: any) => {
+      const block = await log.getBlock();
+      return {
+        periodIndex: Number(log.args[0]),
+        amount: log.args[1],
+        lateFee: log.args[2],
+        txHash: log.transactionHash,
+        timestamp: block.timestamp
+      };
     }));
+    return logsWithTime;
   }
 
   async getRentalAgreementForProperty(propertyId: number): Promise<string | null> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const factory = getRentalAgreementFactory(signer);
+    const factory = getRentalAgreementFactory(runner);
     const filter = factory.filters.RentalAgreementCreated(null, BigInt(propertyId));
     const events = await factory.queryFilter(filter, 0, "latest");
-    
+
     if (events.length === 0) return null;
-    
+
     const latestEvent = events[events.length - 1];
     if ("args" in latestEvent && latestEvent.args) {
       return latestEvent.args[0] as string;
@@ -232,12 +270,12 @@ export class RentalsRepository implements IRentalsRepository {
   }
 
   async getWithdrawableRent(agreementAddress: string): Promise<bigint> {
-    const signer = await getSigner();
-    if (!signer) throw new Error("No signer available.");
+    const runner = getBrowserProvider();
+    if (!runner) throw new Error("No provider available.");
 
-    const agreement = getRentalAgreement(agreementAddress, signer);
-    const usdc = getMockUSDC(signer);
-    
+    const agreement = getRentalAgreement(agreementAddress, runner);
+    const usdc = getMockUSDC(runner);
+
     const rawBalance = await usdc.balanceOf(agreementAddress);
     const rawDepositStatus = await agreement.depositStatus();
     const rawSecurityDeposit = await agreement.securityDeposit();
@@ -245,8 +283,7 @@ export class RentalsRepository implements IRentalsRepository {
     const balance = BigInt(rawBalance);
     const depositStatus = Number(rawDepositStatus);
     const securityDeposit = BigInt(rawSecurityDeposit);
-    
-    // DepositStatus.Locked is 1
+
     const lockedAmount = (depositStatus === 1) ? securityDeposit : 0n;
     if (balance <= lockedAmount) return 0n;
     return balance - lockedAmount;

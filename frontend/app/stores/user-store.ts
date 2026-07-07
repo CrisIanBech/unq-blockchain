@@ -4,6 +4,7 @@ import { WalletService } from "../lib/services/wallet-service";
 import { usesMockRepositories } from "../lib/config/mock-mode";
 
 const MOCK_USDC_BALANCE = 3250;
+
 export function isWalletConnected(wallet: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(wallet);
 }
@@ -13,7 +14,7 @@ interface UserState {
   balance: number;
   isConnecting: boolean;
   toasts: Toast[];
-  pushToast: (t: Omit<Toast, "id">) => void;
+  pushToast: (t: Omit<Toast, "id"> & { id?: number }) => number;
   dismissToast: (id: number) => void;
   adjustBalance: (amount: number) => void;
   connectWallet: () => Promise<void>;
@@ -28,20 +29,26 @@ export const useUserStore = create<UserState>((set, get) => ({
   toasts: [],
 
   pushToast: (t) => {
-    set((state) => ({
-      toasts: [...state.toasts, { ...t, id: Date.now() + Math.random() }]
-    }));
+    const id = t.id ?? (Date.now() + Math.random());
+    set((state) => {
+      const exists = state.toasts.find((toast) => toast.id === id);
+      if (exists) {
+        return { toasts: state.toasts.map((toast) => (toast.id === id ? { ...t, id } : toast)) };
+      }
+      return { toasts: [...state.toasts, { ...t, id }] };
+    });
+    return id;
   },
 
   dismissToast: (id) => {
     set((state) => ({
-      toasts: state.toasts.filter((t) => t.id !== id)
+      toasts: state.toasts.filter((t) => t.id !== id),
     }));
   },
 
   adjustBalance: (amount) => {
     set((state) => ({
-      balance: state.balance + amount
+      balance: state.balance + amount,
     }));
   },
 
@@ -63,6 +70,7 @@ export const useUserStore = create<UserState>((set, get) => ({
           ? MOCK_USDC_BALANCE
           : Number(await WalletService.getUSDCBalance(address));
         set({ balance });
+
         get().pushToast({
           message: "Billetera conectada exitosamente a MetaMask",
           severity: "success",
@@ -73,10 +81,10 @@ export const useUserStore = create<UserState>((set, get) => ({
           severity: "error",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Wallet connection failed:", error);
       get().pushToast({
-        message: error.message || "Error al conectar MetaMask",
+        message: error instanceof Error ? error.message : "Error al conectar MetaMask",
         severity: "error",
       });
     } finally {
@@ -94,55 +102,58 @@ export const useUserStore = create<UserState>((set, get) => ({
     if (isWalletConnected(address) && !usesMockRepositories()) {
       try {
         const balance = await WalletService.getUSDCBalance(address);
-        set({ balance });
+        set({ balance: Number(balance) });
       } catch (err) {
         console.error("Failed to sync balance:", err);
       }
     }
-  }
+  },
 }));
 
-// Attempt to load current account on store load if already authorized
 if (typeof window !== "undefined") {
-  WalletService.getCurrentAccount().then(async (address) => {
-    if (address) {
-      useUserStore.setState({ wallet: address });
-      try {
-        const balance = usesMockRepositories()
-          ? MOCK_USDC_BALANCE
-          : Number(await WalletService.getUSDCBalance(address));
-        useUserStore.setState({ balance });
-      } catch {
-        // Silently fail
-      }
-    }
-  }).catch(() => {});
-    // Listen for MetaMask account changes and update active wallet in real-time
-    const ethereum = (window as any).ethereum;
-    if (ethereum && !(window as any).__unq_accountsChangedListenerAdded) {
-      (window as any).__unq_accountsChangedListenerAdded = true;
-      ethereum.on("accountsChanged", async (accounts: string[]) => {
-        const nextWallet = accounts[0] || "";
-        const userStore = useUserStore.getState();
-        const currentWallet = userStore.wallet;
-        
-        if (nextWallet.toLowerCase() !== currentWallet.toLowerCase()) {
-          if (nextWallet) {
-            useUserStore.setState({ wallet: nextWallet });
-            try {
-              const balance = await WalletService.getUSDCBalance(nextWallet);
-              useUserStore.setState({ balance });
-              userStore.pushToast({ message: "Cuenta de MetaMask cambiada", severity: "info" });
-            } catch (err) {
-              // Silently fail
-            }
-          } else {
-            useUserStore.setState({ wallet: "", balance: 0 });
-            userStore.pushToast({ message: "Billetera desconectada", severity: "info" });
-          }
+  WalletService.getCurrentAccount()
+    .then(async (address) => {
+      if (address) {
+        useUserStore.setState({ wallet: address });
+        try {
+          const balance = usesMockRepositories()
+            ? MOCK_USDC_BALANCE
+            : Number(await WalletService.getUSDCBalance(address));
+          useUserStore.setState({ balance });
+        } catch {
+          // Silently fail
         }
-      });
-    }
+      }
+    })
+    .catch(() => {});
+
+  const ethereum = (window as Window & { ethereum?: { on: (event: string, handler: (accounts: string[]) => void) => void } }).ethereum;
+  if (ethereum && !(window as Window & { __unq_accountsChangedListenerAdded?: boolean }).__unq_accountsChangedListenerAdded) {
+    (window as Window & { __unq_accountsChangedListenerAdded?: boolean }).__unq_accountsChangedListenerAdded = true;
+    ethereum.on("accountsChanged", async (accounts: string[]) => {
+      const nextWallet = accounts[0] || "";
+      const userStore = useUserStore.getState();
+      const currentWallet = userStore.wallet;
+
+      if (nextWallet.toLowerCase() !== currentWallet.toLowerCase()) {
+        if (nextWallet) {
+          useUserStore.setState({ wallet: nextWallet });
+          try {
+            const balance = usesMockRepositories()
+              ? MOCK_USDC_BALANCE
+              : Number(await WalletService.getUSDCBalance(nextWallet));
+            useUserStore.setState({ balance });
+            userStore.pushToast({ message: "Cuenta de MetaMask cambiada", severity: "info" });
+          } catch {
+            // Silently fail
+          }
+        } else {
+          useUserStore.setState({ wallet: "", balance: 0 });
+          userStore.pushToast({ message: "Billetera desconectada", severity: "info" });
+        }
+      }
+    });
   }
+}
 
 export type UseUserStoreReturn = ReturnType<typeof useUserStore>;

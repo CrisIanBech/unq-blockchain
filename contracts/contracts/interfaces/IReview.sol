@@ -29,6 +29,8 @@ interface IReview {
     error ReviewAlreadyPosted();
     error UnauthorizedCaller();
 
+    error InvalidAgreement();
+
     function propertyNFT() external view returns (address);
     function factory() external view returns (address);
 
@@ -41,4 +43,6 @@ interface IReview {
     function getReviewCount(uint256 propertyId) external view returns (uint256);
     function getReview(uint256 propertyId, uint256 index) external view returns (Review memory);
     function hasReviewed(address agreement) external view returns (bool);
+    function hasReviewedLandlord(address agreement) external view returns (bool);
+    function hasReviewedLandlordGeneral(uint256 propertyId) external view returns (bool);
 }

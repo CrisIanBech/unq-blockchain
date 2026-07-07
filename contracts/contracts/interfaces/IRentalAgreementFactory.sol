@@ -33,6 +33,8 @@ interface IRentalAgreementFactory {
         uint256 inflationBps,
         uint256 lateFeeBps,
         uint256 gracePeriod,
+        uint256 paymentPeriod,
+        uint256 inflationAdjustmentInterval,
         uint256 duration,
         uint256 deadline
     ) external returns (address);

@@ -6,6 +6,9 @@ import {
   UnauthorizedOperation,
   UnknownBlockchainError,
   NoEthereumProvider,
+  InvalidAgreementStatus,
+  NoActiveOrCompletedRental,
+  ReviewAlreadyPosted,
 } from "./domain-errors";
 
 /**
@@ -33,6 +36,20 @@ export function translateError(error: any): Error {
   }
 
   // 3. Custom EVM revert checks
+  const errorData = String(error.data || error.error?.data || "").toLowerCase();
+
+  if (errorData.includes("0x1f5d033b") || errorMessage.includes("invalidagreementstatus")) {
+    return new InvalidAgreementStatus();
+  }
+
+  if (errorData.includes("0x4dfc6ea2") || errorMessage.includes("noactiveorcompletedrental")) {
+    return new NoActiveOrCompletedRental();
+  }
+
+  if (errorData.includes("0x718a36bc") || errorData.includes("0xd97e4115") || errorMessage.includes("reviewalreadyposted")) {
+    return new ReviewAlreadyPosted();
+  }
+
   if (errorMessage.includes("notpropertyowner") || errorMessage.includes("notowner") || errorMessage.includes("unauthorized")) {
     return new UnauthorizedOperation();
   }

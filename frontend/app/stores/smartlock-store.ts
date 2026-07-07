@@ -112,7 +112,7 @@ export const useSmartlockStore = create<SmartlockState>(() => ({
 
     await runUnlock({
       propertyId: BigInt(rental.propertyId),
-      agreementAddress: rental.agreementAddress,
+      agreementAddress: rental.id,
       expectedRole: "tenant",
       successMessage: `Smartlock abierto — ${rental.name}`,
       onSuccess: () => {},
@@ -139,7 +139,7 @@ export const useSmartlockStore = create<SmartlockState>(() => ({
 
     await runUnlock({
       propertyId: BigInt(property.propertyId),
-      agreementAddress: property.agreementAddress,
+      agreementAddress: property.contract?.agreementAddress,
       expectedRole: "landlord",
       successMessage: `Cerradura abierta — ${property.name}`,
       onSuccess: () => {

@@ -12,7 +12,7 @@ export interface TransactionResult {
 }
 
 export class RentalsService {
-  constructor(private repo: IRentalsRepository) {}
+  constructor(private repo: IRentalsRepository) { }
   /**
    * Deploys a new RentalAgreement and extracts the address from the receipt log.
    */
@@ -24,13 +24,15 @@ export class RentalsService {
     inflationBps: number;
     lateFeeBps: number;
     gracePeriod: number;
+    paymentPeriod: number;
+    inflationAdjustmentInterval: number;
     duration: number;
     deadline: number;
   }): Promise<RentalCreationResult> {
     try {
       const baseRentRaw = ethers.parseUnits(params.baseRent.toString(), 6);
       const depositRaw = ethers.parseUnits(params.securityDeposit.toString(), 6);
-      
+
       const repoParams = {
         ...params,
         baseRent: baseRentRaw,
@@ -39,17 +41,12 @@ export class RentalsService {
 
       const receipt = await this.repo.createRental(repoParams);
 
-      // If we are using mock repo, we can extract from contractAddress instead of logs
-      if ((receipt as any).contractAddress) {
-        return { agreementAddress: (receipt as any).contractAddress, txHash: receipt.hash };
-      }
-
       let agreementAddress = "";
       for (const log of receipt.logs) {
-        const eventTopic = ethers.id("RentalAgreementCreated(uint256,address,address)");
+        const eventTopic = ethers.id("RentalAgreementCreated(address,uint256,address,uint256,uint256,uint256)");
         if (log.topics[0] === eventTopic) {
           const coder = ethers.AbiCoder.defaultAbiCoder();
-          const decoded = coder.decode(["address"], log.data);
+          const decoded = coder.decode(["address"], log.topics[1]);
           agreementAddress = decoded[0];
           break;
         }
@@ -74,8 +71,8 @@ export class RentalsService {
     depositAmount?: number;
   }): Promise<TransactionResult> {
     try {
-      const depositRaw = params.depositAmount !== undefined 
-        ? ethers.parseUnits(params.depositAmount.toString(), 6) 
+      const depositRaw = params.depositAmount !== undefined
+        ? ethers.parseUnits(params.depositAmount.toString(), 6)
         : undefined;
 
       const repoParams = { ...params, depositAmount: depositRaw };
@@ -127,7 +124,7 @@ export class RentalsService {
   async getRentAmountToPay(agreementAddress: string) {
     try {
       const amounts = await this.repo.getRentAmountToPay(agreementAddress);
-        
+
       return {
         currentRent: Number(ethers.formatUnits(amounts.currentRent, 6)),
         lateFee: Number(ethers.formatUnits(amounts.lateFee, 6)),
@@ -149,7 +146,18 @@ export class RentalsService {
         rentPaidUntil: Number(details.rentPaidUntil),
         status: details.status,
         startTime: Number(details.startTime),
-        paymentPeriod: Number(details.paymentPeriod)
+        paymentPeriod: Number(details.paymentPeriod),
+        securityDeposit: Number(ethers.formatUnits(details.securityDeposit, 6)),
+        inflationBps: Number(details.inflationBps),
+        lateFeeBps: Number(details.lateFeeBps),
+        gracePeriod: Number(details.gracePeriod),
+        duration: Number(details.duration),
+        deadline: Number(details.deadline),
+        landlordApproved: details.landlordApproved,
+        tenantApproved: details.tenantApproved,
+        landlordCancelled: details.landlordCancelled,
+        tenantCancelled: details.tenantCancelled,
+        inflationAdjustmentInterval: Number(details.inflationAdjustmentInterval)
       };
     } catch (error) {
       throw translateError(error);
@@ -159,13 +167,13 @@ export class RentalsService {
   async getPaymentHistory(agreementAddress: string) {
     try {
       const events = await this.repo.getPaymentHistory(agreementAddress);
-        
+
       return events.map(e => ({
         periodIndex: e.periodIndex,
         amount: Number(ethers.formatUnits(e.amount, 6)),
         lateFee: Number(ethers.formatUnits(e.lateFee, 6)),
         txHash: e.txHash,
-        blockNumber: e.blockNumber
+        timestamp: e.timestamp
       }));
     } catch (error) {
       throw translateError(error);

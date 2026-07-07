@@ -1,11 +1,9 @@
-import { useState, useMemo } from "react"
-import { useSearchStore } from "@stores/search-store"
-import { usePropertiesStore } from "@stores/properties-store"
+import { useState, useMemo, useEffect } from "react"
+import { useSearchStore, MAP_CENTER } from "@stores/search-store"
 import type { Listing, PropertyType } from "../models/types"
 
 export function useSearchPage() {
-  const { listings, leaveReview } = useSearchStore()
-  const { createContract } = usePropertiesStore()
+  const { listings, leaveReview, fetchListings } = useSearchStore()
   const [query, setQuery] = useState("")
   const [cat, setCat] = useState<"todos" | PropertyType>("todos")
   const [selected, setSelected] = useState<Listing | null>(null)
@@ -23,11 +21,6 @@ export function useSearchPage() {
   }, [listings, query, cat])
 
   const liveSelected = selected ? listings.find((l) => l.id === selected.id) ?? null : null
-
-  function handleRequestContract(listing: Listing) {
-    createContract(listing.id, "0x7A3f...91Cd", listing.monthlyRent)
-    alert(`Solicitud de contrato enviada para "${listing.name}"`)
-  }
 
   function handleLeaveReview(listingId: string, ratingVal: number, commentVal: string) {
     leaveReview(listingId, ratingVal, commentVal)
@@ -50,7 +43,6 @@ export function useSearchPage() {
     onSelect: setSelected,
     onToggleList: setListOpen,
     onLeaveReview: handleLeaveReview,
-    onRequestContract: handleRequestContract,
     onSetRating: setRating,
     onSetComment: setComment,
   }

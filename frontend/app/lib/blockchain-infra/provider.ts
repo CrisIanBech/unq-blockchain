@@ -33,6 +33,14 @@ function walletClientToSigner(walletClient: WalletClient): ethers.JsonRpcSigner 
   return new ethers.JsonRpcSigner(provider, account.address);
 }
 
+export function getReadProvider(): ethers.Provider {
+  const browserProvider = getBrowserProvider();
+  if (browserProvider) return browserProvider;
+  
+  const rpcUrl = import.meta.env.VITE_RPC_URL || "http://localhost:8545";
+  return new ethers.JsonRpcProvider(rpcUrl);
+}
+
 export async function getSigner(): Promise<ethers.JsonRpcSigner | null> {
   const connection = getConnection(wagmiConfig);
   if (connection.isConnected && connection.address) {

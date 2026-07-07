@@ -1,8 +1,18 @@
-import { useMemo } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { GoogleMap, useJsApiLoader, MarkerF } from "@react-google-maps/api"
-import { Box, Typography, CircularProgress, useTheme } from "@mui/material"
+import { Box, CircularProgress, useTheme } from "@mui/material"
 import type { Listing } from "@/models/types"
-import { MAP_CENTER } from "@/models/mock-data"
+import { useSearchStore } from "@stores/search-store"
+
+const MAP_CENTER = { lat: -34.6037, lng: -58.3816 };
+
+function toMercator(latDeg: number, lngDeg: number) {
+  const x = Math.round((lngDeg * 20037508.34) / 180)
+  const y = Math.round(
+    (Math.log(Math.tan(((90 + latDeg) * Math.PI) / 360)) / Math.PI) * 20037508.34
+  )
+  return { x, y }
+}
 
 const MAP_STYLE_LIGHT = [
   { elementType: "geometry", stylers: [{ color: "#f6fbf3" }] },
@@ -35,6 +45,16 @@ export function PropertyMap({
 }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyFakeKeyPlaceholder"
   const theme = useTheme()
+  const fetchListings = useSearchStore(s => s.fetchListings)
+  const [map, setMap] = useState<google.maps.Map | null>(null)
+
+  const handleIdle = useCallback(() => {
+    if (!map) return
+    const center = map.getCenter()
+    if (!center) return
+    const { x, y } = toMercator(center.lat(), center.lng())
+    fetchListings(y, x, 150000)
+  }, [map, fetchListings])
 
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
@@ -67,6 +87,8 @@ export function PropertyMap({
       mapContainerStyle={{ width: "100%", height: "100%" }}
       center={MAP_CENTER}
       zoom={12}
+      onLoad={setMap}
+      onIdle={handleIdle}
       options={{
         styles: theme.palette.mode === "dark" ? MAP_STYLE_DARK : MAP_STYLE_LIGHT,
         disableDefaultUI: true,

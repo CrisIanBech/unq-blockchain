@@ -4,12 +4,13 @@ import { TYPE_LABEL } from "@/lib/format"
 import type { PropertyType } from "@models/types"
 
 interface PropertyCardHeaderProps {
-  imageUrl: string
-  name: string
-  type: PropertyType
-  isOverdue: boolean
-  statusColor: "success" | "warning" | "default"
-  statusLabel: string
+  imageUrl: string;
+  name: string;
+  type: PropertyType;
+  isOverdue: boolean;
+  statusColor: "success" | "warning" | "default" | "error";
+  statusLabel: string;
+  statusVariant?: "filled" | "outlined";
 }
 
 export function PropertyCardHeader({
@@ -19,6 +20,7 @@ export function PropertyCardHeader({
   isOverdue,
   statusColor,
   statusLabel,
+  statusVariant = "filled",
 }: PropertyCardHeaderProps) {
   return (
     <Box sx={{ position: "relative", height: 160 }}>
@@ -30,7 +32,16 @@ export function PropertyCardHeader({
       />
       <Box sx={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 1 }}>
         <Chip size="small" label={TYPE_LABEL[type]} sx={{ bgcolor: "background.default", fontWeight: 600 }} />
-        <Chip size="small" color={statusColor} label={statusLabel} />
+        <Chip 
+          size="small" 
+          color={statusColor} 
+          variant={statusVariant} 
+          label={statusLabel} 
+          sx={{ 
+            fontWeight: 600,
+            ...(statusVariant === "outlined" && { bgcolor: "background.paper" })
+          }} 
+        />
       </Box>
       {isOverdue && (
         <Chip

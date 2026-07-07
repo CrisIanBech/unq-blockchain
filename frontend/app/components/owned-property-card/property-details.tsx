@@ -43,7 +43,7 @@ export function PropertyDetails({
             Alquiler mensual
           </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            {usdc(monthlyRent)}
+            {monthlyRent > 0 ? usdc(monthlyRent) : "—"}
           </Typography>
         </Box>
         <Box>
@@ -55,10 +55,22 @@ export function PropertyDetails({
           </Typography>
         </Box>
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
             Disponible
           </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: canWithdraw ? "primary.main" : "text.primary" }}>
+          <Typography 
+            variant="subtitle2" 
+            sx={{ 
+              fontWeight: 700, 
+              color: canWithdraw ? "success.main" : "text.primary",
+              border: canWithdraw ? "1px solid" : "none",
+              borderColor: "success.main",
+              borderRadius: 1,
+              px: canWithdraw ? 1 : 0,
+              py: canWithdraw ? 0.5 : 0,
+              display: "inline-block"
+            }}
+          >
             {usdc(availableToWithdraw)}
           </Typography>
         </Box>

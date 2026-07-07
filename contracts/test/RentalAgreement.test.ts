@@ -70,13 +70,27 @@ describe("RentalAgreement Extensive Tests", function () {
             inflationBps,
             lateFeeBps,
             gracePeriod,
+            paymentPeriod,
+            inflationAdjustmentInterval,
             duration,
             deadline
         );
 
         await factory.connect(landlord).createRentalAgreement(
-            await propertyNFT.getAddress(), propId, tenantAddr, await mockUSDC.getAddress(),
-            await rentalNFT.getAddress(), baseRent, securityDeposit, inflationBps, lateFeeBps, gracePeriod, duration, deadline
+            await propertyNFT.getAddress(),
+            propId,
+            tenantAddr,
+            await mockUSDC.getAddress(),
+            await rentalNFT.getAddress(),
+            baseRent,
+            securityDeposit,
+            inflationBps,
+            lateFeeBps,
+            gracePeriod,
+            paymentPeriod,
+            inflationAdjustmentInterval,
+            duration,
+            deadline
         );
 
         return ethers.getContractAt("RentalAgreement", agreementAddress);

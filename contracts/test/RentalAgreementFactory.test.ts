@@ -15,6 +15,8 @@ describe("RentalAgreementFactory", function () {
     const lateFeeBps = 1000;
     const gracePeriod = 5 * 24 * 60 * 60;
     const duration = 360 * 24 * 60 * 60;
+    const paymentPeriod = 30 * 24 * 60 * 60;
+    const inflationAdjustmentInterval = 12;
     let deadline: number;
 
     beforeEach(async function () {
@@ -54,15 +56,37 @@ describe("RentalAgreementFactory", function () {
 
     async function deployAgreement(landlord: Signer, propId: number = propertyId, tAddr: string = tenantAddr): Promise<string> {
         const agreementAddress = await factory.connect(landlord).createRentalAgreement.staticCall(
-            await propertyNFT.getAddress(), propId, tAddr, await mockUSDC.getAddress(),
-            await rentalNFT.getAddress(), baseRent, securityDeposit, 
-            inflationBps, lateFeeBps, gracePeriod, duration, deadline
+            await propertyNFT.getAddress(),
+            propId,
+            tAddr,
+            await mockUSDC.getAddress(),
+            await rentalNFT.getAddress(),
+            baseRent,
+            securityDeposit,
+            inflationBps,
+            lateFeeBps,
+            gracePeriod,
+            paymentPeriod,
+            inflationAdjustmentInterval,
+            duration,
+            deadline
         );
 
         await factory.connect(landlord).createRentalAgreement(
-            await propertyNFT.getAddress(), propId, tAddr, await mockUSDC.getAddress(),
-            await rentalNFT.getAddress(), baseRent, securityDeposit, 
-            inflationBps, lateFeeBps, gracePeriod, duration, deadline
+            await propertyNFT.getAddress(),
+            propId,
+            tAddr,
+            await mockUSDC.getAddress(),
+            await rentalNFT.getAddress(),
+            baseRent,
+            securityDeposit,
+            inflationBps,
+            lateFeeBps,
+            gracePeriod,
+            paymentPeriod,
+            inflationAdjustmentInterval,
+            duration,
+            deadline
         );
 
         return agreementAddress;
@@ -75,9 +99,20 @@ describe("RentalAgreementFactory", function () {
     it("El que crea el contrato no es el dueño del nft de la propiedad -> falla", async function () {
         await expect(
             factory.connect(stranger).createRentalAgreement(
-                await propertyNFT.getAddress(), propertyId, tenantAddr, await mockUSDC.getAddress(),
-                await rentalNFT.getAddress(), baseRent, securityDeposit, 
-                inflationBps, lateFeeBps, gracePeriod, duration, deadline
+                await propertyNFT.getAddress(),
+                propertyId,
+                tenantAddr,
+                await mockUSDC.getAddress(),
+                await rentalNFT.getAddress(),
+                baseRent,
+                securityDeposit,
+                inflationBps,
+                lateFeeBps,
+                gracePeriod,
+                paymentPeriod,
+                inflationAdjustmentInterval,
+                duration,
+                deadline
             )
         ).to.be.revertedWithCustomError(factory, "NotPropertyOwner");
     });
@@ -101,9 +136,20 @@ describe("RentalAgreementFactory", function () {
         // Now attempt to create a second agreement for the same property, while it is still occupied -> should revert
         await expect(
             factory.connect(landlord1).createRentalAgreement(
-                await propertyNFT.getAddress(), propertyId, tenantAddr, await mockUSDC.getAddress(),
-                await rentalNFT.getAddress(), baseRent, securityDeposit, 
-                inflationBps, lateFeeBps, gracePeriod, duration, deadline
+                await propertyNFT.getAddress(),
+                propertyId,
+                tenantAddr,
+                await mockUSDC.getAddress(),
+                await rentalNFT.getAddress(),
+                baseRent,
+                securityDeposit,
+                inflationBps,
+                lateFeeBps,
+                gracePeriod,
+                paymentPeriod,
+                inflationAdjustmentInterval,
+                duration,
+                deadline
             )
         ).to.be.revertedWithCustomError(factory, "PropertyAlreadyRented");
     });

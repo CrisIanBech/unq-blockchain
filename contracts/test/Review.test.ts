@@ -26,6 +26,8 @@ describe("Review Tests", function () {
     const inflationBps = 500;
     const lateFeeBps = 1000;
     const gracePeriod = 5 * 24 * 60 * 60;
+    const paymentPeriod = 30 * 24 * 60 * 60;
+    const inflationAdjustmentInterval = 12;
     const duration = 360 * 24 * 60 * 60;
     let deadline: number;
     let propertyId: number;
@@ -89,6 +91,8 @@ describe("Review Tests", function () {
             inflationBps,
             lateFeeBps,
             gracePeriod,
+            paymentPeriod,
+            inflationAdjustmentInterval,
             duration,
             deadline
         );
@@ -104,6 +108,8 @@ describe("Review Tests", function () {
             inflationBps,
             lateFeeBps,
             gracePeriod,
+            paymentPeriod,
+            inflationAdjustmentInterval,
             duration,
             deadline
         );
@@ -218,6 +224,8 @@ describe("Review Tests", function () {
                 inflationBps,
                 lateFeeBps,
                 gracePeriod,
+                paymentPeriod,
+                inflationAdjustmentInterval,
                 duration,
                 newDeadline
             );
@@ -233,6 +241,8 @@ describe("Review Tests", function () {
                 inflationBps,
                 lateFeeBps,
                 gracePeriod,
+                paymentPeriod,
+                inflationAdjustmentInterval,
                 duration,
                 newDeadline
             );
@@ -285,4 +295,33 @@ describe("Review Tests", function () {
             ).to.be.revertedWithCustomError(reviewSystem, "NoActiveOrCompletedRental");
         });
     });
+
+    describe("Landlord Reviews", function () {
+        it("should allow landlord to post a review and check mapping", async function () {
+            await expect(reviewSystem.connect(landlord).postReview(propertyId, 5, "Best property ever!"))
+                .to.emit(reviewSystem, "ReviewPosted");
+
+            expect(await reviewSystem.getReviewCount(propertyId)).to.equal(1);
+            expect(await reviewSystem.hasReviewedLandlordGeneral(propertyId)).to.be.true;
+
+            await expect(
+                reviewSystem.connect(landlord).postReview(propertyId, 4, "Another review")
+            ).to.be.revertedWithCustomError(reviewSystem, "ReviewAlreadyPosted");
+        });
+
+        it("should allow landlord to review a specific active agreement", async function () {
+            const agreementAddress = await createAndActivateAgreement();
+
+            await expect(reviewSystem.connect(landlord).postReview(propertyId, 4, "Excellent tenant"))
+                .to.emit(reviewSystem, "ReviewPosted");
+
+            expect(await reviewSystem.hasReviewedLandlord(agreementAddress)).to.be.true;
+
+            await expect(
+                reviewSystem.connect(landlord).postReview(propertyId, 5, "Duplicate")
+            ).to.be.revertedWithCustomError(reviewSystem, "ReviewAlreadyPosted");
+        });
+    });
 });
+
+

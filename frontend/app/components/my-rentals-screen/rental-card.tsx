@@ -1,36 +1,116 @@
-import { Box, Button, Card, Chip, Collapse, Divider, Drawer, IconButton, Tooltip, Typography } from "@mui/material"
+import { useState } from "react"
+import {
+  Box,
+  Button,
+  Card,
+  Chip,
+  IconButton,
+  Tooltip,
+  Typography,
+  ListItemText,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+} from "@mui/material"
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded"
 import EventRoundedIcon from "@mui/icons-material/EventRounded"
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded"
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded"
+import EditDocumentIcon from "@mui/icons-material/EditDocument"
+import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded"
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded"
+import CancelRoundedIcon from "@mui/icons-material/CancelRounded"
 import { usdc, dateLabel, TYPE_LABEL } from "@/lib/format"
-import { PaymentHistory } from "@components/payment-history/payment-history"
+import {
+  getRentalAmountToPay,
+  getRentalPeriodStart,
+  isRentalTenant,
+  hasUserCancelled,
+  hasOtherCancelled,
+  isRentalPendingSignatures,
+  isRentalActive,
+  isRentalCancelled,
+  isRentalExpired,
+  isRentalLate,
+  isRentalPaidUp
+} from "@/models/rental-utils"
+import { PaymentHistoryDrawer } from "./payment-history-drawer"
+import { SignAgreementDialog } from "./sign-agreement-dialog"
+import { CancelAgreementDialog } from "./cancel-agreement-dialog"
+import { useUserStore } from "@/stores/user-store"
 import type { Rental } from "@models/types"
 
 interface RentalCardProps {
   rental: Rental
   isOpen: boolean
   onSetPayTarget: (r: Rental) => void
-  onNavigateToSmartlock: () => void
+  onSignAgreement: (id: string) => Promise<void>
+  onCancelAgreement: (id: string) => Promise<void>
+  onNavigateToSmartlock: (id: string) => void
   onToggleExpand: (id: string) => void
+  onRemoveRental: (id: string) => void
 }
 
 export function RentalCard({
   rental,
   isOpen,
   onSetPayTarget,
+  onSignAgreement,
+  onCancelAgreement,
   onNavigateToSmartlock,
   onToggleExpand,
+  onRemoveRental,
 }: RentalCardProps) {
+  const [signOpen, setSignOpen] = useState(false)
+  const [isSigning, setIsSigning] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const wallet = useUserStore(s => s.wallet)
+
+  const isMine = isRentalTenant(rental, wallet)
+
+  const iHaveCancelled = hasUserCancelled(rental, wallet)
+  const otherHasCancelled = hasOtherCancelled(rental, wallet)
+
+  const isPendingSignatures = isRentalPendingSignatures(rental)
+  const isActive = isRentalActive(rental)
+  const isCancelled = isRentalCancelled(rental)
+  const isExpired = isRentalExpired(rental)
+
+  const isLate = isRentalLate(rental)
+  const isPaidUp = isRentalPaidUp(rental)
+
+  const handleSign = async () => {
+    setIsSigning(true)
+    try {
+      await onSignAgreement(rental.id)
+    } finally {
+      setIsSigning(false)
+      setSignOpen(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    setIsCancelling(true)
+    try {
+      await onCancelAgreement(rental.id)
+    } finally {
+      setIsCancelling(false)
+      setCancelOpen(false)
+    }
+  }
+
   return (
     <Card
       sx={{
         display: "flex",
         flexDirection: "column",
+        opacity: !isMine ? 0.5 : 1,
+        pointerEvents: !isMine ? "none" : "auto",
+        transition: "opacity 0.2s ease-in-out",
       }}
     >
-      {/* Top Section */}
       <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, flex: 1 }}>
         <Box
           component="img"
@@ -44,87 +124,168 @@ export function RentalCard({
         />
         <Box sx={{ display: "flex", flexDirection: "column", flex: 1, p: 2.5 }}>
           <Box sx={{ flex: 1 }}>
-            <Chip
-              size="small"
-              label={TYPE_LABEL[rental.type]}
-              sx={{ mb: 1, bgcolor: "surfaceContainer.high", fontWeight: 600 }}
-            />
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                <Chip
+                  size="small"
+                  label={TYPE_LABEL[rental.type]}
+                  color="success"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+
+                {isActive && isPaidUp && (
+                  <Chip size="small" label="Al día" color="success" sx={{ fontWeight: 600 }} />
+                )}
+
+                {isPendingSignatures && !rental.tenantApproved && (
+                  <Chip size="small" label="Pendiente de firma" color="warning" sx={{ fontWeight: 600 }} />
+                )}
+                {isPendingSignatures && rental.tenantApproved && (
+                  <Chip size="small" label="Esperando al propietario" color="info" sx={{ fontWeight: 600 }} />
+                )}
+                {isExpired && (
+                  <Chip size="small" label="Vencido" color="error" sx={{ fontWeight: 600 }} />
+                )}
+                {isCancelled && (
+                  <Chip size="small" label="Cancelado" color="error" sx={{ fontWeight: 600 }} />
+                )}
+                {isActive && isLate && (
+                  <Chip size="small" label="Pago moroso" color="error" sx={{ fontWeight: 600 }} />
+                )}
+              </Box>
+
+              <IconButton size="small" onClick={(e) => setMenuAnchor(e.currentTarget)} sx={{ ml: 1, mt: -0.5, mr: -1 }}>
+                <MoreVertRoundedIcon fontSize="small" />
+              </IconButton>
+              <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={() => setMenuAnchor(null)}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+              >
+                {isActive && (
+                  <MenuItem
+                    onClick={() => {
+                      setMenuAnchor(null)
+                      setCancelOpen(true)
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: "inherit" }}>
+                      <CancelRoundedIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="Cancelar contrato" />
+                  </MenuItem>
+                )}
+                <MenuItem
+                  onClick={() => {
+                    setMenuAnchor(null)
+                    onRemoveRental(rental.id)
+                  }}
+                  sx={{ color: "error.main" }}
+                >
+                  <ListItemIcon sx={{ color: "inherit" }}>
+                    <DeleteRoundedIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Eliminar alquiler" />
+                </MenuItem>
+              </Menu>
+            </Box>
+
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
               {rental.name}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
               {rental.address}
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, visibility: (!isCancelled && !isExpired && (isActive || isPaidUp)) ? "visible" : "hidden" }}>
               <EventRoundedIcon fontSize="small" color="action" />
               <Typography variant="body2" color="text.primary">
-                Próximo pago: <strong>{dateLabel(rental.nextPaymentDate)}</strong> · {usdc(rental.monthlyRent)}
+                Próximo pago: <strong>{dateLabel(getRentalPeriodStart(rental).getTime())}</strong> · {usdc(getRentalAmountToPay(rental))}
               </Typography>
             </Box>
           </Box>
 
+          {/* Action Bar */}
           <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 2.5, flexWrap: "wrap" }}>
-            <Tooltip title="Smartlock">
-              <IconButton
+            {isPendingSignatures && !rental.tenantApproved ? (
+              <Button
                 size="small"
-                onClick={onNavigateToSmartlock}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  color: "primary.main",
-                  p: 0.75,
-                }}
+                variant="contained"
+                color="warning"
+                startIcon={<EditDocumentIcon />}
+                onClick={() => setSignOpen(true)}
               >
-                <LockOpenRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Button size="small" variant="contained" startIcon={<PaymentsRoundedIcon />} onClick={() => onSetPayTarget(rental)}>
-              Pagar periodo
-            </Button>
-            <Button
-              size="small"
-              variant="text"
-              startIcon={<HistoryRoundedIcon />}
-              onClick={() => onToggleExpand(rental.id)}
-              sx={{ ml: "auto" }}
-            >
-              Historial
-            </Button>
+                Firmar Contrato
+              </Button>
+            ) : (
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center", width: "100%", visibility: isActive ? "visible" : "hidden" }}>
+                <Tooltip title="Smartlock">
+                  <IconButton
+                    size="small"
+                    onClick={() => onNavigateToSmartlock(rental.id)}
+                    sx={{
+                      color: "primary.main",
+                      p: 0.75,
+                    }}
+                    disabled={!isActive}
+                    tabIndex={isActive ? 0 : -1}
+                  >
+                    <LockOpenRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<PaymentsRoundedIcon />}
+                  onClick={() => onSetPayTarget(rental)}
+                  disabled={isPaidUp || !isActive}
+                  tabIndex={isActive ? 0 : -1}
+                >
+                  Pagar periodo
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<HistoryRoundedIcon />}
+                  onClick={() => onToggleExpand(rental.id)}
+                  sx={{ ml: "auto" }}
+                  disabled={!isActive}
+                  tabIndex={isActive ? 0 : -1}
+                >
+                  Historial
+                </Button>
+              </Box>
+            )}
           </Box>
         </Box>
       </Box>
 
-      {/* Drawer for Payment History (Side Sheet) */}
-      <Drawer
-        anchor="right"
-        open={isOpen}
+      <PaymentHistoryDrawer
+        rental={rental}
+        isOpen={isOpen}
         onClose={() => onToggleExpand(rental.id)}
-        slotProps={{
-          paper: {
-            sx: {
-              width: { xs: "100%", sm: 400 },
-              bgcolor: "background.default",
-              p: 3,
-            },
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Historial de pagos
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {rental.name}
-            </Typography>
-          </Box>
-          <IconButton onClick={() => onToggleExpand(rental.id)} aria-label="cerrar">
-            <CloseRoundedIcon />
-          </IconButton>
-        </Box>
-        <Divider sx={{ mb: 3 }} />
-        <PaymentHistory payments={rental.payments} />
-      </Drawer>
+      />
+
+      <SignAgreementDialog
+        rental={rental}
+        open={signOpen}
+        onClose={() => setSignOpen(false)}
+        onSign={handleSign}
+        isSigning={isSigning}
+      />
+
+      <CancelAgreementDialog
+        rental={rental}
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onCancel={handleCancel}
+        isCancelling={isCancelling}
+        iHaveCancelled={iHaveCancelled}
+        otherHasCancelled={otherHasCancelled}
+      />
     </Card>
   )
 }

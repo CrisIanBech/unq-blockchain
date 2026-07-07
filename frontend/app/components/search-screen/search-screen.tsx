@@ -5,7 +5,6 @@ import {
   Button,
   Tooltip,
 } from "@mui/material"
-import { alpha } from "@mui/material/styles"
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded"
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded"
 import { PropertyMap } from "@components/property-map/property-map"
@@ -17,7 +16,7 @@ import { ResultsList } from "./results-list"
 export function SearchScreen({
   query,
   cat,
-  selected,
+
   listOpen,
   filtered,
   liveSelected,
@@ -26,7 +25,6 @@ export function SearchScreen({
   onSelect,
   onToggleList,
   onLeaveReview,
-  onRequestContract,
   rating,
   comment,
   onSetRating,
@@ -156,7 +154,6 @@ export function SearchScreen({
         listing={liveSelected}
         onClose={() => onSelect(null)}
         onLeaveReview={onLeaveReview}
-        onRequestContract={onRequestContract}
         rating={rating}
         comment={comment}
         onRatingChange={onSetRating}

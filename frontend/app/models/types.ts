@@ -3,9 +3,11 @@ export type PropertyType = "departamento" | "casa" | "ph" | "local" | "oficina"
 export type PaymentStatus = "paid" | "pending" | "overdue"
 
 export interface PaymentRecord {
-  /** ISO month, e.g. "2026-06" */
+  /** ISO month, e.g. "2026-06" or unique period ID */
   month: string
+  periodLabel?: string
   amount: number
+  lateFee?: number
   status: PaymentStatus
   /** ISO datetime when paid */
   paidAt?: string
@@ -13,78 +15,74 @@ export interface PaymentRecord {
   txHash?: string
 }
 
+export interface PropertyContract {
+  agreementAddress: string
+  tenant: string | null
+  tenantSince?: string
+  nextChargeDate?: string
+  payments: PaymentRecord[]
+  availableToWithdraw: number
+  status: "draft" | "active" | "cancelled"
+  landlordApproved?: boolean
+  tenantApproved?: boolean
+}
+
 export interface Smartlock {
   id: string
-  /** Whether the landlord has installed/registered the virtual lock */
   installed: boolean
-  /** Whether NFC radio is currently active */
   nfcEnabled: boolean
-  /** Whether the lock is currently open */
   unlocked: boolean
   lastOpenedAt?: string
 }
 
 /** A property the current user OWNS (is the landlord). */
-export interface OwnedProperty {
+export interface Property {
   id: string
   name: string
   type: PropertyType
-  address: string
-  imageUrl: string
-  /** Real blockchain property NFT token ID */
+  address?: string
   propertyId?: number
-  /** Token addresses (simulated/real). */
-  realEstateToken: string
-  rentalToken: string
-  agreementAddress?: string
-  rentalNFTAddress?: string
-  monthlyRent: number
-  /** null when vacant */
-  tenant: string | null
-  tenantSince?: string
-  nextChargeDate?: string
-  payments: PaymentRecord[]
-  /** Stablecoin (USDC) collected and available to withdraw */
-  availableToWithdraw: number
+  /** Web Mercator Y (latitude axis) in meters, as stored on-chain */
+  latitude?: number
+  /** Web Mercator X (longitude axis) in meters, as stored on-chain */
+  longitude?: number
+  monthlyRent?: number
+  imageUrl?: string
+  contract: PropertyContract | null
   smartlock: Smartlock
-  contractStatus: "draft" | "active" | "cancelled"
 }
 
-export interface RentalContractDetails {
-  baseRent: number
-  securityDeposit: number
-  inflationBps: number
-  lateFeeBps: number
-  gracePeriod: number
-  paymentPeriod: number
-  duration: number
-  deadline: number
-  startTime: number
-  rentPaidUntil: number
-  
-  amountToPay: number
-  lateFeeAmount: number
-  isLate: boolean
-}
-
-/** A property the current user RENTS (is the tenant). */
 export interface Rental {
-  id: string; // The agreementAddress
-  agreementAddress?: string;
+  id: string; // Used as the agreement address
   propertyId: number;
   name: string;
   type: PropertyType;
-  address: string; // physical address
+  address: string;
   imageUrl: string;
   landlord: string;
   tenant?: string;
-  monthlyRent: number;
-  payments: PaymentRecord[];
-  contractDetails?: RentalContractDetails;
-  nextPaymentDate?: string;
   hasKey?: boolean;
   rentalNFTAddress?: string;
-  smartlockId?: string;
+
+  // Contract Details (optional if it's just a listing without contract)
+  baseRent: number;
+  securityDeposit: number;
+  inflationBps: number;
+  inflationAdjustmentInterval?: number;
+  lateFeeBps: number;
+  gracePeriod: number;
+  paymentPeriod: number;
+  duration: number;
+  deadline: number;
+  startTime: number;
+  rentPaidUntil: number;
+  amountToPay: number;
+  lateFeeAmount: number;
+  status: number;
+  landlordApproved: boolean;
+  tenantApproved: boolean;
+  landlordCancelled: boolean;
+  tenantCancelled: boolean;
 }
 
 export interface Review {
@@ -95,7 +93,6 @@ export interface Review {
   date: string
 }
 
-/** A property listed on the marketplace map (available to rent). */
 export interface Listing {
   id: string
   name: string
@@ -109,6 +106,8 @@ export interface Listing {
   beds: number
   baths: number
   m2: number
+  user?: string
+  owner?: string
 }
 
 export interface Toast {

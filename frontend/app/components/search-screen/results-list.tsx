@@ -1,9 +1,9 @@
-import { Box, Card, Chip, IconButton, Rating, Stack, Tooltip, Typography } from "@mui/material"
+import { Box, Card, Chip, IconButton, Rating, Tooltip, Typography } from "@mui/material"
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded"
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded"
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded"
 import { alpha } from "@mui/material/styles"
-import { usdc, TYPE_LABEL } from "@/lib/format"
+import { TYPE_LABEL } from "@/lib/format"
 import type { Listing } from "@models/types"
 
 interface ResultsListProps {
@@ -80,17 +80,12 @@ function PropertyCard({ l, isSelected, onSelect }: PropertyCardProps) {
             </Typography>
           </Box>
         </Box>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", justifyContent: "space-between", mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ color: "primary.main", fontWeight: 700 }}>
-            {usdc(l.monthlyRent)}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 1 }}>
+          <Rating value={avg(l)} precision={0.5} readOnly size="small" />
+          <Typography variant="caption" color="text.secondary">
+            ({l.reviews.length})
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Rating value={avg(l)} precision={0.5} readOnly size="small" />
-            <Typography variant="caption" color="text.secondary">
-              ({l.reviews.length})
-            </Typography>
-          </Box>
-        </Stack>
+        </Box>
       </Box>
     </Card>
   )

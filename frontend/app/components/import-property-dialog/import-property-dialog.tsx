@@ -15,17 +15,20 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded"
 interface ImportPropertyDialogProps {
   open: boolean
   onClose: () => void
-  onSubmit: (propertyId: number) => void
+  onSubmit: (name: string, propertyId: number) => void
 }
 
 export function ImportPropertyDialog({ open, onClose, onSubmit }: ImportPropertyDialogProps) {
+  const [name, setName] = useState("")
   const [propertyId, setPropertyId] = useState("")
   const [touched, setTouched] = useState(false)
 
+  const nameValid = name.trim().length > 0
   const idValid = Number.isInteger(Number(propertyId)) && Number(propertyId) > 0
-  const valid = idValid
+  const valid = nameValid && idValid
 
   function reset() {
+    setName("")
     setPropertyId("")
     setTouched(false)
   }
@@ -33,7 +36,7 @@ export function ImportPropertyDialog({ open, onClose, onSubmit }: ImportProperty
   function submit() {
     setTouched(true)
     if (!valid) return
-    onSubmit(Number(propertyId))
+    onSubmit(name.trim(), Number(propertyId))
     reset()
     onClose()
   }
@@ -58,7 +61,16 @@ export function ImportPropertyDialog({ open, onClose, onSubmit }: ImportProperty
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
           Ingresá el ID (token ID) de la propiedad que posees en la blockchain para importarla a tu panel.
         </Typography>
-        <Stack spacing={2}>
+        <Stack>
+          <TextField
+            label="Nombre o alias"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej: Departamento en Belgrano"
+            error={touched && !nameValid}
+            helperText={touched && !nameValid ? "Este campo es requerido" : " "}
+            fullWidth
+          />
           <TextField
             label="ID de la propiedad"
             type="number"

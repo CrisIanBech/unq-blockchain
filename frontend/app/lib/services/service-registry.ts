@@ -6,21 +6,20 @@ import { RentalsRepository } from "../repositories/rentals-repository";
 import { MockRentalsRepository } from "../repositories/mock-rentals-repository";
 import { GeocodingRepository } from "../repositories/geocoding-repository";
 import { MockGeocodingRepository } from "../repositories/mock-geocoding-repository";
-
 import { usesMockRepositories } from "../config/mock-mode";
 
 const isMock = usesMockRepositories();
 
-export function getServices(wallet?: string) {
+export function getServices(_wallet?: string) {
   if (isMock) {
     return {
       propertiesService: new PropertiesService(new MockPropertiesRepository(), new MockGeocodingRepository()),
-      rentalsService: new RentalsService(new MockRentalsRepository())
+      rentalsService: new RentalsService(new MockRentalsRepository()),
     };
   }
 
   return {
     propertiesService: new PropertiesService(new PropertiesRepository(), new GeocodingRepository()),
-    rentalsService: new RentalsService(new RentalsRepository())
+    rentalsService: new RentalsService(new RentalsRepository()),
   };
 }
