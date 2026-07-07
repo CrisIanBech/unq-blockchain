@@ -24,7 +24,7 @@ import { usdc, dateLabel, TYPE_LABEL } from "@/lib/format"
 import {
   getRentalAmountToPay,
   getRentalPeriodEnd,
-  isRentalMine,
+  isRentalTenant,
   hasUserCancelled,
   hasOtherCancelled,
   isRentalPendingSignatures,
@@ -68,7 +68,7 @@ export function RentalCard({
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const wallet = useUserStore(s => s.wallet)
 
-  const isMine = isRentalMine(rental, wallet)
+  const isMine = isRentalTenant(rental, wallet)
 
   const iHaveCancelled = hasUserCancelled(rental, wallet)
   const otherHasCancelled = hasOtherCancelled(rental, wallet)
