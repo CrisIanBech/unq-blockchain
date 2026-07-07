@@ -59,11 +59,16 @@ export class BlockchainService implements OnModuleInit {
     this.propertyContract = new ethers.Contract(propertyAddress, propertyAbi, this.provider);
     this.rentalContract = new ethers.Contract(rentalAddress, rentalAbi, this.provider);
 
+    const currentBlock = await this.provider.getBlockNumber();
+
     // 1. Replay Past PropertyMinted Events
     try {
       this.logger.log('Replaying past PropertyMinted events...');
       const filter = this.propertyContract.filters.PropertyMinted();
-      const startBlock = Number(process.env.DEPLOY_BLOCK) || 0;
+      let startBlock = Number(process.env.DEPLOY_BLOCK) || 0;
+      if (startBlock > currentBlock) {
+        startBlock = 0;
+      }
       const events = await this.fetchEventsInChunks(this.propertyContract, filter, startBlock);
       this.logger.log(`Found ${events.length} past PropertyMinted events.`);
       for (const event of events) {
@@ -80,7 +85,10 @@ export class BlockchainService implements OnModuleInit {
     try {
       this.logger.log('Replaying past UpdateUser events...');
       const filter = this.rentalContract.filters.UpdateUser();
-      const startBlock = Number(process.env.DEPLOY_BLOCK) || 0;
+      let startBlock = Number(process.env.DEPLOY_BLOCK) || 0;
+      if (startBlock > currentBlock) {
+        startBlock = 0;
+      }
       const events = await this.fetchEventsInChunks(this.rentalContract, filter, startBlock);
       this.logger.log(`Found ${events.length} past UpdateUser events.`);
       for (const event of events) {

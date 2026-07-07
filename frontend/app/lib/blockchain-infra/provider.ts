@@ -34,9 +34,15 @@ export async function fetchEventsInChunks(
 ): Promise<Array<any>> {
   const provider = contract.runner?.provider || getReadProvider();
   const currentBlock = await provider.getBlockNumber();
+  
+  let actualStartBlock = startBlock;
+  if (actualStartBlock > currentBlock) {
+    actualStartBlock = 0;
+  }
+  
   let logs: any[] = [];
   
-  for (let i = startBlock; i <= currentBlock; i += chunkSize) {
+  for (let i = actualStartBlock; i <= currentBlock; i += chunkSize) {
     const toBlock = Math.min(i + chunkSize - 1, currentBlock);
     try {
       const chunkLogs = await contract.queryFilter(filter, i, toBlock);
