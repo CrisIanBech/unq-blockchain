@@ -27,6 +27,50 @@ export interface CreateContractInput {
 }
 
 export class PropertyDashboardService {
+  /**
+   * Uploads property metadata and images to IPFS via the NestJS backend.
+   * Returns the IPFS tokenURI (ipfs://…) to be stored on-chain.
+   */
+  async preparePropertyMetadata(input: {
+    type: string;
+    address: string;
+    monthlyRent: number;
+    surface: number;
+    rooms: number;
+    bathrooms: number;
+    pets: boolean;
+    garage: boolean;
+    images: File[];
+  }): Promise<string> {
+    const formData = new FormData();
+    formData.append("type", input.type);
+    formData.append("address", input.address);
+    formData.append("monthlyRent", input.monthlyRent.toString());
+    formData.append("surface", input.surface.toString());
+    formData.append("rooms", input.rooms.toString());
+    formData.append("bathrooms", input.bathrooms.toString());
+    formData.append("pets", input.pets.toString());
+    formData.append("garage", input.garage.toString());
+
+    input.images.forEach((file) => {
+      formData.append("files", file);
+    });
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+    const response = await fetch(`${backendUrl}/properties/metadata`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Error al preparar la metadata e imágenes en IPFS.");
+    }
+
+    const data = await response.json();
+    return data.tokenURI;
+  }
+
+
   async mintProperty(wallet: string, input: AddPropertyInput): Promise<{ tokenId?: number; txHash: string }> {
     const { propertiesService } = getServices(wallet);
 
