@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import type { Listing } from "@models/types"
 import { useUserStore } from "./user-store"
+import { formatPropertyImage } from "@/lib/format"
 
 export const MAP_CENTER = { lat: -4126290, lng: -6485112 }
 
@@ -26,13 +27,16 @@ export const useSearchStore = create<SearchState>((set) => ({
           name: p.name,
           type: p.type,
           address: p.address,
-          imageUrl: p.image || `/images/prop-${(p.tokenId % 5) + 1}.png`,
+          imageUrl: formatPropertyImage(p.images || p.image, p.address),
           monthlyRent: p.monthlyRent,
           lat: p.location[1],
           lng: p.location[0],
-          beds: 2,
-          baths: 1,
-          m2: 70,
+          beds: p.rooms || 0,
+          baths: p.bathrooms || 0,
+          m2: p.surface || 0,
+          pets: p.pets ?? false,
+          garage: p.garage ?? false,
+          images: p.images || [],
           reviews: []
         }));
 

@@ -16,8 +16,10 @@ import BedRoundedIcon from "@mui/icons-material/BedRounded"
 import BathtubRoundedIcon from "@mui/icons-material/BathtubRounded"
 import SquareFootRoundedIcon from "@mui/icons-material/SquareFootRounded"
 import RateReviewRoundedIcon from "@mui/icons-material/RateReviewRounded"
+import PetsRoundedIcon from "@mui/icons-material/PetsRounded"
+import DirectionsCarRoundedIcon from "@mui/icons-material/DirectionsCarRounded"
 import type { Listing, Review } from "@/models/types"
-import { TYPE_LABEL } from "@/lib/format"
+import { TYPE_LABEL, resolveIpfsUrl } from "@/lib/format"
 import { ReviewItem } from "./review-item"
 import { useUserStore } from "@/stores/user-store"
 import { useReviewSystem } from "@/hooks/use-review-system"
@@ -56,6 +58,15 @@ export function ListingDetail({
   const onChain = useReviewSystem(onChainPropertyId)
 
   const [onChainReviews, setOnChainReviews] = useState<Review[]>([])
+  const [activeImg, setActiveImg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (listing) {
+      setActiveImg(listing.imageUrl)
+    } else {
+      setActiveImg(null)
+    }
+  }, [listing])
 
   useEffect(() => {
     if (!isConnected || !onChain.reviews.length) {
@@ -94,7 +105,7 @@ export function ListingDetail({
       slotProps={{ paper: { sx: { width: { xs: "100%", sm: 440 }, bgcolor: "background.default" } } }}
     >
       <Box sx={{ position: "relative" }}>
-        <Box component="img" src={listing?.imageUrl} alt={listing?.name} sx={{ width: "100%", height: 220, objectFit: "cover" }} />
+        <Box component="img" src={activeImg || ""} alt={listing?.name} sx={{ width: "100%", height: 220, objectFit: "cover" }} />
         <IconButton
           onClick={onClose}
           aria-label="cerrar"
@@ -104,6 +115,35 @@ export function ListingDetail({
         </IconButton>
         {listing && <Chip label={TYPE_LABEL[listing.type]} sx={{ position: "absolute", top: 12, left: 12, bgcolor: "background.default", fontWeight: 600 }} />}
       </Box>
+
+      {listing && listing.images && listing.images.length > 1 && (
+        <Stack direction="row" spacing={1} sx={{ px: 3, pt: 2, overflowX: "auto", scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
+          {listing.images.map((imgUri, index) => {
+            const httpUrl = resolveIpfsUrl(imgUri);
+            const isSelected = activeImg === httpUrl;
+            return (
+              <Box
+                key={index}
+                component="img"
+                src={httpUrl}
+                onClick={() => setActiveImg(httpUrl)}
+                sx={{
+                  width: 60,
+                  height: 45,
+                  borderRadius: 1,
+                  objectFit: "cover",
+                  cursor: "pointer",
+                  border: "2px solid",
+                  borderColor: isSelected ? "primary.main" : "divider",
+                  opacity: isSelected ? 1 : 0.7,
+                  transition: "all 0.2s",
+                  "&:hover": { opacity: 1, borderColor: "primary.light" }
+                }}
+              />
+            );
+          })}
+        </Stack>
+      )}
 
       <Box sx={{ p: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
@@ -121,7 +161,7 @@ export function ListingDetail({
           {isConnected && <Chip label="on-chain" size="small" color="primary" variant="outlined" />}
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, mt: 2, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", gap: 1.5, mt: 2, flexWrap: "wrap" }}>
           {listing && listing.beds > 0 && (
             <Chip icon={<BedRoundedIcon />} label={`${listing.beds} amb.`} variant="outlined" />
           )}
@@ -129,6 +169,18 @@ export function ListingDetail({
             <>
               <Chip icon={<BathtubRoundedIcon />} label={`${listing.baths} baño${listing.baths > 1 ? "s" : ""}`} variant="outlined" />
               <Chip icon={<SquareFootRoundedIcon />} label={`${listing.m2} m²`} variant="outlined" />
+              <Chip
+                icon={<PetsRoundedIcon />}
+                label={listing.pets ? "Acepta mascotas" : "No permite mascotas"}
+                color={listing.pets ? "success" : "default"}
+                variant="outlined"
+              />
+              <Chip
+                icon={<DirectionsCarRoundedIcon />}
+                label={listing.garage ? "Cochera disponible" : "Sin cochera"}
+                color={listing.garage ? "success" : "default"}
+                variant="outlined"
+              />
             </>
           )}
         </Box>

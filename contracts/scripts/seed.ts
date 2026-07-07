@@ -42,6 +42,43 @@ async function main() {
     const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
     await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
     
+    function generateMockMetadata(i: number): string {
+        const types = ["departamento", "casa", "ph", "local", "oficina"];
+        const type = types[(i - 1) % types.length];
+        const surface = 45 + i * 12;
+        const rooms = 1 + (i % 4);
+        const bathrooms = 1 + (i % 2);
+        const pets = i % 2 === 0;
+        const garage = i % 3 === 0;
+        
+        // Mock IPFS URIs for images (only for even properties, to test fallback for odd properties!)
+        const images = i % 2 === 0 ? [
+            `ipfs://QmXoypizjW3WknFixtdKLw55y71vXq1bSpLnh5B2e6m${i}v1`,
+            `ipfs://QmXoypizjW3WknFixtdKLw55y71vXq1bSpLnh5B2e6m${i}v2`
+        ] : [];
+
+        const metadata = {
+            name: `Inmueble #${i} (${type})`,
+            description: `Hermoso/a ${type} en excelente ubicación en Quilmes.`,
+            image: images.length > 0 ? images[0] : "",
+            images,
+            attributes: [
+                { trait_type: "type", value: type },
+                { trait_type: "address", value: `Calle Falsa ${123 + i * 14}, Quilmes` },
+                { trait_type: "monthlyRent", value: (800 + i * 100).toString() },
+                { trait_type: "surface", value: surface },
+                { trait_type: "rooms", value: rooms },
+                { trait_type: "bathrooms", value: bathrooms },
+                { trait_type: "pets", value: pets },
+                { trait_type: "garage", value: garage }
+            ]
+        };
+
+        const jsonStr = JSON.stringify(metadata);
+        const base64 = Buffer.from(jsonStr).toString("base64");
+        return `data:application/json;base64,${base64}`;
+    }
+
     const baseLat = -4126290; // Quilmes latitude in Web Mercator
     const baseLng = -6485112; // Quilmes longitude in Web Mercator
     for (let i = 1; i <= 8; i++) {
@@ -49,7 +86,8 @@ async function main() {
         const lngOffset = i * 300 - 1200;
         const propLat = BigInt(baseLat + latOffset);
         const propLng = BigInt(baseLng + lngOffset);
-        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, `ipfs://mock-property-${i}`, propLat, propLng);
+        const metadataURI = generateMockMetadata(i);
+        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, metadataURI, propLat, propLng);
         await tx.wait();
     }
     console.log("Minted 8 properties in Quilmes");

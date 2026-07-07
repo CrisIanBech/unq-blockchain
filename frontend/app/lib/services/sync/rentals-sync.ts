@@ -1,5 +1,6 @@
 import { getServices } from "@/lib/services/service-registry";
 import type { Rental, PropertyType } from "@models/types";
+import { formatPropertyImage } from "@/lib/format";
 
 export async function loadRentals(
   wallet: string,
@@ -15,6 +16,17 @@ export async function loadRentals(
 
     const typeAttr = metadata.attributes?.find((a: any) => a.trait_type === "type")?.value || "departamento";
     const addrAttr = metadata.attributes?.find((a: any) => a.trait_type === "address")?.value || "Dirección desconocida";
+    const surfaceAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "surface")?.value || 0);
+    const roomsAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "rooms")?.value || 0);
+    const bathroomsAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "bathrooms")?.value || 0);
+    
+    const petsVal = metadata.attributes?.find((a: any) => a.trait_type === "pets")?.value;
+    const petsAttr = petsVal === true || petsVal === "true";
+
+    const garageVal = metadata.attributes?.find((a: any) => a.trait_type === "garage")?.value;
+    const garageAttr = garageVal === true || garageVal === "true";
+
+    const imagesAttr = metadata.images || [];
 
     const newRental: Rental = {
       id: address,
@@ -22,7 +34,13 @@ export async function loadRentals(
       name: rentalImport.name || metadata.name || `Propiedad #${details.propertyId.toString()}`,
       type: typeAttr as PropertyType,
       address: addrAttr,
-      imageUrl: metadata.image || "/images/prop-placeholder.png",
+      imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
+      surface: surfaceAttr,
+      rooms: roomsAttr,
+      bathrooms: bathroomsAttr,
+      pets: petsAttr,
+      garage: garageAttr,
+      images: imagesAttr,
       landlord: details.landlord,
       tenant: details.tenant,
       baseRent: amounts.currentRent,

@@ -1,6 +1,7 @@
 import { getServices } from "@/lib/services/service-registry";
 import { getLatestBlockTimestamp, CONTRACT_ADDRESSES } from "@/lib/blockchain-infra";
 import type { OwnedProperty, PaymentRecord } from "@models/types";
+import { formatPropertyImage } from "@/lib/format";
 
 export async function loadOwnedProperties(
   wallet: string,
@@ -18,14 +19,31 @@ export async function loadOwnedProperties(
       const typeAttr = metadata.attributes?.find((a: any) => a.trait_type === "type")?.value || "departamento";
       const addrAttr = metadata.attributes?.find((a: any) => a.trait_type === "address")?.value || metadata.address || "Dirección desconocida";
       const rentAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "monthlyRent")?.value || metadata.monthlyRent || 0);
+      const surfaceAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "surface")?.value || 0);
+      const roomsAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "rooms")?.value || 0);
+      const bathroomsAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "bathrooms")?.value || 0);
+      
+      const petsVal = metadata.attributes?.find((a: any) => a.trait_type === "pets")?.value;
+      const petsAttr = petsVal === true || petsVal === "true";
+
+      const garageVal = metadata.attributes?.find((a: any) => a.trait_type === "garage")?.value;
+      const garageAttr = garageVal === true || garageVal === "true";
+
+      const imagesAttr = metadata.images || [];
 
       return {
         propertyId: tokenId,
         name: metadata.name || `Propiedad #${tokenId}`,
         type: typeAttr,
         address: addrAttr,
-        imageUrl: metadata.image || `/images/prop-${(tokenId % 5) + 1}.png`,
+        imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
         monthlyRent: rentAttr,
+        surface: surfaceAttr,
+        rooms: roomsAttr,
+        bathrooms: bathroomsAttr,
+        pets: petsAttr,
+        garage: garageAttr,
+        images: imagesAttr,
       };
     } catch (err) {
       console.error(`Failed to fetch metadata for token ${tokenId}`, err);
@@ -34,8 +52,14 @@ export async function loadOwnedProperties(
         name: `Propiedad #${tokenId}`,
         type: "departamento" as const,
         address: "Dirección no disponible",
-        imageUrl: `/images/prop-${(tokenId % 5) + 1}.png`,
+        imageUrl: "/images/prop-placeholder.png",
         monthlyRent: 0,
+        surface: 0,
+        rooms: 0,
+        bathrooms: 0,
+        pets: false,
+        garage: false,
+        images: [],
       };
     }
   }));

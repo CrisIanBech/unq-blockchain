@@ -37,6 +37,27 @@ export class Property {
 
   @Prop({ default: 0, index: true })
   expires: number;
+
+  @Prop({ type: Object, default: {} })
+  metadata: any;
+
+  @Prop({ default: 0 })
+  surface: number;
+
+  @Prop({ default: 0 })
+  rooms: number;
+
+  @Prop({ default: 0 })
+  bathrooms: number;
+
+  @Prop({ default: false })
+  pets: boolean;
+
+  @Prop({ default: false })
+  garage: boolean;
+
+  @Prop({ type: [String], default: [] })
+  images: string[];
 }
 
 export const PropertySchema = SchemaFactory.createForClass(Property);

@@ -11,6 +11,10 @@ export class PropertiesService {
     private propertyModel: Model<PropertyDocument>,
   ) {}
 
+  async getPropertyById(tokenId: number): Promise<Property | null> {
+    return this.propertyModel.findOne({ tokenId }).exec();
+  }
+
   async upsertProperty(tokenId: number, propertyData: {
     owner: string;
     name: string;
@@ -21,6 +25,13 @@ export class PropertiesService {
     monthlyRent: number;
     lat: number;
     lng: number;
+    metadata?: any;
+    surface?: number;
+    rooms?: number;
+    bathrooms?: number;
+    pets?: boolean;
+    garage?: boolean;
+    images?: string[];
   }): Promise<Property> {
     const { lat, lng, ...rest } = propertyData;
     const finalData = {

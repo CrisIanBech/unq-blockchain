@@ -1,6 +1,7 @@
 import { IPropertiesRepository } from "../repositories/properties-repository";
 import { IGeocodingRepository } from "../repositories/geocoding-repository";
 import { translateError } from "../errors/translator";
+import { formatPropertyImage } from "@/lib/format";
 
 export interface PropertyMintResult {
   txHash: string;
@@ -84,9 +85,17 @@ export class PropertiesService {
         metadata = {
           name: `Propiedad #${propertyId.toString()}`,
           description: "Propiedad importada",
-          image: "/images/prop-5.png",
+          image: "",
+          images: [],
           attributes: [
-            { trait_type: "type", value: "departamento" }
+            { trait_type: "type", value: "departamento" },
+            { trait_type: "address", value: "Av. Corrientes 1234, CABA, Argentina" },
+            { trait_type: "monthlyRent", value: 1200 },
+            { trait_type: "surface", value: 75 },
+            { trait_type: "rooms", value: 3 },
+            { trait_type: "bathrooms", value: 2 },
+            { trait_type: "pets", value: true },
+            { trait_type: "garage", value: false }
           ]
         };
       } else if (fetchUrl.startsWith("data:")) {
@@ -148,7 +157,7 @@ export class PropertiesService {
               name: metadata.name || `Propiedad #${tokenId}`,
               type: typeAttr,
               address: addrAttr,
-              imageUrl: metadata.image || `/images/prop-${(tokenId % 5) + 1}.png`,
+              imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
               monthlyRent: rentAttr,
             };
           } catch (err) {
@@ -158,7 +167,7 @@ export class PropertiesService {
               name: `Propiedad #${tokenId}`,
               type: "departamento",
               address: "Dirección no disponible",
-              imageUrl: `/images/prop-${(tokenId % 5) + 1}.png`,
+              imageUrl: "/images/prop-placeholder.png",
               monthlyRent: 0,
             };
           }

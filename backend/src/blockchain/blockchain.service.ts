@@ -97,29 +97,50 @@ export class BlockchainService implements OnModuleInit {
     longitude: bigint,
   ) {
     try {
-      let metadata: any = {};
-      if (tokenURI.startsWith('data:application/json;base64,')) {
-        const base64Str = tokenURI.substring('data:application/json;base64,'.length);
-        const decoded = Buffer.from(base64Str, 'base64').toString('utf-8');
-        metadata = JSON.parse(decoded);
-      } else {
-        try {
-          let fetchUrl = tokenURI;
-          if (tokenURI.startsWith('ipfs://')) {
-            fetchUrl = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      // Check cache first
+      const existing = await this.propertiesService.getPropertyById(Number(propertyId));
+      let metadata: any = existing?.metadata;
+
+      if (!metadata || Object.keys(metadata).length === 0) {
+        if (tokenURI.startsWith('data:application/json;base64,')) {
+          const base64Str = tokenURI.substring('data:application/json;base64,'.length);
+          const decoded = Buffer.from(base64Str, 'base64').toString('utf-8');
+          metadata = JSON.parse(decoded);
+        } else {
+          try {
+            let fetchUrl = tokenURI;
+            if (tokenURI.startsWith('ipfs://')) {
+              // backend only resolves gateway temporarily to fetch the metadata JSON for caching
+              fetchUrl = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+            }
+            const response = await fetch(fetchUrl);
+            if (response.ok) {
+              metadata = await response.json();
+            }
+          } catch (e) {
+            this.logger.warn(`Could not fetch external tokenURI: ${tokenURI}`, e);
           }
-          const response = await fetch(fetchUrl);
-          if (response.ok) {
-            metadata = await response.json();
-          }
-        } catch (e) {
-          this.logger.warn(`Could not fetch external tokenURI: ${tokenURI}`, e);
         }
       }
+
+      // Default fallback metadata in case fetch fails
+      metadata = metadata || {};
 
       const type = metadata.attributes?.find((a: any) => a.trait_type === 'type')?.value || 'departamento';
       const address = metadata.attributes?.find((a: any) => a.trait_type === 'address')?.value || 'Dirección Desconocida';
       const monthlyRent = Number(metadata.attributes?.find((a: any) => a.trait_type === 'monthlyRent')?.value || 0);
+
+      const surface = Number(metadata.attributes?.find((a: any) => a.trait_type === 'surface')?.value || 0);
+      const rooms = Number(metadata.attributes?.find((a: any) => a.trait_type === 'rooms')?.value || 0);
+      const bathrooms = Number(metadata.attributes?.find((a: any) => a.trait_type === 'bathrooms')?.value || 0);
+      
+      const petsAttr = metadata.attributes?.find((a: any) => a.trait_type === 'pets')?.value;
+      const pets = petsAttr === true || petsAttr === 'true';
+
+      const garageAttr = metadata.attributes?.find((a: any) => a.trait_type === 'garage')?.value;
+      const garage = garageAttr === true || garageAttr === 'true';
+
+      const images = metadata.images || [];
 
       // Keep coordinates raw in Web Mercator
       const lat = Number(latitude);
@@ -135,6 +156,13 @@ export class BlockchainService implements OnModuleInit {
         monthlyRent,
         lat,
         lng,
+        metadata,
+        surface,
+        rooms,
+        bathrooms,
+        pets,
+        garage,
+        images,
       });
 
       this.logger.log(`Property #${propertyId.toString()} processed and saved.`);

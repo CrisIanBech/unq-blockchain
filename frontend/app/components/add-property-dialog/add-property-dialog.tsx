@@ -11,10 +11,12 @@ import {
   Typography,
   Box,
   InputAdornment,
+  FormControlLabel,
+  Switch,
 } from "@mui/material"
 import TokenRoundedIcon from "@mui/icons-material/TokenRounded"
 import type { PropertyType } from "@/models/types"
-import { TYPE_LABEL } from "@/lib/format" // Wait, we can keep using lib/format or move it, lib/format has no React context dependencies
+import { TYPE_LABEL } from "@/lib/format"
 
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/
 
@@ -28,6 +30,12 @@ interface AddPropertyDialogProps {
     type: PropertyType
     address: string
     monthlyRent: number
+    surface: number
+    rooms: number
+    bathrooms: number
+    pets: boolean
+    garage: boolean
+    images: string[]
   }) => void
 }
 
@@ -38,6 +46,12 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
   const [type, setType] = useState<PropertyType>("departamento")
   const [address, setAddress] = useState("")
   const [rent, setRent] = useState("")
+  const [surface, setSurface] = useState("")
+  const [rooms, setRooms] = useState("")
+  const [bathrooms, setBathrooms] = useState("")
+  const [pets, setPets] = useState(false)
+  const [garage, setGarage] = useState(false)
+  const [imagesText, setImagesText] = useState("")
   const [touched, setTouched] = useState(false)
 
   const reValid = ADDR_RE.test(realEstateToken)
@@ -45,7 +59,10 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
   const rentValid = Number(rent) > 0
   const nameValid = name.trim().length > 1
   const addrValid = address.trim().length > 3
-  const valid = reValid && rtValid && rentValid && nameValid && addrValid
+  const surfaceValid = Number(surface) > 0
+  const roomsValid = Number(rooms) > 0
+  const bathroomsValid = Number(bathrooms) > 0
+  const valid = reValid && rtValid && rentValid && nameValid && addrValid && surfaceValid && roomsValid && bathroomsValid
 
   function reset() {
     setRe("")
@@ -54,12 +71,24 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
     setType("departamento")
     setAddress("")
     setRent("")
+    setSurface("")
+    setRooms("")
+    setBathrooms("")
+    setPets(false)
+    setGarage(false)
+    setImagesText("")
     setTouched(false)
   }
 
   function submit() {
     setTouched(true)
     if (!valid) return
+    
+    const images = imagesText
+      .split(",")
+      .map((x) => x.trim())
+      .filter((x) => x.length > 0)
+
     onSubmit({
       realEstateToken,
       rentalToken,
@@ -67,6 +96,12 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
       type,
       address: address.trim(),
       monthlyRent: Number(rent),
+      surface: Number(surface),
+      rooms: Number(rooms),
+      bathrooms: Number(bathrooms),
+      pets,
+      garage,
+      images,
     })
     reset()
     onClose()
@@ -135,6 +170,48 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             error={touched && !addrValid}
+            fullWidth
+          />
+          <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
+            <TextField
+              label="Superficie"
+              value={surface}
+              onChange={(e) => setSurface(e.target.value.replace(/[^0-9]/g, ""))}
+              error={touched && !surfaceValid}
+              sx={{ flex: 1 }}
+              slotProps={{ input: { endAdornment: <InputAdornment position="end">m²</InputAdornment> } }}
+            />
+            <TextField
+              label="Habitaciones"
+              value={rooms}
+              onChange={(e) => setRooms(e.target.value.replace(/[^0-9]/g, ""))}
+              error={touched && !roomsValid}
+              sx={{ flex: 1 }}
+            />
+            <TextField
+              label="Baños"
+              value={bathrooms}
+              onChange={(e) => setBathrooms(e.target.value.replace(/[^0-9]/g, ""))}
+              error={touched && !bathroomsValid}
+              sx={{ flex: 1 }}
+            />
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "space-around", py: 0.5 }}>
+            <FormControlLabel
+              control={<Switch checked={pets} onChange={(e) => setPets(e.target.checked)} />}
+              label="Permite mascotas"
+            />
+            <FormControlLabel
+              control={<Switch checked={garage} onChange={(e) => setGarage(e.target.checked)} />}
+              label="Garage/Cochera"
+            />
+          </Box>
+          <TextField
+            label="CIDs o Referencias de imágenes IPFS (Separados por comas)"
+            value={imagesText}
+            onChange={(e) => setImagesText(e.target.value)}
+            placeholder="QmXoyp..., ipfs://Qm..."
+            helperText="Dejar vacío para usar foto de Google Maps asociada a la dirección"
             fullWidth
           />
         </Stack>

@@ -48,6 +48,12 @@ export interface OwnedProperty {
   contractStatus: "draft" | "active" | "cancelled"
   landlordApproved?: boolean
   tenantApproved?: boolean
+  surface?: number
+  rooms?: number
+  bathrooms?: number
+  pets?: boolean
+  garage?: boolean
+  images?: string[]
 }
 
 export interface Rental {
@@ -81,6 +87,12 @@ export interface Rental {
   tenantApproved: boolean;
   landlordCancelled: boolean;
   tenantCancelled: boolean;
+  surface?: number;
+  rooms?: number;
+  bathrooms?: number;
+  pets?: boolean;
+  garage?: boolean;
+  images?: string[];
 }
 
 export interface Review {
@@ -104,6 +116,9 @@ export interface Listing {
   beds: number
   baths: number
   m2: number
+  pets: boolean
+  garage: boolean
+  images: string[]
 }
 
 export interface Toast {

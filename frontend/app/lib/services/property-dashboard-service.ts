@@ -8,6 +8,12 @@ export interface AddPropertyInput {
   monthlyRent: number;
   realEstateToken: string;
   rentalToken: string;
+  surface: number;
+  rooms: number;
+  bathrooms: number;
+  pets: boolean;
+  garage: boolean;
+  images: string[];
 }
 
 export class PropertyDashboardService {
@@ -17,15 +23,31 @@ export class PropertyDashboardService {
     const lat = -34.6037 + (Math.random() - 0.5) * 0.08;
     const lng = -58.4 + (Math.random() - 0.5) * 0.08;
 
-    // Construct base64 metadata URI to store name, address, rent and type on-chain
+    // Convert CID or raw text images to native IPFS references (ipfs://...) if needed
+    const formattedImages = (input.images || []).map((img) => {
+      const trimmed = img.trim();
+      if (trimmed.startsWith("ipfs://")) return trimmed;
+      if (/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58,})$/.test(trimmed)) {
+        return `ipfs://${trimmed}`;
+      }
+      return trimmed;
+    });
+
+    // Construct base64 metadata URI to store name, address, rent and physical attributes on-chain
     const metadata = {
       name: input.name,
       description: `Tokenized property: ${input.name}`,
-      image: `/images/prop-${Math.floor(Math.random() * 5) + 1}.png`,
+      image: formattedImages.length > 0 ? formattedImages[0] : "",
+      images: formattedImages,
       attributes: [
         { trait_type: "type", value: input.type },
         { trait_type: "address", value: input.address },
-        { trait_type: "monthlyRent", value: input.monthlyRent }
+        { trait_type: "monthlyRent", value: input.monthlyRent },
+        { trait_type: "surface", value: input.surface },
+        { trait_type: "rooms", value: input.rooms },
+        { trait_type: "bathrooms", value: input.bathrooms },
+        { trait_type: "pets", value: input.pets },
+        { trait_type: "garage", value: input.garage }
       ]
     };
     const base64Metadata = btoa(unescape(encodeURIComponent(JSON.stringify(metadata))));
