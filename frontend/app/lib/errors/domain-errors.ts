@@ -39,3 +39,24 @@ export class UnknownBlockchainError extends Error {
     this.name = "UnknownBlockchainError";
   }
 }
+
+export class InvalidAgreementStatus extends Error {
+  constructor(message = "El contrato de alquiler de la propiedad no se encuentra activo.") {
+    super(message);
+    this.name = "InvalidAgreementStatus";
+  }
+}
+
+export class NoActiveOrCompletedRental extends Error {
+  constructor(message = "No posees un alquiler activo o finalizado que te autorice a dejar una reseña en esta propiedad.") {
+    super(message);
+    this.name = "NoActiveOrCompletedRental";
+  }
+}
+
+export class ReviewAlreadyPosted extends Error {
+  constructor(message = "Ya has publicado una reseña para este contrato de alquiler anteriormente.") {
+    super(message);
+    this.name = "ReviewAlreadyPosted";
+  }
+}

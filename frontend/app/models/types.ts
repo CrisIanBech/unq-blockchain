@@ -97,6 +97,8 @@ export interface Listing {
   beds: number
   baths: number
   m2: number
+  user?: string
+  owner?: string
 }
 
 export interface Toast {

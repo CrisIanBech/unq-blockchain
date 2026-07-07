@@ -37,13 +37,20 @@ async function main() {
     await factory.waitForDeployment();
     const factoryAddr = await factory.getAddress();
 
+    const Review = await ethers.getContractFactory("Review");
+    const reviewSystem = await Review.deploy(propertyNFTAddr, factoryAddr);
+    await reviewSystem.waitForDeployment();
+    const reviewSystemAddr = await reviewSystem.getAddress();
+
     console.log("\n=== Setting up scenarios ===\n");
 
     const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
     await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
     
     for (let i = 1; i <= 8; i++) {
-        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, `ipfs://mock-property-${i}`, BigInt(100000 + i), BigInt(200000 + i));
+        const lat = BigInt(-4126290 + i * 500);
+        const lng = BigInt(-6485112 + i * 500);
+        const tx = await propertyNFT.connect(landlord).mint(landlordAddr, `ipfs://mock-property-${i}`, lat, lng);
         await tx.wait();
     }
     console.log("Minted 8 properties");
@@ -164,12 +171,19 @@ async function main() {
     const statusCancelProgress = await agrCancelProgress.status();
     console.log("Status:", statusCancelProgress.toString(), "(2=Active, Cancel in progress)");
 
+    // Seeding Reviews
+    console.log("\n=== Seeding Reviews ===");
+    console.log("Tenant posting review for Property 5...");
+    await reviewSystem.connect(tenant).postReview(5, 5, "Increible depto, super limpio y comodo!");
+    console.log("Landlord posting review for Property 5...");
+    await reviewSystem.connect(landlord).postReview(5, 5, "Excelente inquilino, super puntual y ordenado.");
 
     console.log("\n=== Contract addresses for frontend ===\n");
     console.log(`propertyNFT: "${propertyNFTAddr}"`);
     console.log(`rentalNFT: "${rentalNFTAddr}"`);
     console.log(`factory: "${factoryAddr}"`);
     console.log(`mockUsdc: "${mockUSDCAddr}"`);
+    console.log(`reviewSystem: "${reviewSystemAddr}"`);
 
     console.log("\n=== Rental Agreements ===");
     console.log("1. Por Pagar (A tiempo):", await agrPorPagar.getAddress());
@@ -193,10 +207,22 @@ async function main() {
         envContent = envContent.replace(/VITE_PROPERTY_NFT_ADDRESS=.*/, `VITE_PROPERTY_NFT_ADDRESS=${propertyNFTAddr}`);
         envContent = envContent.replace(/VITE_RENTAL_FACTORY_ADDRESS=.*/, `VITE_RENTAL_FACTORY_ADDRESS=${factoryAddr}`);
         envContent = envContent.replace(/VITE_USDC_ADDRESS=.*/, `VITE_USDC_ADDRESS=${mockUSDCAddr}`);
+        envContent = envContent.replace(/VITE_REVIEW_SYSTEM_ADDRESS=.*/, `VITE_REVIEW_SYSTEM_ADDRESS=${reviewSystemAddr}`);
         fs.writeFileSync(envPath, envContent, "utf8");
         console.log("\n[Auto] Updated frontend/.env with deployed addresses!");
     } else {
         console.log("\n[Warning] frontend/.env file not found, skipping auto-update.");
+    }
+
+    const backendEnvPath = path.resolve(process.cwd(), "../backend/.env");
+    if (fs.existsSync(backendEnvPath)) {
+        let envContent = fs.readFileSync(backendEnvPath, "utf8");
+        envContent = envContent.replace(/PROPERTY_NFT_ADDRESS=.*/, `PROPERTY_NFT_ADDRESS=${propertyNFTAddr}`);
+        envContent = envContent.replace(/RENTAL_NFT_ADDRESS=.*/, `RENTAL_NFT_ADDRESS=${rentalNFTAddr}`);
+        fs.writeFileSync(backendEnvPath, envContent, "utf8");
+        console.log("[Auto] Updated backend/.env with deployed addresses!");
+    } else {
+        console.log("[Warning] backend/.env file not found, skipping auto-update.");
     }
 }
 

@@ -44,17 +44,41 @@ describe("RentalNFT Tests", function () {
         // Create an agreement
         const latestBlock = await ethers.provider.getBlock("latest");
         const deadline = latestBlock.timestamp + 7 * 24 * 60 * 60;
+        const paymentPeriod = 30 * 24 * 60 * 60;
+        const inflationAdjustmentInterval = 12;
         
         agreementAddress = await factory.connect(landlord1).createRentalAgreement.staticCall(
-            await propertyNFT.getAddress(), propertyId, tenantAddr, await mockUSDC.getAddress(),
-            await rentalNFT.getAddress(), ethers.parseUnits("1000", 6), securityDeposit, 
-            500, 1000, 5*24*60*60, 360*24*60*60, deadline
+            await propertyNFT.getAddress(),
+            propertyId,
+            tenantAddr,
+            await mockUSDC.getAddress(),
+            await rentalNFT.getAddress(),
+            ethers.parseUnits("1000", 6),
+            securityDeposit,
+            500,
+            1000,
+            5*24*60*60,
+            paymentPeriod,
+            inflationAdjustmentInterval,
+            360*24*60*60,
+            deadline
         );
 
         await factory.connect(landlord1).createRentalAgreement(
-            await propertyNFT.getAddress(), propertyId, tenantAddr, await mockUSDC.getAddress(),
-            await rentalNFT.getAddress(), ethers.parseUnits("1000", 6), securityDeposit, 
-            500, 1000, 5*24*60*60, 360*24*60*60, deadline
+            await propertyNFT.getAddress(),
+            propertyId,
+            tenantAddr,
+            await mockUSDC.getAddress(),
+            await rentalNFT.getAddress(),
+            ethers.parseUnits("1000", 6),
+            securityDeposit,
+            500,
+            1000,
+            5*24*60*60,
+            paymentPeriod,
+            inflationAdjustmentInterval,
+            360*24*60*60,
+            deadline
         );
     });
 
