@@ -75,7 +75,7 @@ export function OwnedPropertyCard({
       }}
     >
       <PropertyCardHeader
-        imageUrl={""} // Removed from model
+        imageUrl={property.imageUrl || `/images/prop-${((property.propertyId || 0) % 5) + 1}.png`}
         name={property.name}
         type={property.type}
         isOverdue={isOverdue}

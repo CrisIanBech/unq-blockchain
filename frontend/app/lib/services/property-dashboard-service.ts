@@ -32,6 +32,7 @@ export class PropertyDashboardService {
    * Returns the IPFS tokenURI (ipfs://…) to be stored on-chain.
    */
   async preparePropertyMetadata(input: {
+    name: string;
     type: string;
     address: string;
     monthlyRent: number;
@@ -43,6 +44,7 @@ export class PropertyDashboardService {
     images: File[];
   }): Promise<string> {
     const formData = new FormData();
+    formData.append("name", input.name);
     formData.append("type", input.type);
     formData.append("address", input.address);
     formData.append("monthlyRent", input.monthlyRent.toString());

@@ -1,5 +1,6 @@
 import { getServices } from "@/lib/services/service-registry";
 import type { Rental, PropertyType } from "@models/types";
+import { formatPropertyImage } from "@/lib/format";
 
 export async function loadRentals(
   wallet: string,
@@ -22,7 +23,7 @@ export async function loadRentals(
       name: rentalImport.name || metadata.name || `Propiedad #${details.propertyId.toString()}`,
       type: typeAttr as PropertyType,
       address: addrAttr,
-      imageUrl: metadata.image || "/images/prop-placeholder.png",
+      imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
       landlord: details.landlord,
       tenant: details.tenant,
       baseRent: amounts.currentRent,

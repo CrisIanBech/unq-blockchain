@@ -140,14 +140,32 @@ export class PropertiesService {
   async prepareMetadata(files: any[], body: any): Promise<{ tokenURI: string }> {
     const ipfsUrls = await this.uploadImagesToPinata(files);
 
+    const monthlyRent = Number(body.monthlyRent || 0);
+    const surface = Number(body.surface || 0);
+    const rooms = Number(body.rooms || 0);
+    const bathrooms = Number(body.bathrooms || 0);
+    const pets = body.pets === 'true' || body.pets === true;
+    const garage = body.garage === 'true' || body.garage === true;
+
     const metadata = {
       type: body.type,
-      surface: Number(body.surface || 0),
-      rooms: Number(body.rooms || 0),
-      bathrooms: Number(body.bathrooms || 0),
-      pets: body.pets === 'true' || body.pets === true,
-      garage: body.garage === 'true' || body.garage === true,
+      monthlyRent,
+      surface,
+      rooms,
+      bathrooms,
+      pets,
+      garage,
       images: ipfsUrls,
+      image: ipfsUrls.length > 0 ? ipfsUrls[0] : '',
+      attributes: [
+        { trait_type: 'type', value: body.type },
+        { trait_type: 'monthlyRent', value: monthlyRent },
+        { trait_type: 'surface', value: surface },
+        { trait_type: 'rooms', value: rooms },
+        { trait_type: 'bathrooms', value: bathrooms },
+        { trait_type: 'pets', value: pets },
+        { trait_type: 'garage', value: garage }
+      ]
     };
 
     const tokenURI = await this.uploadJsonToPinata(metadata);
