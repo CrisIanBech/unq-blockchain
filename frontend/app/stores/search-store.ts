@@ -33,6 +33,7 @@ export const useSearchStore = create<SearchState>((set) => ({
         // First pass: map backend fields (reviews empty for now)
         const baseListings: Listing[] = data.map((p: any) => {
           const gps = mercatorToLatLon(p.location[1], p.location[0]);
+          const metadataContact = p.metadata?.attributes?.find((a: any) => a.trait_type === "contact")?.value;
           return {
             id: p.tokenId.toString(),
             name: p.address,
@@ -48,7 +49,7 @@ export const useSearchStore = create<SearchState>((set) => ({
             reviews: [],
             user: p.user,
             owner: p.owner,
-            contact: p.contact || '',
+            contact: metadataContact || p.metadata?.contact || p.contact || '',
             pets: Boolean(p.pets),
             garage: Boolean(p.garage),
           };

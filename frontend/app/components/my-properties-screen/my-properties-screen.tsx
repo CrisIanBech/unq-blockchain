@@ -5,10 +5,12 @@ import PieChartRoundedIcon from "@mui/icons-material/PieChartRounded"
 import AddRoundedIcon from "@mui/icons-material/AddRounded"
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded"
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded"
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded"
 import { StatCard } from "@components/stat-card/stat-card"
 import { OwnedPropertyCard } from "@components/owned-property-card/owned-property-card"
 import { AddPropertyDialog } from "@components/add-property-dialog/add-property-dialog"
 import { ImportPropertyDialog } from "@components/import-property-dialog/import-property-dialog"
+import { ManageDepositDialog } from "@components/manage-deposit-dialog/manage-deposit-dialog"
 import { usdc, dateLabel, monthLabel, CURRENT_MONTH } from "@/lib/format"
 import type { UseMyPropertiesPageReturn } from "@hooks/use-my-properties-page"
 
@@ -19,6 +21,8 @@ export function MyPropertiesScreen({
   ownedProperties,
   addOpen,
   importOpen,
+  depositOpen,
+  contractHistory,
   monthIncome,
   nextCharge,
   occupancyStats,
@@ -32,6 +36,10 @@ export function MyPropertiesScreen({
   onSignContract,
   onCancelContract,
   onUnlinkContract,
+  onOpenDeposit,
+  onCloseDeposit,
+  onReleaseDeposit,
+  onClaimDeposit,
 }: UseMyPropertiesPageReturn) {
   return (
     <Box>
@@ -142,10 +150,23 @@ export function MyPropertiesScreen({
           tooltipTitle="Importar propiedad (ID)"
           onClick={onOpenImport}
         />
+        <SafeSpeedDialAction
+          icon={<AccountBalanceWalletRoundedIcon />}
+          tooltipTitle="Gestionar Depósito"
+          onClick={onOpenDeposit}
+        />
       </SpeedDial>
 
       <AddPropertyDialog open={addOpen} onClose={onCloseAdd} onSubmit={onSubmitAdd} />
       <ImportPropertyDialog open={importOpen} onClose={onCloseImport} onSubmit={onSubmitImport} />
+      <ManageDepositDialog
+        open={depositOpen}
+        onClose={onCloseDeposit}
+        properties={ownedProperties}
+        contractHistory={contractHistory}
+        onRelease={onReleaseDeposit}
+        onClaim={onClaimDeposit}
+      />
     </Box>
   )
 }

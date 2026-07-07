@@ -121,6 +121,25 @@ export class RentalsService {
     }
   }
 
+  async releaseDeposit(agreementAddress: string): Promise<TransactionResult> {
+    try {
+      const receipt = await this.repo.releaseDeposit(agreementAddress);
+      return { txHash: receipt.hash };
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
+  async claimDeposit(agreementAddress: string, amount: number, reason: string): Promise<TransactionResult> {
+    try {
+      const amountRaw = ethers.parseUnits(amount.toString(), 6);
+      const receipt = await this.repo.claimDeposit(agreementAddress, amountRaw, reason);
+      return { txHash: receipt.hash };
+    } catch (error) {
+      throw translateError(error);
+    }
+  }
+
   async getRentAmountToPay(agreementAddress: string) {
     try {
       const amounts = await this.repo.getRentAmountToPay(agreementAddress);
@@ -157,7 +176,8 @@ export class RentalsService {
         tenantApproved: details.tenantApproved,
         landlordCancelled: details.landlordCancelled,
         tenantCancelled: details.tenantCancelled,
-        inflationAdjustmentInterval: Number(details.inflationAdjustmentInterval)
+        inflationAdjustmentInterval: Number(details.inflationAdjustmentInterval),
+        depositStatus: details.depositStatus
       };
     } catch (error) {
       throw translateError(error);

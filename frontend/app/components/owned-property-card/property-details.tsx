@@ -1,4 +1,4 @@
-import { Box, IconButton, Typography } from "@mui/material"
+import { Box, IconButton, Typography, Rating } from "@mui/material"
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded"
 import { usdc, dateLabel } from "@/lib/format"
 
@@ -9,6 +9,9 @@ interface PropertyDetailsProps {
   nextChargeDate: string
   availableToWithdraw: number
   canWithdraw: boolean
+  isActive: boolean
+  ratingData: { average: number; count: number }
+  onOpenReview: () => void
   onOpenMenu: (e: React.MouseEvent<HTMLButtonElement>) => void
 }
 
@@ -19,15 +22,29 @@ export function PropertyDetails({
   nextChargeDate,
   availableToWithdraw,
   canWithdraw,
+  isActive,
+  ratingData,
+  onOpenReview,
   onOpenMenu,
 }: PropertyDetailsProps) {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h6" noWrap>
+          <Typography variant="h6" noWrap sx={{ mb: 0.5 }}>
             {name}
           </Typography>
+          
+          <Box 
+            sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1, cursor: isActive ? "pointer" : "default" }}
+            onClick={() => isActive && onOpenReview()}
+          >
+            <Rating value={ratingData.average} readOnly precision={0.5} size="small" />
+            <Typography variant="body2" color="text.secondary">
+              ({ratingData.count}) {isActive && "· Dejar reseña"}
+            </Typography>
+          </Box>
+
           <Typography variant="body2" color="text.secondary" noWrap>
             {address}
           </Typography>

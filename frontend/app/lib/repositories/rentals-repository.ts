@@ -16,6 +16,8 @@ export interface IRentalsRepository {
   withdrawRent(agreementAddress: string): Promise<ethers.TransactionReceipt>;
   cancelRental(agreementAddress: string): Promise<ethers.TransactionReceipt>;
   checkRentalExpiration(agreementAddress: string): Promise<ethers.TransactionReceipt>;
+  releaseDeposit(agreementAddress: string): Promise<ethers.TransactionReceipt>;
+  claimDeposit(agreementAddress: string, amount: bigint, reason: string): Promise<ethers.TransactionReceipt>;
   getRentAmountToPay(agreementAddress: string): Promise<{ currentRent: bigint, lateFee: bigint, totalAmount: bigint }>;
   getRentalDetails(agreementAddress: string): Promise<{
     propertyId: bigint;
@@ -37,6 +39,7 @@ export interface IRentalsRepository {
     landlordCancelled: boolean;
     tenantCancelled: boolean;
     inflationAdjustmentInterval: bigint;
+    depositStatus: number;
   }>;
   getPaymentHistory(agreementAddress: string): Promise<Array<{
     periodIndex: number;
@@ -163,6 +166,24 @@ export class RentalsRepository implements IRentalsRepository {
     return await tx.wait();
   }
 
+  async releaseDeposit(agreementAddress: string): Promise<ethers.TransactionReceipt> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const agreement = getRentalAgreement(agreementAddress, signer);
+    const tx = await agreement.releaseDeposit();
+    return await tx.wait();
+  }
+
+  async claimDeposit(agreementAddress: string, amount: bigint, reason: string): Promise<ethers.TransactionReceipt> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const agreement = getRentalAgreement(agreementAddress, signer);
+    const tx = await agreement.claimDeposit(amount, reason);
+    return await tx.wait();
+  }
+
   async getRentAmountToPay(agreementAddress: string): Promise<{ currentRent: bigint, lateFee: bigint, totalAmount: bigint }> {
     const runner = getBrowserProvider();
     if (!runner) throw new Error("No provider available.");
@@ -192,6 +213,7 @@ export class RentalsRepository implements IRentalsRepository {
     landlordCancelled: boolean;
     tenantCancelled: boolean;
     inflationAdjustmentInterval: bigint;
+    depositStatus: number;
   }> {
     const runner = getBrowserProvider();
     if (!runner) throw new Error("No provider available.");
@@ -199,6 +221,7 @@ export class RentalsRepository implements IRentalsRepository {
     const agreement = getRentalAgreement(agreementAddress, runner);
     const details = await agreement.getAgreementDetails();
     const inflationAdjustmentInterval = await agreement.inflationAdjustmentInterval();
+    const depositStatus = await agreement.depositStatus();
 
     return {
       propertyId: details.propertyId,
@@ -219,7 +242,8 @@ export class RentalsRepository implements IRentalsRepository {
       tenantApproved: details.tenantApproved,
       landlordCancelled: details.landlordCancelled,
       tenantCancelled: details.tenantCancelled,
-      inflationAdjustmentInterval
+      inflationAdjustmentInterval,
+      depositStatus: Number(depositStatus),
     };
   }
 

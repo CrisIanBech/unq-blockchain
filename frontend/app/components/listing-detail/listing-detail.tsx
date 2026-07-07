@@ -133,10 +133,10 @@ export function ListingDetail({
             </>
           )}
           {listing?.pets && (
-            <Chip icon={<PetsRoundedIcon />} label="Acepta mascotas" variant="outlined" color="success" size="small" />
+            <Chip icon={<PetsRoundedIcon />} label="Acepta mascotas" variant="outlined" color="success" />
           )}
           {listing?.garage && (
-            <Chip icon={<DirectionsCarRoundedIcon />} label="Cochera" variant="outlined" color="info" size="small" />
+            <Chip icon={<DirectionsCarRoundedIcon />} label="Cochera" variant="outlined" color="info" />
           )}
         </Box>
 
@@ -145,7 +145,7 @@ export function ListingDetail({
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: 1,
+              gap: 2,
               mt: 2,
               p: 1.5,
               borderRadius: 2,
@@ -154,7 +154,7 @@ export function ListingDetail({
           >
             <ContactPhoneRoundedIcon fontSize="small" color="primary" />
             <Box>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
                 Contacto
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
