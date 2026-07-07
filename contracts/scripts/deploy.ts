@@ -67,10 +67,10 @@ async function main() {
   await linkTx.wait();
   console.log("On-chain bidirectional link completed.");
 
-  // 6. Deploy RentalAgreementFactory
+  // 6. Deploy RentalAgreementFactory (stateless singleton — takes no constructor args)
   console.log("Deploying RentalAgreementFactory...");
   const RentalAgreementFactory = await ethers.getContractFactory("RentalAgreementFactory");
-  const factory = await RentalAgreementFactory.deploy(propertyNFTAddress, mockUSDCAddress, rentalNFTAddress);
+  const factory = await RentalAgreementFactory.deploy();
   await factory.waitForDeployment();
   const factoryAddress = await factory.getAddress();
   console.log(`RentalAgreementFactory deployed to: ${factoryAddress}`);
@@ -80,9 +80,6 @@ async function main() {
 
   const rentalNFTInProp = await propertyNFT.rentalNFT();
   const propNFTInRental = await rentalNFT.propertyNFT();
-  const propNFTInFactory = await factory.propertyNFT();
-  const usdcInFactory = await factory.usdcToken();
-  const rentalNFTInFactory = await factory.rentalNFT();
 
   if (rentalNFTInProp !== rentalNFTAddress) {
     throw new Error(`Validation Failed: PropertyNFT's rentalNFT (${rentalNFTInProp}) does not match RentalNFT (${rentalNFTAddress})`);
@@ -90,17 +87,34 @@ async function main() {
   if (propNFTInRental !== propertyNFTAddress) {
     throw new Error(`Validation Failed: RentalNFT's propertyNFT (${propNFTInRental}) does not match PropertyNFT (${propertyNFTAddress})`);
   }
-  if (propNFTInFactory !== propertyNFTAddress) {
-    throw new Error(`Validation Failed: Factory's propertyNFT (${propNFTInFactory}) does not match PropertyNFT (${propertyNFTAddress})`);
-  }
-  if (usdcInFactory !== mockUSDCAddress) {
-    throw new Error(`Validation Failed: Factory's usdcToken (${usdcInFactory}) does not match MockUSDC (${mockUSDCAddress})`);
-  }
-  if (rentalNFTInFactory !== rentalNFTAddress) {
-    throw new Error(`Validation Failed: Factory's rentalNFT (${rentalNFTInFactory}) does not match RentalNFT (${rentalNFTAddress})`);
-  }
 
   console.log("All on-chain configurations validated successfully!");
+
+  // 7a. On local chains, grant MINTER_ROLE to default Hardhat test accounts
+  if (chainId === 31337) {
+    const signers = await ethers.getSigners();
+    const minterRole = await propertyNFT.MINTER_ROLE();
+    const grantTargets = signers.slice(0, 10);
+
+    console.log(`Granting MINTER_ROLE to ${grantTargets.length} local test accounts...`);
+    for (const signer of grantTargets) {
+      const accountAddress = await signer.getAddress();
+      const hasRole = await propertyNFT.hasRole(minterRole, accountAddress);
+      if (!hasRole) {
+        const grantTx = await propertyNFT.grantRole(minterRole, accountAddress);
+        await grantTx.wait();
+      }
+    }
+    console.log("Local MINTER_ROLE grants completed.");
+  }
+
+  // 7b. Deploy Review
+  console.log("Deploying Review...");
+  const Review = await ethers.getContractFactory("Review");
+  const review = await Review.deploy(propertyNFTAddress, factoryAddress);
+  await review.waitForDeployment();
+  const reviewAddress = await review.getAddress();
+  console.log(`Review deployed to: ${reviewAddress}`);
 
   // 8. Log Deployment Summary
   console.log("\n========================================");
@@ -113,6 +127,8 @@ async function main() {
   console.log(rentalNFTAddress);
   console.log("\nRentalAgreementFactory:");
   console.log(factoryAddress);
+  console.log("\nReview:");
+  console.log(reviewAddress);
   console.log("\nDeployment completed successfully.");
   console.log("========================================\n");
 
@@ -126,7 +142,8 @@ async function main() {
       mockUSDC: mockUSDCAddress,
       propertyNFT: propertyNFTAddress,
       rentalNFT: rentalNFTAddress,
-      rentalAgreementFactory: factoryAddress
+      rentalAgreementFactory: factoryAddress,
+      review: reviewAddress
     }
   };
 
@@ -142,7 +159,8 @@ async function main() {
       `VITE_GOOGLE_MAPS_API_KEY=`,
       `VITE_PROPERTY_NFT_ADDRESS=${propertyNFTAddress}`,
       `VITE_RENTAL_FACTORY_ADDRESS=${factoryAddress}`,
-      `VITE_USDC_ADDRESS=${mockUSDCAddress}`
+      `VITE_USDC_ADDRESS=${mockUSDCAddress}`,
+      `VITE_REVIEW_SYSTEM_ADDRESS=${reviewAddress}`
     ].join("\n") + "\n";
 
     const envExamplePath = path.join(frontendDir, ".env.example");

@@ -54,7 +54,7 @@ export function PayRentDialog({
   const periodLabel = getRentalPeriodLabel(rental)
 
   const amountToPay = getRentalAmountToPay(rental)
-  const baseRent = ("baseRent" in rental && rental.baseRent !== undefined) ? rental.baseRent : (rental as Property).monthlyRent
+  const baseRent = ("baseRent" in rental && rental.baseRent !== undefined) ? rental.baseRent : ((rental as Property).monthlyRent ?? 0)
   const isLate = isRentalLate(rental)
   const lateFeeAmount = ("lateFeeAmount" in rental) ? (rental.lateFeeAmount ?? 0) : 0
   const lateFeeBps = ("lateFeeBps" in rental) ? (rental.lateFeeBps ?? 0) : 0

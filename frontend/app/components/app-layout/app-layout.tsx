@@ -2,7 +2,7 @@ import { useState, useMemo } from "react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { ThemeProvider, CssBaseline } from "@mui/material"
 import { lightTheme, darkTheme } from "@/lib/theme"
-import { useUserStore } from "@stores/user-store"
+import { useUserStore, isWalletConnected } from "@stores/user-store"
 import { AppShell } from "@components/app-shell/app-shell"
 import { ToastHost } from "@components/toast-host/toast-host"
 import { ConnectWallet } from "@components/connect-wallet/connect-wallet"
@@ -21,6 +21,9 @@ export function AppLayout() {
   const navigate = useNavigate()
 
   const { wallet, balance, toasts, dismissToast, connectWallet, disconnectWallet } = useUserStore()
+  const walletLabel = isWalletConnected(wallet)
+    ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}`
+    : "Conectar wallet"
 
   const theme = useMemo(() => (mode === "light" ? lightTheme : darkTheme), [mode])
 
@@ -37,6 +40,8 @@ export function AppLayout() {
       <CssBaseline />
       <AppShell
         wallet={wallet}
+        walletLabel={walletLabel}
+        walletConnected={isWalletConnected(wallet)}
         balance={balance}
         onConnectWallet={connectWallet}
         onDisconnectWallet={disconnectWallet}

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:lan": "vite --host",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -20,7 +21,9 @@
     "@mui/icons-material": "^9.1.1",
     "@mui/material": "^9.1.2",
     "@react-google-maps/api": "^2.20.8",
+    "@tanstack/react-query": "^5.101.2",
     "@vercel/analytics": "1.6.1",
+    "@walletconnect/ethereum-provider": "^2.23.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ethers": "^6.17.0",
@@ -32,6 +35,8 @@
     "shadcn": "^4.8.0",
     "tailwind-merge": "^3.3.1",
     "tw-animate-css": "^1.4.0",
+    "viem": "^2.54.1",
+    "wagmi": "^3.6.21",
     "zod": "^4.4.3",
     "zustand": "^5.0.3"
   },
@@ -49,7 +54,7 @@
     "globals": "^17.7.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
-    "typescript": "^5.7.3",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.62.1",
     "vite": "^6.0.7"
   },

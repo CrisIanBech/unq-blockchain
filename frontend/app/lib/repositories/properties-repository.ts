@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 import { getSigner, getPropertyNFT } from "../blockchain-infra";
 
 export interface IPropertiesRepository {
-  createProperty(recipient: string, metadataURI: string): Promise<any>;
+  createProperty(recipient: string, metadataURI: string, latitude: number, longitude: number): Promise<any>;
   getPropertyMetadataURI(propertyId: number): Promise<string>;
   getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }>;
   getOwnedProperties(ownerAddress: string): Promise<number[]>;

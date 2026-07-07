@@ -27,6 +27,14 @@ export interface PropertyContract {
   tenantApproved?: boolean
 }
 
+export interface Smartlock {
+  id: string
+  installed: boolean
+  nfcEnabled: boolean
+  unlocked: boolean
+  lastOpenedAt?: string
+}
+
 /** A property the current user OWNS (is the landlord). */
 export interface Property {
   id: string
@@ -41,6 +49,7 @@ export interface Property {
   monthlyRent?: number
   imageUrl?: string
   contract: PropertyContract | null
+  smartlock: Smartlock
 }
 
 export interface Rental {

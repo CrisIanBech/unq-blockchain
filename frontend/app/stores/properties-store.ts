@@ -1,11 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Property, Smartlock } from "@models/types";
-import { useUserStore } from "./user-store";
+import { useUserStore, isWalletConnected } from "./user-store";
 import { getServices } from "@/lib/services/service-registry";
 import { PropertyDashboardService, type AddPropertyInput, type CreateContractInput } from "@/lib/services/property-dashboard-service";
 import { loadOwnedProperties } from "@/lib/services/sync/owned-properties-sync";
+import { usesMockRepositories } from "@/lib/config/mock-mode";
+import { ensureMockDemoProperty } from "@/lib/repositories/mock-properties-repository";
 import { getBrowserProvider } from "@/lib/blockchain-infra";
+import { isNonexistentTokenError } from "@/lib/errors/error-utils";
 
 const propertyDashboardService = new PropertyDashboardService();
 
@@ -28,6 +31,7 @@ interface PropertiesState {
   unlinkContract: (propertyId: number) => void;
   importProperty: (name: string, propertyId: number) => Promise<void>;
   syncOwnedProperties: (background?: boolean) => Promise<void>;
+  updateSmartlock: (propertyId: string, updates: Partial<Smartlock>) => void;
 }
 
 export const usePropertiesStore = create<PropertiesState>()(
@@ -387,9 +391,34 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
 
           try {
-            const rawImports = get().propertyImports || [];
-            // Filter out any corrupted entries from localStorage (id undefined/null)
-            const imports = rawImports.filter(imp => imp && imp.id !== undefined && imp.id !== null);
+            let rawImports = get().propertyImports || [];
+            rawImports = rawImports.filter((imp) => imp && imp.id !== undefined && imp.id !== null);
+
+            if (usesMockRepositories() && isWalletConnected(wallet) && rawImports.length === 0) {
+              const demoId = ensureMockDemoProperty(wallet);
+              rawImports = [{ id: demoId, name: `Propiedad #${demoId}` }];
+              set({ propertyImports: rawImports });
+            }
+
+            const { propertiesService } = getServices(wallet);
+            const validImports: { id: number; name: string }[] = [];
+            for (const imp of rawImports) {
+              try {
+                const owner = await propertiesService.getPropertyOwner(imp.id);
+                if (owner.toLowerCase() === wallet.toLowerCase()) {
+                  validImports.push(imp);
+                }
+              } catch (error) {
+                if (!isNonexistentTokenError(error)) {
+                  console.warn(`Could not verify ownership for token ${imp.id}:`, error);
+                }
+              }
+            }
+
+            if (validImports.length !== rawImports.length) {
+              set({ propertyImports: validImports });
+            }
+
             const customContracts = get().customContracts || {};
 
             // loadOwnedProperties expects: wallet, imports, customContracts
@@ -417,6 +446,23 @@ export const usePropertiesStore = create<PropertiesState>()(
               severity: "error"
             });
           }
+        },
+
+        updateSmartlock: (propertyId, updates) => {
+          set((s) => ({
+            ownedProperties: s.ownedProperties.map((p) => {
+              if (p.id !== propertyId) return p;
+              const smartlock: Smartlock = {
+                id: p.smartlock?.id ?? `lock-${p.propertyId ?? propertyId}`,
+                installed: p.smartlock?.installed ?? false,
+                nfcEnabled: p.smartlock?.nfcEnabled ?? false,
+                unlocked: p.smartlock?.unlocked ?? false,
+                lastOpenedAt: p.smartlock?.lastOpenedAt,
+                ...updates,
+              };
+              return { ...p, smartlock };
+            }),
+          }));
         },
 
 

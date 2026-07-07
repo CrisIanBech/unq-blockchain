@@ -34,6 +34,8 @@ const NAV = [
 interface AppShellProps {
   children: ReactNode
   wallet: string
+  walletLabel: string
+  walletConnected: boolean
   balance: number
   currentPathname: string
   onNavigate: (href: string) => void
@@ -47,6 +49,8 @@ interface AppShellProps {
 export function AppShell({
   children,
   wallet,
+  walletLabel,
+  walletConnected,
   balance,
   currentPathname,
   onNavigate,
@@ -172,7 +176,7 @@ export function AppShell({
               label={`${balance.toLocaleString()} USDC`}
               sx={{ bgcolor: "primaryContainer.main", color: "primaryContainer.contrastText", fontWeight: 700 }}
             />
-            {wallet ? (
+            {walletConnected ? (
               <Box
                 sx={{
                   display: { xs: "none", sm: "flex" },
@@ -187,7 +191,7 @@ export function AppShell({
                 }}
               >
                 <Typography variant="body2" sx={{ fontFamily: "monospace", mr: 0.5 }}>
-                  {`${wallet.slice(0, 6)}...${wallet.slice(-4)}`}
+                  {walletLabel}
                 </Typography>
                 <Tooltip title="Copiar dirección">
                   <IconButton size="small" onClick={() => navigator.clipboard.writeText(wallet)}>

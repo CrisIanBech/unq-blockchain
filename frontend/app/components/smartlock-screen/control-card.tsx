@@ -3,9 +3,11 @@ import { alpha } from "@mui/material/styles"
 import LockRoundedIcon from "@mui/icons-material/LockRounded"
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded"
 import NfcRoundedIcon from "@mui/icons-material/NfcRounded"
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded"
 import AddModeratorRoundedIcon from "@mui/icons-material/AddModeratorRounded"
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
 import { dateLabel } from "@/lib/format"
+import { useUserStore, isWalletConnected } from "@stores/user-store"
 import { PowerIcon } from "./power-icon"
 
 interface ControlCardProps {
@@ -32,7 +34,13 @@ interface ControlCardProps {
   onInstallSmartlock: (id: string) => void
   onPower: () => void
   onOpenTenantLock: (id: string) => void
+  onUnlockLandlord: (id: string) => void
   onSetLockOpen: (id: string, open: boolean) => void
+  isUnlocking?: boolean
+  nfcAvailable?: boolean
+  nfcApiPresent?: boolean
+  mockMode?: boolean
+  walletAvailable?: boolean
 }
 
 export function ControlCard({
@@ -46,8 +54,17 @@ export function ControlCard({
   onInstallSmartlock,
   onPower,
   onOpenTenantLock,
+  onUnlockLandlord,
   onSetLockOpen,
+  isUnlocking = false,
+  nfcAvailable = false,
+  nfcApiPresent = false,
+  mockMode = false,
+  walletAvailable = true,
 }: ControlCardProps) {
+  const { wallet, connectWallet, isConnecting } = useUserStore()
+  const walletConnected = isWalletConnected(wallet)
+
   return (
     <Card
       sx={{
@@ -115,8 +132,57 @@ export function ControlCard({
             size="small"
             icon={<CheckCircleRoundedIcon />}
             label={keyMode ? "Llave vinculada al contrato" : "Cerradura registrada on-chain"}
-            sx={{ mb: 2, bgcolor: accentBg, color: accentFg, "& .MuiChip-icon": { color: accentFg } }}
+            sx={{ mb: mockMode ? 1 : 2, bgcolor: accentBg, color: accentFg, "& .MuiChip-icon": { color: accentFg } }}
           />
+          {mockMode && (
+            <Chip
+              size="small"
+              label="Modo demo — sin verificación on-chain"
+              color="warning"
+              variant="outlined"
+              sx={{ mb: 2 }}
+            />
+          )}
+          {nfcApiPresent && !nfcAvailable && (
+            <Chip
+              size="small"
+              label="Web NFC bloqueado en HTTP — se usará un desafío demo al firmar"
+              color="info"
+              variant="outlined"
+              sx={{ mb: 2, maxWidth: 320 }}
+            />
+          )}
+          {!walletConnected && (
+            <Chip
+              size="small"
+              label="Wallet no conectada — conectá MetaMask antes de firmar"
+              color="warning"
+              variant="outlined"
+              sx={{ mb: 2, maxWidth: 320 }}
+            />
+          )}
+          {!walletAvailable && (
+            <Chip
+              size="small"
+              label="MetaMask requerido — abrí esta página en MetaMask → Browser"
+              color="error"
+              variant="outlined"
+              sx={{ mb: 2, maxWidth: 320 }}
+            />
+          )}
+
+          {!walletConnected && (
+            <Button
+              variant="outlined"
+              size="large"
+              startIcon={<AccountBalanceWalletRoundedIcon />}
+              disabled={isConnecting}
+              onClick={() => void connectWallet()}
+              sx={{ mb: 2 }}
+            >
+              {isConnecting ? "Conectando…" : "Conectar MetaMask"}
+            </Button>
+          )}
 
           <PowerIcon
             active={active}
@@ -131,13 +197,15 @@ export function ControlCard({
               variant="h6"
               sx={{ color: active ? (keyMode ? "tertiary.main" : "primary.main") : "text.secondary", fontWeight: 700 }}
             >
-              NFC {active ? "encendido" : "apagado"}
+              NFC {active ? "activo (app)" : "inactivo (app)"}
             </Typography>
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             {active
-              ? "Acercá el teléfono a la cerradura para operar."
-              : "Tocá el ícono para encender el radio NFC."}
+              ? nfcAvailable
+                ? "Acercá el teléfono a la cerradura para operar."
+                : "NFC del navegador no disponible en HTTP — al abrir se generará un desafío demo para MetaMask."
+              : "Tocá el ícono circular para activar la llave virtual (independiente del NFC del sistema)."}
           </Typography>
 
           {keyMode ? (
@@ -145,23 +213,27 @@ export function ControlCard({
               variant="contained"
               color="primary"
               size="large"
-              disabled={!rental?.hasKey}
+              disabled={!rental?.hasKey || isUnlocking || !walletConnected}
               startIcon={<LockOpenRoundedIcon />}
               onClick={() => rental && onOpenTenantLock(rental.id)}
               sx={{ bgcolor: "tertiary.main", "&:hover": { bgcolor: "tertiary.main", filter: "brightness(0.92)" } }}
             >
-              Acercar y abrir
+              {isUnlocking ? "Firmando con MetaMask…" : "Acercar y abrir"}
             </Button>
           ) : (
             <Stack spacing={1} sx={{ alignItems: "center" }}>
               <Button
                 variant={ownedProp?.smartlock.unlocked ? "outlined" : "contained"}
                 size="large"
-                disabled={!ownedProp?.smartlock.nfcEnabled}
+                disabled={!ownedProp?.smartlock.nfcEnabled || isUnlocking || !walletConnected}
                 startIcon={ownedProp?.smartlock.unlocked ? <LockRoundedIcon /> : <LockOpenRoundedIcon />}
-                onClick={() => ownedProp && onSetLockOpen(ownedProp.id, !ownedProp.smartlock.unlocked)}
+                onClick={() => ownedProp && (ownedProp.smartlock.unlocked ? onSetLockOpen(ownedProp.id, false) : onUnlockLandlord(ownedProp.id))}
               >
-                {ownedProp?.smartlock.unlocked ? "Cerrar" : "Abrir"} cerradura
+                {isUnlocking
+                  ? "Firmando con MetaMask…"
+                  : ownedProp?.smartlock.unlocked
+                    ? "Cerrar"
+                    : "Acercar y abrir"}
               </Button>
               <Typography variant="caption" color="text.secondary">
                 Estado: {ownedProp?.smartlock.unlocked ? "Abierta" : "Cerrada"}

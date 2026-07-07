@@ -19,6 +19,12 @@ export function SmartlockScreen({
   onInstallSmartlock,
   onSetLockOpen,
   onOpenTenantLock,
+  onUnlockLandlord,
+  isUnlocking,
+  nfcAvailable,
+  nfcApiPresent,
+  mockMode,
+  walletAvailable,
 }: UseSmartlockPageReturn) {
   // Compute accent props for legacy subcomponents that still need them
   const accentBg = keyMode ? "tertiaryContainer.main" : "primaryContainer.main"
@@ -84,7 +90,13 @@ export function SmartlockScreen({
           onInstallSmartlock={onInstallSmartlock}
           onPower={onPower}
           onOpenTenantLock={onOpenTenantLock}
+          onUnlockLandlord={onUnlockLandlord}
           onSetLockOpen={onSetLockOpen}
+          isUnlocking={isUnlocking}
+          nfcAvailable={nfcAvailable}
+          nfcApiPresent={nfcApiPresent}
+          mockMode={mockMode}
+          walletAvailable={walletAvailable}
         />
       </Box>
     </Box>

@@ -1,7 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { usePropertiesStore } from "@stores/properties-store"
+import { signChallengeFromUrl, useSmartlockStore } from "@stores/smartlock-store"
+import { SmartlockService } from "@/lib/services/smartlock-service"
+import { hasEthereumProvider } from "@/lib/blockchain-infra/wallet"
+import { isSmartlockMockMode } from "@/lib/smartlock/config"
 import { useRentalsStore } from "@stores/rentals-store"
-import { useSmartlockStore } from "@stores/smartlock-store"
+import { useUserStore, isWalletConnected } from "@stores/user-store"
 
 export function useSmartlockPage() {
   const { ownedProperties } = usePropertiesStore()
@@ -11,7 +15,9 @@ export function useSmartlockPage() {
     toggleNfc,
     setLockOpen,
     openTenantLock,
+    unlockLandlordLock,
     toggleTenantNfc,
+    isUnlocking,
   } = useSmartlockStore()
 
   const [keyMode, setKeyMode] = useState(false)
@@ -27,6 +33,37 @@ export function useSmartlockPage() {
 
   const active = keyMode ? !!rental?.hasKey : !!ownedProp?.smartlock.nfcEnabled
   const installed = keyMode ? true : !!ownedProp?.smartlock.installed
+  const nfcAvailable = SmartlockService.isNfcAvailable()
+  const nfcApiPresent = SmartlockService.isNfcApiPresent()
+  const mockMode = isSmartlockMockMode()
+  const walletAvailable = typeof window !== "undefined" && hasEthereumProvider()
+
+  const wallet = useUserStore((state) => state.wallet)
+  const syncOwnedProperties = usePropertiesStore((state) => state.syncOwnedProperties)
+
+  useEffect(() => {
+    if (isWalletConnected(wallet)) {
+      void syncOwnedProperties()
+    }
+  }, [wallet, syncOwnedProperties])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const challenge = params.get("challenge")
+    if (!challenge) return
+
+    const agreement = params.get("agreement") ?? undefined
+    const roleParam = params.get("role")
+    const expectedRole = roleParam === "tenant" ? "tenant" : roleParam === "landlord" ? "landlord" : undefined
+    signChallengeFromUrl(challenge, agreement, expectedRole).finally(() => {
+      params.delete("challenge")
+      params.delete("agreement")
+      params.delete("role")
+      const next = params.toString()
+      const url = next ? `${window.location.pathname}?${next}` : window.location.pathname
+      window.history.replaceState({}, "", url)
+    })
+  }, [])
 
   const handlePower = () => {
     if (keyMode) {
@@ -34,6 +71,14 @@ export function useSmartlockPage() {
     } else if (ownedProp) {
       toggleNfc(ownedProp.id)
     }
+  }
+
+  const handleOpenTenantLock = () => {
+    if (rental) void openTenantLock(rental.id)
+  }
+
+  const handleUnlockLandlord = () => {
+    if (ownedProp) void unlockLandlordLock(ownedProp.id)
   }
 
   return {
@@ -48,12 +93,18 @@ export function useSmartlockPage() {
     selId,
     active,
     installed,
+    isUnlocking,
+    nfcAvailable,
+    nfcApiPresent,
+    mockMode,
+    walletAvailable,
     onSetKeyMode: setKeyMode,
     onSelectId: setSel,
     onPower: handlePower,
     onInstallSmartlock: installSmartlock,
     onSetLockOpen: setLockOpen,
-    onOpenTenantLock: openTenantLock,
+    onOpenTenantLock: handleOpenTenantLock,
+    onUnlockLandlord: handleUnlockLandlord,
   }
 }
 export type UseSmartlockPageReturn = ReturnType<typeof useSmartlockPage>

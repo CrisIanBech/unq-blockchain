@@ -1,39 +1,89 @@
-import { getBrowserProvider } from "./provider";
+import { connect, getChainId as getWagmiChainId, getConnection, getConnectors, switchChain } from "@wagmi/core";
+import { sepolia } from "wagmi/chains";
+import { isMetaMaskInAppBrowser, isMobileBrowser, isWalletConnectConfigured, wagmiConfig } from "./wagmi-config";
+
+function hasInjectedProvider(): boolean {
+  return typeof window !== "undefined" && !!(window as Window & { ethereum?: unknown }).ethereum;
+}
+
+function pickConnectConnector() {
+  const connectors = getConnectors(wagmiConfig);
+  const injectedConnector = connectors.find((connector) => connector.id === "injected");
+  const walletConnectConnector = connectors.find((connector) => connector.id === "walletConnect");
+
+  // MetaMask in-app browser: injected provider works.
+  if (isMetaMaskInAppBrowser() && injectedConnector) {
+    return injectedConnector;
+  }
+
+  // Mobile Chrome/Safari: never use injected — it is often a broken stub.
+  // WalletConnect deep-links into the MetaMask app.
+  if (isMobileBrowser()) {
+    if (walletConnectConnector) {
+      return walletConnectConnector;
+    }
+    throw new Error(
+      "Para conectar MetaMask desde el celular, configurá VITE_WALLETCONNECT_PROJECT_ID o abrí la página en MetaMask → Browser."
+    );
+  }
+
+  if (hasInjectedProvider() && injectedConnector) {
+    return injectedConnector;
+  }
+
+  if (walletConnectConnector) {
+    return walletConnectConnector;
+  }
+
+  return connectors[0];
+}
+
+export function hasEthereumProvider(): boolean {
+  if (typeof window === "undefined") return false;
+  if (isMetaMaskInAppBrowser() || hasInjectedProvider()) return true;
+  return isWalletConnectConfigured();
+}
 
 export async function connectWallet(): Promise<string | null> {
-  if (typeof window === "undefined" || !(window as any).ethereum) {
-    throw new Error("No Ethereum provider found. Please install MetaMask.");
+  const connection = getConnection(wagmiConfig);
+  if (connection.isConnected && connection.address) {
+    return connection.address;
   }
-  try {
-    const accounts: string[] = await (window as any).ethereum.request({
-      method: "eth_requestAccounts",
-    });
-    return accounts[0] || null;
-  } catch (error) {
-    console.error("User denied account connection:", error);
-    throw error;
+
+  const connector = pickConnectConnector();
+  if (!connector) {
+    throw new Error(
+      "No hay conector de wallet disponible. Instalá MetaMask o configurá VITE_WALLETCONNECT_PROJECT_ID."
+    );
   }
+
+  const result = await connect(wagmiConfig, { connector });
+  return result.accounts[0] ?? null;
 }
 
 export async function getCurrentAccount(): Promise<string | null> {
-  if (typeof window === "undefined" || !(window as any).ethereum) return null;
-  try {
-    const accounts: string[] = await (window as any).ethereum.request({
-      method: "eth_accounts",
-    });
-    return accounts[0] || null;
-  } catch (error) {
-    console.error("Failed to query accounts:", error);
-    return null;
+  const connection = getConnection(wagmiConfig);
+  if (connection.isConnected && connection.address) {
+    return connection.address;
   }
+
+  if (isMetaMaskInAppBrowser() || (!isMobileBrowser() && hasInjectedProvider())) {
+    try {
+      const accounts: string[] = await (
+        window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }
+      ).ethereum.request({ method: "eth_accounts" });
+      return accounts[0] ?? null;
+    } catch (error) {
+      console.error("Failed to query injected accounts:", error);
+    }
+  }
+
+  return null;
 }
 
 export async function getChainId(): Promise<number | null> {
-  const provider = getBrowserProvider();
-  if (!provider) return null;
   try {
-    const network = await provider.getNetwork();
-    return Number(network.chainId);
+    return await getWagmiChainId(wagmiConfig);
   } catch (error) {
     console.error("Failed to get chain ID:", error);
     return null;
@@ -41,30 +91,21 @@ export async function getChainId(): Promise<number | null> {
 }
 
 export async function switchToSepolia(): Promise<boolean> {
-  if (typeof window === "undefined" || !(window as any).ethereum) return false;
-  
-  const sepoliaChainIdHex = "0xaa36a7"; // 11155111 in hex
-  
   try {
-    await (window as any).ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: sepoliaChainIdHex }],
-    });
+    await switchChain(wagmiConfig, { chainId: sepolia.id });
     return true;
-  } catch (switchError: any) {
-    if (switchError.code === 4902) {
+  } catch (switchError: unknown) {
+    const error = switchError as { code?: number; message?: string };
+    if (error.code === 4902) {
       try {
-        await (window as any).ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [
-            {
-              chainId: sepoliaChainIdHex,
-              chainName: "Sepolia Test Network",
-              nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
-              rpcUrls: ["https://sepolia.drpc.org"],
-              blockExplorerUrls: ["https://sepolia.etherscan.io"],
-            },
-          ],
+        await switchChain(wagmiConfig, {
+          chainId: sepolia.id,
+          addEthereumChainParameter: {
+            chainName: "Sepolia Test Network",
+            nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://sepolia.drpc.org"],
+            blockExplorerUrls: ["https://sepolia.etherscan.io"],
+          },
         });
         return true;
       } catch (addError) {

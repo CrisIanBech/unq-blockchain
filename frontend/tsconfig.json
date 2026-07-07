@@ -18,6 +18,9 @@
     "jsx": "react-jsx",
     "types": ["vite/client"],
     "paths": {
+      "@shared/*": [
+        "../shared/*"
+      ],
       "@/*": [
         "./app/*"
       ],
@@ -43,7 +46,9 @@
   },
   "include": [
     "app/**/*.ts",
-    "app/**/*.tsx"
+    "app/**/*.tsx",
+    "app/**/*.d.ts",
+    "../shared/**/*.ts"
   ],
   "exclude": [
     "node_modules"

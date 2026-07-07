@@ -5,9 +5,10 @@ import {
   AgreementExpired,
   UnauthorizedOperation,
   UnknownBlockchainError,
+  NoEthereumProvider,
   InvalidAgreementStatus,
   NoActiveOrCompletedRental,
-  ReviewAlreadyPosted
+  ReviewAlreadyPosted,
 } from "./domain-errors";
 
 /**
@@ -49,8 +50,17 @@ export function translateError(error: any): Error {
     return new ReviewAlreadyPosted();
   }
 
-  if (errorMessage.includes("notpropertyowner") || errorMessage.includes("notowner") || errorMessage.includes("unauthorized")) {
-    return new UnauthorizedOperation();
+  if (
+    errorMessage.includes("notpropertyowner") ||
+    errorMessage.includes("notowner") ||
+    errorMessage.includes("unauthorized") ||
+    errorMessage.includes("accesscontrol") ||
+    errorMessage.includes("minter_role") ||
+    errorMessage.includes("onlyrole")
+  ) {
+    return new UnauthorizedOperation(
+      "No tenés permiso para mintear propiedades. En local, usá una cuenta Hardhat con MINTER_ROLE o ejecutá scripts/grant-minter.ts."
+    );
   }
 
   if (errorMessage.includes("propertyalreadyrented") || errorMessage.includes("already active")) {
@@ -59,6 +69,16 @@ export function translateError(error: any): Error {
 
   if (errorMessage.includes("agreementexpired") || errorMessage.includes("deadline")) {
     return new AgreementExpired();
+  }
+
+  if (errorMessage.includes("no ethereum provider") || errorMessage.includes("install metamask")) {
+    return new NoEthereumProvider();
+  }
+
+  if (errorMessage.includes("reading 'create'") || errorMessage.includes("createevmclient")) {
+    return new NoEthereumProvider(
+      "Error al iniciar MetaMask. Probá WalletConnect o abrí la página en MetaMask → Browser."
+    );
   }
 
   // 4. Default fallback

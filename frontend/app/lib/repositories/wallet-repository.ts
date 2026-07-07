@@ -3,7 +3,7 @@ import {
   getCurrentAccount,
   getChainId,
   switchToSepolia,
-  getBrowserProvider,
+  getPublicProvider,
   getMockUSDC
 } from "../blockchain-infra";
 
@@ -25,8 +25,7 @@ export class WalletRepository {
   }
 
   static async getUSDCBalance(accountAddress: string): Promise<bigint> {
-    const provider = getBrowserProvider();
-    if (!provider) return 0n;
+    const provider = getPublicProvider();
     try {
       const usdc = getMockUSDC(provider);
       return await usdc.balanceOf(accountAddress);

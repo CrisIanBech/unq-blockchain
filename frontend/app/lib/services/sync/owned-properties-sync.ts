@@ -1,14 +1,16 @@
 import { getServices } from "@/lib/services/service-registry";
 import { ethers } from "ethers";
 import { getLatestBlockTimestamp, CONTRACT_ADDRESSES } from "@/lib/blockchain-infra";
-import type { Property, PaymentRecord } from "@models/types";
+import type { Property, PaymentRecord, Smartlock } from "@models/types";
 import { getRentalPeriodLabelByIndex } from "@/models/rental-utils";
 import { formatPropertyImage } from "@/lib/format";
+import { isNonexistentTokenError } from "@/lib/errors/error-utils";
 
 export async function loadOwnedProperties(
   wallet: string,
   imports: { id: number; name: string }[],
-  customContracts: Record<number, string> = {}
+  customContracts: Record<number, string> = {},
+  existingProperties: Property[] = []
 ): Promise<Property[]> {
   const { propertiesService, rentalsService } = getServices(wallet);
 
@@ -35,7 +37,11 @@ export async function loadOwnedProperties(
         longitude: location.lng,
       };
     } catch (err) {
-      console.error(`Failed to fetch metadata for token ${tokenId}`, err);
+      if (isNonexistentTokenError(err)) {
+        console.warn(`Skipping stale property import: token ${tokenId} does not exist on this network.`);
+      } else {
+        console.error(`Failed to fetch metadata for token ${tokenId}`, err);
+      }
       return {
         propertyId: tokenId,
         name: imp.name || `Propiedad #${tokenId}`,
@@ -203,17 +209,26 @@ export async function loadOwnedProperties(
       };
     }
 
+    const existingProp = existingProperties.find((p) => p.propertyId === tokenId);
+    const smartlock: Smartlock = existingProp?.smartlock ?? {
+      id: `lock-${tokenId}`,
+      installed: false,
+      nfcEnabled: false,
+      unlocked: false,
+    };
+
     const ownedProp: Property = {
       id: `own-${tokenId}`,
       propertyId: tokenId,
       name: baseProp.name,
-      type: baseProp.type as any,
+      type: baseProp.type as Property["type"],
       address: baseProp.address,
       imageUrl: baseProp.imageUrl,
       latitude: baseProp.latitude,
       longitude: baseProp.longitude,
       monthlyRent: monthlyRent,
-      contract
+      contract,
+      smartlock,
     };
 
     return ownedProp;
