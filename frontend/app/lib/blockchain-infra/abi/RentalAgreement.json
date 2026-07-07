@@ -93,7 +93,37 @@
     },
     {
       "inputs": [],
+      "name": "InvalidBaseRent",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InvalidClaimAmount",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidDeadline",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidDuration",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidGracePeriod",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidInflationInterval",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidPaymentPeriod",
       "type": "error"
     },
     {
