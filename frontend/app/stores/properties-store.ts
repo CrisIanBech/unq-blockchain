@@ -5,6 +5,7 @@ import { useUserStore } from "./user-store";
 import { getServices } from "@/lib/services/service-registry";
 import { PropertyDashboardService, type AddPropertyInput, type CreateContractInput } from "@/lib/services/property-dashboard-service";
 import { loadOwnedProperties } from "@/lib/services/sync/owned-properties-sync";
+import { getBrowserProvider } from "@/lib/blockchain-infra";
 
 const propertyDashboardService = new PropertyDashboardService();
 
@@ -30,6 +31,7 @@ export const usePropertiesStore = create<PropertiesState>()(
   persist(
     (set, get) => {
       let ownedPropertiesSyncVersion = 0;
+      let isListening = false;
 
       return {
         isSyncing: false,
@@ -52,8 +54,6 @@ export const usePropertiesStore = create<PropertiesState>()(
             if (result.tokenId !== undefined) {
               set((s) => ({ propertyImports: [...(s.propertyImports || []), { id: result.tokenId!, name: input.name }] }));
             }
-
-            await get().syncOwnedProperties();
 
             userStore.pushToast({
               message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
@@ -183,8 +183,6 @@ export const usePropertiesStore = create<PropertiesState>()(
               )
             }));
 
-            await get().syncOwnedProperties();
-
             userStore.pushToast({
               message: `Contrato de alquiler creado en ${result.agreementAddress}`,
               severity: "success",
@@ -223,24 +221,6 @@ export const usePropertiesStore = create<PropertiesState>()(
               agreementAddress: targetAgreement,
               isTenant: false
             });
-
-            set((s) => ({
-              ownedProperties: s.ownedProperties.map((p) =>
-                p.id === propertyId && p.contract
-                  ? {
-                    ...p,
-                    contract: {
-                      ...p.contract,
-                      status: "active",
-                      tenantSince: new Date().toISOString().slice(0, 10),
-                      nextChargeDate: "2026-08-01",
-                    }
-                  }
-                  : p
-              )
-            }));
-
-            await get().syncOwnedProperties();
 
             userStore.pushToast({
               message: "Contrato firmado exitosamente on-chain",
@@ -296,8 +276,6 @@ export const usePropertiesStore = create<PropertiesState>()(
               get().unlinkContract(property.propertyId);
             }
 
-            await get().syncOwnedProperties();
-
             userStore.pushToast({
               message: "Contrato cancelado cooperativamente on-chain",
               severity: "info",
@@ -344,6 +322,16 @@ export const usePropertiesStore = create<PropertiesState>()(
         },
 
         syncOwnedProperties: async (background = false) => {
+          if (!isListening) {
+            const provider = getBrowserProvider();
+            if (provider) {
+              isListening = true;
+              provider.on("block", () => {
+                get().syncOwnedProperties(true);
+              });
+            }
+          }
+
           ownedPropertiesSyncVersion++;
           const currentVersion = ownedPropertiesSyncVersion;
 
