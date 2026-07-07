@@ -26,12 +26,12 @@ async function main() {
     const propertyNFTAddr = await propertyNFT.getAddress();
 
     await rentalNFT.setPropertyNFT(propertyNFTAddr);
-    
+
     const MockUSDC = await ethers.getContractFactory("MockUSDC");
     const mockUSDC = await MockUSDC.deploy();
     await mockUSDC.waitForDeployment();
     const mockUSDCAddr = await mockUSDC.getAddress();
-    
+
     const RentalAgreementFactory = await ethers.getContractFactory("RentalAgreementFactory");
     const factory = await RentalAgreementFactory.deploy();
     await factory.waitForDeployment();
@@ -46,7 +46,7 @@ async function main() {
 
     const MINTER_ROLE = await propertyNFT.MINTER_ROLE();
     await propertyNFT.grantRole(MINTER_ROLE, landlordAddr);
-    
+
     for (let i = 1; i <= 8; i++) {
         const lat = BigInt(-4126290 + i * 500);
         const lng = BigInt(-6485112 + i * 500);
@@ -89,9 +89,9 @@ async function main() {
     await mockUSDC.connect(tenant).approve(await agrAtrasado.getAddress(), securityDeposit);
     await agrAtrasado.connect(landlord).approveAgreement();
     await agrAtrasado.connect(tenant).approveAgreement();
-    console.log("Advancing time by 30 days...");
-    await ethers.provider.send("evm_increaseTime", [30 * 24 * 60 * 60]);
-    await ethers.provider.send("evm_mine", []);
+    // console.log("Advancing time by 30 days...");
+    // await ethers.provider.send("evm_increaseTime", [30 * 24 * 60 * 60]);
+    // await ethers.provider.send("evm_mine", []);
 
     block = await ethers.provider.getBlock("latest");
 
@@ -103,10 +103,10 @@ async function main() {
     await mockUSDC.connect(tenant).approve(await agrPorPagar.getAddress(), securityDeposit);
     await agrPorPagar.connect(landlord).approveAgreement();
     await agrPorPagar.connect(tenant).approveAgreement();
-    
-    console.log("Advancing time by 2 days...");
-    await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]);
-    await ethers.provider.send("evm_mine", []);
+
+    // console.log("Advancing time by 2 days...");
+    // await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]);
+    // await ethers.provider.send("evm_mine", []);
 
     block = await ethers.provider.getBlock("latest");
 
@@ -114,9 +114,9 @@ async function main() {
     console.log("\n2. Creating 'Vencido' Agreement (Property #2)...");
     const shortDeadline = block!.timestamp + 3600; // 1 hour
     const agrVencido = await createAgreement(2, shortDeadline);
-    console.log("Advancing time by 2 hours...");
-    await ethers.provider.send("evm_increaseTime", [2 * 3600]);
-    await ethers.provider.send("evm_mine", []);
+    // console.log("Advancing time by 2 hours...");
+    // await ethers.provider.send("evm_increaseTime", [2 * 3600]);
+    // await ethers.provider.send("evm_mine", []);
     await agrVencido.checkExpiration();
     const statusVencido = await agrVencido.status();
     console.log("Status:", statusVencido.toString(), "(6=Expired)");

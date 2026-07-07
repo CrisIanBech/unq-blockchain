@@ -125,31 +125,7 @@ export class BlockchainService implements OnModuleInit {
       let metadata: any = existing?.metadata;
 
       if (!metadata || Object.keys(metadata).length === 0) {
-        if (tokenURI.startsWith('ipfs://mock-property-')) {
-          const id = Number(tokenURI.replace('ipfs://mock-property-', ''));
-          const types = ['departamento', 'casa', 'ph', 'local', 'departamento', 'casa', 'casa', 'departamento'];
-          const surfaces = [50, 69, 81, 93, 105, 117, 129, 141];
-          const roomsList = [2, 3, 4, 1, 3, 2, 4, 3];
-          const bathroomsList = [1, 1, 2, 1, 1, 1, 2, 2];
-          const petsList = [true, true, false, true, false, true, false, true];
-          const garageList = [false, false, true, false, true, false, false, true];
-          
-          metadata = {
-            name: `Inmueble #${id} (${types[id - 1]})`,
-            description: `Hermoso/a ${types[id - 1]} en excelente ubicación en Quilmes.`,
-            type: types[id - 1],
-            surface: surfaces[id - 1],
-            rooms: roomsList[id - 1],
-            bathrooms: bathroomsList[id - 1],
-            pets: petsList[id - 1],
-            garage: garageList[id - 1],
-            image: id === 2 || id === 4 ? `ipfs://QmXoypizjW3WknFixtdKLw55y71vXq1bSpLnh5B2e6m${id}v1` : '',
-            images: id === 2 || id === 4 ? [
-              `ipfs://QmXoypizjW3WknFixtdKLw55y71vXq1bSpLnh5B2e6m${id}v1`,
-              `ipfs://QmXoypizjW3WknFixtdKLw55y71vXq1bSpLnh5B2e6m${id}v2`
-            ] : [],
-          };
-        } else if (tokenURI.startsWith('data:application/json;base64,')) {
+        if (tokenURI.startsWith('data:application/json;base64,')) {
           const base64Str = tokenURI.substring('data:application/json;base64,'.length);
           const decoded = Buffer.from(base64Str, 'base64').toString('utf-8');
           metadata = JSON.parse(decoded);
@@ -157,7 +133,6 @@ export class BlockchainService implements OnModuleInit {
           try {
             let fetchUrl = tokenURI;
             if (tokenURI.startsWith('ipfs://')) {
-              // backend only resolves gateway temporarily to fetch the metadata JSON for caching
               fetchUrl = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
             }
             const response = await fetch(fetchUrl);
@@ -165,7 +140,7 @@ export class BlockchainService implements OnModuleInit {
               metadata = await response.json();
             }
           } catch (e) {
-            this.logger.warn(`Could not fetch external tokenURI: ${tokenURI}`, e);
+            this.logger.warn(`Could not fetch tokenURI: ${tokenURI}`, e);
           }
         }
       }

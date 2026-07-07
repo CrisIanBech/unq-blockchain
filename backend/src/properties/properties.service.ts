@@ -146,6 +146,8 @@ export class PropertiesService {
     const garage = body.garage === 'true' || body.garage === true;
 
     const metadata = {
+      name: body.name || body.address,
+      description: body.description || '',
       type: body.type,
       surface,
       rooms,
@@ -160,7 +162,8 @@ export class PropertiesService {
         { trait_type: 'rooms', value: rooms },
         { trait_type: 'bathrooms', value: bathrooms },
         { trait_type: 'pets', value: pets },
-        { trait_type: 'garage', value: garage }
+        { trait_type: 'garage', value: garage },
+        { trait_type: 'address', value: body.address || '' }
       ]
     };
 

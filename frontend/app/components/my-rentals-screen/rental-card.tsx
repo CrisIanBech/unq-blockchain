@@ -23,7 +23,7 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded"
 import { usdc, dateLabel, TYPE_LABEL } from "@/lib/format"
 import {
   getRentalAmountToPay,
-  getRentalPeriodEnd,
+  getRentalPeriodStart,
   isRentalTenant,
   hasUserCancelled,
   hasOtherCancelled,
@@ -203,7 +203,7 @@ export function RentalCard({
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, visibility: (!isCancelled && !isExpired && (isActive || isPaidUp)) ? "visible" : "hidden" }}>
               <EventRoundedIcon fontSize="small" color="action" />
               <Typography variant="body2" color="text.primary">
-                Próximo pago: <strong>{dateLabel(getRentalPeriodEnd(rental).getTime())}</strong> · {usdc(getRentalAmountToPay(rental))}
+                Próximo pago: <strong>{dateLabel(getRentalPeriodStart(rental).getTime())}</strong> · {usdc(getRentalAmountToPay(rental))}
               </Typography>
             </Box>
           </Box>

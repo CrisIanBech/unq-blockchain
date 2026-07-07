@@ -48,8 +48,8 @@ export function ListingDetail({
   onCommentChange,
 }: ListingDetailProps) {
   const wallet = useUserStore((s) => s.wallet)
-  const isConnected = wallet !== "0x7A3f...91Cd"
-  const numericId = listing?.id ? parseInt(listing.id.replace(/\D/g, ""), 10) : 0
+  const isConnected = Boolean(wallet)
+  const numericId = listing?.id ? parseInt(listing.id, 10) : 0
   const onChainPropertyId = numericId > 0 ? numericId : 0
   const onChain = useReviewSystem(onChainPropertyId)
 
