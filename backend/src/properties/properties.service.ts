@@ -30,6 +30,7 @@ export class PropertiesService {
     pets?: boolean;
     garage?: boolean;
     images?: string[];
+    contact?: string;
   }): Promise<Property> {
     const { lat, lng, ...rest } = propertyData;
     const finalData = {
@@ -144,6 +145,7 @@ export class PropertiesService {
     const bathrooms = Number(body.bathrooms || 0);
     const pets = body.pets === 'true' || body.pets === true;
     const garage = body.garage === 'true' || body.garage === true;
+    const contact = body.contact || '';
 
     const metadata = {
       name: body.name || body.address,
@@ -154,6 +156,7 @@ export class PropertiesService {
       bathrooms,
       pets,
       garage,
+      contact,
       images: ipfsUrls,
       image: ipfsUrls.length > 0 ? ipfsUrls[0] : '',
       attributes: [
@@ -163,7 +166,8 @@ export class PropertiesService {
         { trait_type: 'bathrooms', value: bathrooms },
         { trait_type: 'pets', value: pets },
         { trait_type: 'garage', value: garage },
-        { trait_type: 'address', value: body.address || '' }
+        { trait_type: 'address', value: body.address || '' },
+        { trait_type: 'contact', value: contact }
       ]
     };
 

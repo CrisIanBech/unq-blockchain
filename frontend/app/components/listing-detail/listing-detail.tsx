@@ -16,6 +16,9 @@ import BedRoundedIcon from "@mui/icons-material/BedRounded"
 import BathtubRoundedIcon from "@mui/icons-material/BathtubRounded"
 import SquareFootRoundedIcon from "@mui/icons-material/SquareFootRounded"
 import RateReviewRoundedIcon from "@mui/icons-material/RateReviewRounded"
+import ContactPhoneRoundedIcon from "@mui/icons-material/ContactPhoneRounded"
+import PetsRoundedIcon from "@mui/icons-material/PetsRounded"
+import DirectionsCarRoundedIcon from "@mui/icons-material/DirectionsCarRounded"
 import type { Listing, Review } from "@/models/types"
 import { TYPE_LABEL } from "@/lib/format"
 import { ReviewItem } from "./review-item"
@@ -119,7 +122,7 @@ export function ListingDetail({
           {isConnected && <Chip label="on-chain" size="small" color="primary" variant="outlined" />}
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, mt: 2, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", gap: 1.5, mt: 2, flexWrap: "wrap" }}>
           {listing && listing.beds > 0 && (
             <Chip icon={<BedRoundedIcon />} label={`${listing.beds} amb.`} variant="outlined" />
           )}
@@ -129,9 +132,37 @@ export function ListingDetail({
               <Chip icon={<SquareFootRoundedIcon />} label={`${listing.m2} m²`} variant="outlined" />
             </>
           )}
+          {listing?.pets && (
+            <Chip icon={<PetsRoundedIcon />} label="Acepta mascotas" variant="outlined" color="success" />
+          )}
+          {listing?.garage && (
+            <Chip icon={<DirectionsCarRoundedIcon />} label="Cochera" variant="outlined" color="info" />
+          )}
         </Box>
 
-
+        {listing?.contact && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              mt: 2,
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: "action.hover",
+            }}
+          >
+            <ContactPhoneRoundedIcon fontSize="small" color="primary" />
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+                Contacto
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {listing.contact}
+              </Typography>
+            </Box>
+          </Box>
+        )}
 
         <Divider sx={{ my: 3 }} />
 

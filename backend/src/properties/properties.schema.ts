@@ -52,6 +52,9 @@ export class Property {
 
   @Prop({ type: [String], default: [] })
   images: string[];
+
+  @Prop({ default: '' })
+  contact: string;
 }
 
 export const PropertySchema = SchemaFactory.createForClass(Property);

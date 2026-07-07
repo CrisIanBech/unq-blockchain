@@ -16,10 +16,14 @@ export function useMyPropertiesPage() {
     syncOwnedProperties,
     importProperty,
     unlinkContract,
+    contractHistory,
+    releaseDeposit,
+    claimDeposit,
   } = usePropertiesStore()
 
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [depositOpen, setDepositOpen] = useState(false)
 
   useEffect(() => {
     if (!wallet) return
@@ -82,8 +86,10 @@ export function useMyPropertiesPage() {
   return {
     isSyncing,
     ownedProperties,
+    contractHistory,
     addOpen,
     importOpen,
+    depositOpen,
     monthIncome,
     nextCharge,
     occupancyStats,
@@ -103,6 +109,10 @@ export function useMyPropertiesPage() {
     onSignContract,
     onCancelContract,
     onUnlinkContract,
+    onOpenDeposit: () => setDepositOpen(true),
+    onCloseDeposit: () => setDepositOpen(false),
+    onReleaseDeposit: releaseDeposit,
+    onClaimDeposit: claimDeposit,
   }
 }
 export type UseMyPropertiesPageReturn = ReturnType<typeof useMyPropertiesPage>

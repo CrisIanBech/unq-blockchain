@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Box,
   Button,
@@ -11,6 +11,7 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  Rating,
 } from "@mui/material"
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded"
@@ -37,6 +38,8 @@ import {
 import { PaymentHistoryDrawer } from "./payment-history-drawer"
 import { SignAgreementDialog } from "./sign-agreement-dialog"
 import { CancelAgreementDialog } from "./cancel-agreement-dialog"
+import { ReviewDialog } from "@components/review-dialog/review-dialog"
+import { ReviewsService } from "@/lib/services/reviews-service"
 import { useUserStore } from "@/stores/user-store"
 import type { Rental } from "@models/types"
 
@@ -65,8 +68,25 @@ export function RentalCard({
   const [isSigning, setIsSigning] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const [ratingData, setRatingData] = useState({ average: 0, count: 0 })
   const wallet = useUserStore(s => s.wallet)
+
+  const fetchReviews = () => {
+    ReviewsService.getAllReviews(rental.propertyId).then(reviews => {
+      if (reviews.length === 0) {
+        setRatingData({ average: 0, count: 0 })
+      } else {
+        const sum = reviews.reduce((acc, r) => acc + Number(r.rating), 0)
+        setRatingData({ average: sum / reviews.length, count: reviews.length })
+      }
+    }).catch(console.error)
+  }
+
+  useEffect(() => {
+    fetchReviews()
+  }, [rental.propertyId])
 
   const isMine = isRentalTenant(rental, wallet)
 
@@ -196,6 +216,17 @@ export function RentalCard({
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
               {rental.name}
             </Typography>
+
+            <Box 
+              sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.5, cursor: isActive ? "pointer" : "default" }}
+              onClick={() => isActive && setReviewOpen(true)}
+            >
+              <Rating value={ratingData.average} readOnly precision={0.5} size="small" />
+              <Typography variant="body2" color="text.secondary">
+                ({ratingData.count}) {isActive && "· Dejar reseña"}
+              </Typography>
+            </Box>
+
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
               {rental.address}
             </Typography>
@@ -285,6 +316,14 @@ export function RentalCard({
         isCancelling={isCancelling}
         iHaveCancelled={iHaveCancelled}
         otherHasCancelled={otherHasCancelled}
+      />
+
+      <ReviewDialog
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        propertyId={rental.propertyId}
+        propertyName={rental.name}
+        onReviewSubmitted={fetchReviews}
       />
     </Card>
   )

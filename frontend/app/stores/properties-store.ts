@@ -19,8 +19,11 @@ interface PropertiesState {
   ownedProperties: Property[];
   propertyImports: { id: number; name: string }[];
   customContracts: Record<number, string>;
+  contractHistory: Record<number, string[]>;
   mintAndLoadProperty: (input: AddPropertyInput) => Promise<void>;
   withdrawRent: (propertyId: string) => Promise<void>;
+  releaseDeposit: (agreementAddress: string) => Promise<void>;
+  claimDeposit: (agreementAddress: string, amount: number, reason: string) => Promise<void>;
   createContract: (propertyId: string, input: Omit<CreateContractInput, "propertyId">) => Promise<void>;
   linkContract: (propertyId: number, agreementAddress: string) => void;
   signContract: (propertyId: string) => Promise<void>;
@@ -42,6 +45,7 @@ export const usePropertiesStore = create<PropertiesState>()(
         ownedProperties: [],
         propertyImports: [],
         customContracts: {},
+        contractHistory: {},
 
         mintAndLoadProperty: async (input) => {
           const userStore = useUserStore.getState();
@@ -119,13 +123,54 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
         },
 
+        releaseDeposit: async (agreementAddress: string) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          const { rentalsService } = getServices(wallet);
+          try {
+            userStore.pushToast({ message: "Devolviendo depósito al inquilino...", severity: "info" });
+            const result = await rentalsService.releaseDeposit(agreementAddress);
+            userStore.pushToast({ message: `Depósito devuelto exitosamente.`, severity: "success", txHash: result.txHash });
+            await get().syncOwnedProperties();
+            await userStore.syncOnchainBalance();
+          } catch (err: any) {
+            console.error("Failed to release deposit:", err);
+            userStore.pushToast({ message: err.message || "Error al devolver el depósito", severity: "error" });
+          }
+        },
+
+        claimDeposit: async (agreementAddress: string, amount: number, reason: string) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          const { rentalsService } = getServices(wallet);
+          try {
+            userStore.pushToast({ message: "Reclamando depósito...", severity: "info" });
+            const result = await rentalsService.claimDeposit(agreementAddress, amount, reason);
+            userStore.pushToast({ message: `Depósito reclamado exitosamente.`, severity: "success", txHash: result.txHash });
+            await get().syncOwnedProperties();
+            await userStore.syncOnchainBalance();
+          } catch (err: any) {
+            console.error("Failed to claim deposit:", err);
+            userStore.pushToast({ message: err.message || "Error al reclamar el depósito", severity: "error" });
+          }
+        },
+
         linkContract: (propertyId, agreementAddress) => {
-          set((state) => ({
-            customContracts: {
-              ...state.customContracts,
-              [propertyId]: agreementAddress
-            }
-          }));
+          set((state) => {
+            const currentHistory = state.contractHistory[propertyId] || [];
+            const historyWithoutNew = currentHistory.filter(addr => addr !== agreementAddress);
+            
+            return {
+              customContracts: {
+                ...state.customContracts,
+                [propertyId]: agreementAddress
+              },
+              contractHistory: {
+                ...state.contractHistory,
+                [propertyId]: [...historyWithoutNew, agreementAddress]
+              }
+            };
+          });
           get().syncOwnedProperties();
         },
 
@@ -166,23 +211,32 @@ export const usePropertiesStore = create<PropertiesState>()(
             const result = await propertyDashboardService.createContract(wallet, fullInput);
 
             // Link it locally so we don't have to wait for the graph/events to catch up
-            set((state) => ({
-              customContracts: {
-                ...state.customContracts,
-                [dynamicPropertyId]: result.agreementAddress
-              }
-            }));
+            set((state) => {
+              const currentHistory = state.contractHistory[dynamicPropertyId] || [];
+              const historyWithoutNew = currentHistory.filter(addr => addr !== result.agreementAddress);
+
+              return {
+                customContracts: {
+                  ...state.customContracts,
+                  [dynamicPropertyId]: result.agreementAddress
+                },
+                contractHistory: {
+                  ...state.contractHistory,
+                  [dynamicPropertyId]: [...historyWithoutNew, result.agreementAddress]
+                }
+              };
+            });
 
             set((s) => ({
               ownedProperties: s.ownedProperties.map((p) =>
-                p.id === propertyId ? { 
-                  ...p, 
+                p.id === propertyId ? {
+                  ...p,
                   contract: {
                     ...(p.contract || { payments: [], availableToWithdraw: 0 }),
-                    status: "draft", 
-                    tenant: input.tenant, 
-                    agreementAddress: result.agreementAddress 
-                  } 
+                    status: "draft",
+                    tenant: input.tenant,
+                    agreementAddress: result.agreementAddress
+                  }
                 } : p
               )
             }));
@@ -262,23 +316,7 @@ export const usePropertiesStore = create<PropertiesState>()(
 
             const result = await rentalsService.cancelAgreement(targetAgreement);
 
-            set((s) => ({
-              ownedProperties: s.ownedProperties.map((p) =>
-                p.id === propertyId && p.contract ? { 
-                  ...p, 
-                  contract: {
-                    ...p.contract,
-                    status: "cancelled", 
-                    tenant: null, 
-                    nextChargeDate: undefined 
-                  } 
-                } : p
-              )
-            }));
-
-            if (property.propertyId) {
-              get().unlinkContract(property.propertyId);
-            }
+            await get().syncOwnedProperties(true);
 
             userStore.pushToast({
               message: "Contrato cancelado cooperativamente on-chain",
@@ -382,8 +420,9 @@ export const usePropertiesStore = create<PropertiesState>()(
             }
 
             const customContracts = get().customContracts || {};
-            const existingProps = get().ownedProperties;
-            const loadedProps = await loadOwnedProperties(wallet, validImports, customContracts, existingProps);
+
+            // loadOwnedProperties expects: wallet, imports, customContracts
+            const loadedProps = await loadOwnedProperties(wallet, imports, customContracts);
 
             if (currentVersion !== ownedPropertiesSyncVersion) {
               return;

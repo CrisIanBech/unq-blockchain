@@ -18,7 +18,7 @@ interface PropertyMenuProps {
   onConsultTenant: () => void
   onManageContract: () => void
   onSignContract: (id: string) => void
-  onCancelContract: (id: string) => void
+  onOpenCancelDialog: () => void
   onUnlinkContract: (id: string) => void
 }
 
@@ -29,7 +29,7 @@ export function PropertyMenu({
   onConsultTenant,
   onManageContract,
   onSignContract,
-  onCancelContract,
+  onOpenCancelDialog,
   onUnlinkContract,
 }: PropertyMenuProps) {
   const contractStatus = getPropertyContractStatus(property);
@@ -79,7 +79,7 @@ export function PropertyMenu({
         <MenuItem
           onClick={() => {
             onCloseMenu()
-            onCancelContract(property.id)
+            onOpenCancelDialog()
           }}
         >
           <ListItemIcon>
@@ -124,7 +124,7 @@ export function PropertyMenu({
           onClick={() => {
             onCloseMenu()
             if (agreementAddress) {
-              onCancelContract(property.id)
+              onOpenCancelDialog()
             }
           }}
         >

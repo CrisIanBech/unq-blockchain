@@ -93,6 +93,7 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
   const [bathrooms, setBathrooms] = useState("")
   const [pets, setPets] = useState(false)
   const [garage, setGarage] = useState(false)
+  const [contact, setContact] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -216,6 +217,7 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
     setBathrooms("")
     setPets(false)
     setGarage(false)
+    setContact("")
     setSelectedFiles([])
     setIsUploading(false)
   }
@@ -237,6 +239,7 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
           bathrooms: Number(bathrooms),
           pets,
           garage,
+          contact: contact.trim(),
           images: selectedFiles,
         })
         onSubmit({
@@ -442,6 +445,15 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
                   label="Cochera"
                 />
               </Stack>
+
+              <TextField
+                label="Contacto"
+                placeholder="Ej: +54 11 1234-5678 · propietario@email.com"
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                fullWidth
+                helperText="Teléfono, email o WhatsApp para que el interesado te contacte"
+              />
 
               {/* Image upload */}
               <Box>

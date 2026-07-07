@@ -40,6 +40,7 @@ export class PropertyDashboardService {
     bathrooms: number;
     pets: boolean;
     garage: boolean;
+    contact?: string;
     images: File[];
   }): Promise<string> {
     const formData = new FormData();
@@ -51,6 +52,7 @@ export class PropertyDashboardService {
     formData.append("bathrooms", input.bathrooms.toString());
     formData.append("pets", input.pets.toString());
     formData.append("garage", input.garage.toString());
+    formData.append("contact", input.contact ?? "");
 
     input.images.forEach((file) => {
       formData.append("files", file);
