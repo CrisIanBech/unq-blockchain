@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
-import { getSigner, getPropertyNFT } from "../blockchain-infra";
+import { getSigner, getPropertyNFT, fetchEventsInChunks } from "../blockchain-infra";
 
 export interface IPropertiesRepository {
-  createProperty(recipient: string, metadataURI: string): Promise<any>;
+  createProperty(recipient: string, metadataURI: string, latitude: number, longitude: number): Promise<any>;
   getPropertyMetadataURI(propertyId: number): Promise<string>;
   getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }>;
   getOwnedProperties(ownerAddress: string): Promise<number[]>;
@@ -53,7 +53,8 @@ export class PropertiesRepository implements IPropertiesRepository {
     
     // Query Transfer events where 'to' is ownerAddress
     const transferFilter = nftContract.filters.Transfer(null, ownerAddress);
-    const transferEvents = await nftContract.queryFilter(transferFilter, 0, "latest");
+    const startBlock = Number(import.meta.env.VITE_DEPLOY_BLOCK) || 0;
+    const transferEvents = await fetchEventsInChunks(nftContract, transferFilter, startBlock);
     
     const candidates = new Set<number>();
     for (const event of transferEvents) {

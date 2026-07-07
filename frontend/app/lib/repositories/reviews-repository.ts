@@ -1,4 +1,4 @@
-import { getReview, getRentalAgreementFactory, getRentalAgreement, getReadProvider, getSigner } from "../blockchain-infra";
+import { getReview, getRentalAgreementFactory, getRentalAgreement, getReadProvider, getSigner, fetchEventsInChunks } from "../blockchain-infra";
 
 export interface OnChainReview {
   author: string;
@@ -78,7 +78,8 @@ export class ReviewsRepository {
       // The factory is stateless — query the RentalAgreementCreated event log
       // to find the most recently deployed agreement for this property.
       const filter = factory.filters.RentalAgreementCreated(null, BigInt(propertyId));
-      const events = await factory.queryFilter(filter, 0, "latest");
+      const startBlock = Number(import.meta.env.VITE_DEPLOY_BLOCK) || 0;
+      const events = await fetchEventsInChunks(factory, filter, startBlock);
       if (events.length === 0) return ZERO;
       const latest = events[events.length - 1];
       if ("args" in latest && latest.args) return latest.args[0] as string;

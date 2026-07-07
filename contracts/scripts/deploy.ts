@@ -70,19 +70,24 @@ async function main() {
   // 6. Deploy RentalAgreementFactory
   console.log("Deploying RentalAgreementFactory...");
   const RentalAgreementFactory = await ethers.getContractFactory("RentalAgreementFactory");
-  const factory = await RentalAgreementFactory.deploy(propertyNFTAddress, mockUSDCAddress, rentalNFTAddress);
+  const factory = await RentalAgreementFactory.deploy();
   await factory.waitForDeployment();
   const factoryAddress = await factory.getAddress();
   console.log(`RentalAgreementFactory deployed to: ${factoryAddress}`);
+
+  // 6.5 Deploy Review
+  console.log("Deploying Review System...");
+  const Review = await ethers.getContractFactory("Review");
+  const review = await Review.deploy(propertyNFTAddress, factoryAddress);
+  await review.waitForDeployment();
+  const reviewAddress = await review.getAddress();
+  console.log(`Review System deployed to: ${reviewAddress}`);
 
   // 7. On-chain Validation Checks
   console.log("Validating deployed configuration on-chain...");
 
   const rentalNFTInProp = await propertyNFT.rentalNFT();
   const propNFTInRental = await rentalNFT.propertyNFT();
-  const propNFTInFactory = await factory.propertyNFT();
-  const usdcInFactory = await factory.usdcToken();
-  const rentalNFTInFactory = await factory.rentalNFT();
 
   if (rentalNFTInProp !== rentalNFTAddress) {
     throw new Error(`Validation Failed: PropertyNFT's rentalNFT (${rentalNFTInProp}) does not match RentalNFT (${rentalNFTAddress})`);
@@ -90,17 +95,31 @@ async function main() {
   if (propNFTInRental !== propertyNFTAddress) {
     throw new Error(`Validation Failed: RentalNFT's propertyNFT (${propNFTInRental}) does not match PropertyNFT (${propertyNFTAddress})`);
   }
-  if (propNFTInFactory !== propertyNFTAddress) {
-    throw new Error(`Validation Failed: Factory's propertyNFT (${propNFTInFactory}) does not match PropertyNFT (${propertyNFTAddress})`);
-  }
-  if (usdcInFactory !== mockUSDCAddress) {
-    throw new Error(`Validation Failed: Factory's usdcToken (${usdcInFactory}) does not match MockUSDC (${mockUSDCAddress})`);
-  }
-  if (rentalNFTInFactory !== rentalNFTAddress) {
-    throw new Error(`Validation Failed: Factory's rentalNFT (${rentalNFTInFactory}) does not match RentalNFT (${rentalNFTAddress})`);
-  }
 
   console.log("All on-chain configurations validated successfully!");
+
+  // Fund accounts with MockUSDC
+  console.log("Funding accounts with MockUSDC...");
+  
+  // Always mint to the deployer so they have funds to test
+  const signers = await ethers.getSigners();
+  const deployerAddress = await signers[0].getAddress();
+  const amountToMint = ethers.parseUnits("10000", 6); // 10,000 USDC
+  
+  await mockUSDC.mint(deployerAddress, amountToMint);
+  console.log(`Minted 10,000 MockUSDC to Deployer (${deployerAddress})`);
+
+  // Only fund hardhat test accounts on local networks to save gas on public testnets
+  if (networkName === "localhost" || networkName === "hardhat") {
+    const landlordAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+    const tenantAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+    
+    await mockUSDC.mint(landlordAddress, amountToMint);
+    await mockUSDC.mint(tenantAddress, amountToMint);
+    console.log(`Minted 10,000 MockUSDC to Landlord (${landlordAddress})`);
+    console.log(`Minted 10,000 MockUSDC to Tenant (${tenantAddress})`);
+  }
+
 
   // 8. Log Deployment Summary
   console.log("\n========================================");
@@ -113,6 +132,8 @@ async function main() {
   console.log(rentalNFTAddress);
   console.log("\nRentalAgreementFactory:");
   console.log(factoryAddress);
+  console.log("\nReview System:");
+  console.log(reviewAddress);
   console.log("\nDeployment completed successfully.");
   console.log("========================================\n");
 
@@ -126,7 +147,8 @@ async function main() {
       mockUSDC: mockUSDCAddress,
       propertyNFT: propertyNFTAddress,
       rentalNFT: rentalNFTAddress,
-      rentalAgreementFactory: factoryAddress
+      rentalAgreementFactory: factoryAddress,
+      reviewSystem: reviewAddress
     }
   };
 
@@ -142,7 +164,8 @@ async function main() {
       `VITE_GOOGLE_MAPS_API_KEY=`,
       `VITE_PROPERTY_NFT_ADDRESS=${propertyNFTAddress}`,
       `VITE_RENTAL_FACTORY_ADDRESS=${factoryAddress}`,
-      `VITE_USDC_ADDRESS=${mockUSDCAddress}`
+      `VITE_USDC_ADDRESS=${mockUSDCAddress}`,
+      `VITE_REVIEW_SYSTEM_ADDRESS=${reviewAddress}`
     ].join("\n") + "\n";
 
     const envExamplePath = path.join(frontendDir, ".env.example");
@@ -155,7 +178,8 @@ async function main() {
       `  mockUSDC: "${mockUSDCAddress}",`,
       `  propertyNFT: "${propertyNFTAddress}",`,
       `  rentalNFT: "${rentalNFTAddress}",`,
-      `  rentalAgreementFactory: "${factoryAddress}"`,
+      `  rentalAgreementFactory: "${factoryAddress}",`,
+      `  reviewSystem: "${reviewAddress}"`,
       `};`,
       ``
     ].join("\n");

@@ -23,6 +23,23 @@ export class BlockchainService implements OnModuleInit {
     });
   }
 
+  private async fetchEventsInChunks(contract: ethers.Contract, filter: any, startBlock: number): Promise<any[]> {
+    const currentBlock = await this.provider.getBlockNumber();
+    let logs: any[] = [];
+    const chunkSize = 9000;
+    
+    for (let i = startBlock; i <= currentBlock; i += chunkSize) {
+      const toBlock = Math.min(i + chunkSize - 1, currentBlock);
+      try {
+        const chunkLogs = await contract.queryFilter(filter, i, toBlock);
+        logs = logs.concat(chunkLogs);
+      } catch (e) {
+        this.logger.warn(`Error fetching events from block ${i} to ${toBlock}:`, e);
+      }
+    }
+    return logs;
+  }
+
   private async setupListeners() {
     const rpcUrl = this.configService.get<string>('RPC_URL') || 'http://localhost:8545';
     const propertyAddress = this.configService.get<string>('PROPERTY_NFT_ADDRESS') || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
@@ -46,7 +63,8 @@ export class BlockchainService implements OnModuleInit {
     try {
       this.logger.log('Replaying past PropertyMinted events...');
       const filter = this.propertyContract.filters.PropertyMinted();
-      const events = await this.propertyContract.queryFilter(filter, 0, 'latest');
+      const startBlock = Number(process.env.DEPLOY_BLOCK) || 0;
+      const events = await this.fetchEventsInChunks(this.propertyContract, filter, startBlock);
       this.logger.log(`Found ${events.length} past PropertyMinted events.`);
       for (const event of events) {
         if ('args' in event && event.args) {
@@ -62,7 +80,8 @@ export class BlockchainService implements OnModuleInit {
     try {
       this.logger.log('Replaying past UpdateUser events...');
       const filter = this.rentalContract.filters.UpdateUser();
-      const events = await this.rentalContract.queryFilter(filter, 0, 'latest');
+      const startBlock = Number(process.env.DEPLOY_BLOCK) || 0;
+      const events = await this.fetchEventsInChunks(this.rentalContract, filter, startBlock);
       this.logger.log(`Found ${events.length} past UpdateUser events.`);
       for (const event of events) {
         if ('args' in event && event.args) {

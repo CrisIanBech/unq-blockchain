@@ -6,7 +6,8 @@ import {
   getRentalAgreement,
   getMockUSDC,
   getPropertyNFT,
-  CONTRACT_ADDRESSES
+  CONTRACT_ADDRESSES,
+  fetchEventsInChunks
 } from "../blockchain-infra";
 
 export interface IRentalsRepository {
@@ -261,7 +262,8 @@ export class RentalsRepository implements IRentalsRepository {
 
     const filter = agreement.filters.RentPaid();
 
-    const logs = await agreement.queryFilter(filter, 0, "latest");
+    const startBlock = Number(import.meta.env.VITE_DEPLOY_BLOCK) || 0;
+    const logs = await fetchEventsInChunks(agreement, filter, startBlock);
 
     const logsWithTime = await Promise.all(logs.map(async (log: any) => {
       const block = await log.getBlock();
@@ -282,7 +284,8 @@ export class RentalsRepository implements IRentalsRepository {
 
     const factory = getRentalAgreementFactory(runner);
     const filter = factory.filters.RentalAgreementCreated(null, BigInt(propertyId));
-    const events = await factory.queryFilter(filter, 0, "latest");
+    const startBlock = Number(import.meta.env.VITE_DEPLOY_BLOCK) || 0;
+    const events = await fetchEventsInChunks(factory, filter, startBlock);
 
     if (events.length === 0) return null;
 

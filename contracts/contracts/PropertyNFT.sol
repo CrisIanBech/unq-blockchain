@@ -36,7 +36,7 @@ contract PropertyNFT is IPropertyNFT, ERC721URIStorage, AccessControl {
 
     /**
      * @notice Mints a new property NFT representing permanent ownership and its mirror RentalNFT.
-     * @dev Restricted to roles with MINTER_ROLE.
+     * @dev Anyone can mint properties.
      * @param to The recipient address (landlord).
      * @param _tokenURI The metadata URI containing property details.
      * @param latitude The latitude of the property (Mercator projection).
@@ -46,7 +46,6 @@ contract PropertyNFT is IPropertyNFT, ERC721URIStorage, AccessControl {
     function mint(address to, string calldata _tokenURI, int256 latitude, int256 longitude)
         external
         override
-        onlyRole(MINTER_ROLE)
         returns (uint256)
     {
         require(latitude >= MERCATOR_MIN && latitude <= MERCATOR_MAX, "Invalid latitude");
