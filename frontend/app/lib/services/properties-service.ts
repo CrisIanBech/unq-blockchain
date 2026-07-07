@@ -11,7 +11,7 @@ export class PropertiesService {
   constructor(
     private repo: IPropertiesRepository,
     private geocodingRepo: IGeocodingRepository
-  ) {}
+  ) { }
 
   /**
    * Mints a new property NFT and returns plain domain transaction details.
@@ -19,7 +19,7 @@ export class PropertiesService {
   async mintProperty(recipient: string, metadataURI: string, latitude: number, longitude: number): Promise<PropertyMintResult & { tokenId?: number }> {
     try {
       const receipt = await this.repo.createProperty(recipient, metadataURI, latitude, longitude);
-        
+
       let tokenId: number | undefined;
       if (receipt && receipt.logs) {
         for (const log of receipt.logs) {
@@ -67,14 +67,14 @@ export class PropertiesService {
     try {
       const uri = await this.repo.getPropertyMetadataURI(propertyId);
       const location = await this.repo.getPropertyLocation(propertyId);
-      
+
       let fetchUrl = uri;
       if (uri.startsWith("ipfs://")) {
         fetchUrl = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
       }
 
       let metadata: any = {};
-      
+
       if (fetchUrl.startsWith("data:")) {
         try {
           const base64Data = fetchUrl.split(",")[1];
@@ -102,18 +102,13 @@ export class PropertiesService {
         }
       }
 
-      // Reverse geocoding
-      console.log(`[Property ${propertyId}] Coordenadas del contrato: lat=${location.lat}, lng=${location.lng}`);
-      
       if (location.lat !== 0 || location.lng !== 0) {
-        console.log(`[Property ${propertyId}] Ejecutando geocoding...`);
         const address = await this.geocodingRepo.reverseGeocodeMercator(location.lat, location.lng);
-        console.log(`[Property ${propertyId}] Resultado geocoding:`, address);
-        
+
         if (address) {
           // Push address attribute
           if (!metadata.attributes) metadata.attributes = [];
-          
+
           // Remove existing address if any
           metadata.attributes = metadata.attributes.filter((a: any) => a.trait_type !== "address");
           metadata.attributes.push({ trait_type: "address", value: address });
@@ -131,12 +126,12 @@ export class PropertiesService {
   async getOwnedProperties(ownerAddress: string): Promise<any[]> {
     try {
       const tokenIds = await this.repo.getOwnedProperties(ownerAddress);
-      
+
       const properties = await Promise.all(
         tokenIds.map(async (tokenId) => {
           try {
             const metadata = await this.getPropertyMetadata(tokenId);
-            
+
             const typeAttr = metadata.attributes?.find((a: any) => a.trait_type === "type")?.value || "departamento";
             const addrAttr = metadata.attributes?.find((a: any) => a.trait_type === "address")?.value || metadata.address || "Dirección desconocida";
             const rentAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "monthlyRent")?.value || metadata.monthlyRent || 0);
@@ -162,7 +157,7 @@ export class PropertiesService {
           }
         })
       );
-      
+
       return properties;
     } catch (error) {
       throw translateError(error);

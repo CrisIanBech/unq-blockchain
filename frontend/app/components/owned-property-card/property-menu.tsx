@@ -3,6 +3,7 @@ import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded"
 import AddCardRoundedIcon from "@mui/icons-material/AddCardRounded"
 import HistoryEduRoundedIcon from "@mui/icons-material/HistoryEduRounded"
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded"
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded"
 import type { Property } from "@models/types"
 import {
   getPropertyContractStatus,
@@ -43,6 +44,20 @@ export function PropertyMenu({
             <AccountCircleRoundedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Consultar inquilino on-chain</ListItemText>
+        </MenuItem>
+      )}
+
+      {agreementAddress && contractStatus && contractStatus !== "cancelled" && (
+        <MenuItem
+          onClick={() => {
+            onCloseMenu()
+            navigator.clipboard.writeText(agreementAddress)
+          }}
+        >
+          <ListItemIcon>
+            <ContentCopyRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Copiar dir. del contrato</ListItemText>
         </MenuItem>
       )}
 

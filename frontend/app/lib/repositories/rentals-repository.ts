@@ -106,6 +106,12 @@ export class RentalsRepository implements IRentalsRepository {
       // Step 1: Approve allowance
       const approveTx = await usdc.approve(params.agreementAddress, params.depositAmount);
       await approveTx.wait();
+    } else {
+      const agreement = getRentalAgreement(params.agreementAddress, signer);
+      const propertyId = await agreement.propertyId();
+      const propertyNft = getPropertyNFT(signer);
+      const approveTx = await propertyNft.approve(params.agreementAddress, propertyId);
+      await approveTx.wait();
     }
 
     // Step 2: Approve agreement
