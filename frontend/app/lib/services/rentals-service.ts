@@ -156,7 +156,8 @@ export class RentalsService {
         landlordApproved: details.landlordApproved,
         tenantApproved: details.tenantApproved,
         landlordCancelled: details.landlordCancelled,
-        tenantCancelled: details.tenantCancelled
+        tenantCancelled: details.tenantCancelled,
+        inflationAdjustmentInterval: Number(details.inflationAdjustmentInterval)
       };
     } catch (error) {
       throw translateError(error);

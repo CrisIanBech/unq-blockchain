@@ -58,6 +58,7 @@ export interface Rental {
   baseRent: number;
   securityDeposit: number;
   inflationBps: number;
+  inflationAdjustmentInterval?: number;
   lateFeeBps: number;
   gracePeriod: number;
   paymentPeriod: number;

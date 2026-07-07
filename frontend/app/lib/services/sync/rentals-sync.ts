@@ -28,6 +28,7 @@ export async function loadRentals(
       baseRent: amounts.currentRent,
       securityDeposit: details.securityDeposit,
       inflationBps: details.inflationBps,
+      inflationAdjustmentInterval: details.inflationAdjustmentInterval,
       lateFeeBps: details.lateFeeBps,
       gracePeriod: details.gracePeriod,
       paymentPeriod: details.paymentPeriod,
