@@ -13,32 +13,46 @@ export interface AddPropertyInput {
   bathrooms: number;
   pets: boolean;
   garage: boolean;
-  images: string[];
+  images: File[];
 }
 
 export class PropertyDashboardService {
+  async uploadImages(files: File[]): Promise<string[]> {
+    if (!files || files.length === 0) return [];
+
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+    const response = await fetch(`${backendUrl}/properties/upload-images`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Error al subir imágenes a IPFS desde el servidor.");
+    }
+
+    return response.json();
+  }
+
   async mintProperty(wallet: string, input: AddPropertyInput): Promise<{ tokenId?: number; txHash: string; lat: number; lng: number }> {
     const { propertiesService } = getServices(wallet);
 
     const lat = -34.6037 + (Math.random() - 0.5) * 0.08;
     const lng = -58.4 + (Math.random() - 0.5) * 0.08;
 
-    // Convert CID or raw text images to native IPFS references (ipfs://...) if needed
-    const formattedImages = (input.images || []).map((img) => {
-      const trimmed = img.trim();
-      if (trimmed.startsWith("ipfs://")) return trimmed;
-      if (/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58,})$/.test(trimmed)) {
-        return `ipfs://${trimmed}`;
-      }
-      return trimmed;
-    });
+    // Upload files to backend
+    const ipfsUrls = await this.uploadImages(input.images);
 
     // Construct base64 metadata URI to store name, address, rent and physical attributes on-chain
     const metadata = {
       name: input.name,
       description: `Tokenized property: ${input.name}`,
-      image: formattedImages.length > 0 ? formattedImages[0] : "",
-      images: formattedImages,
+      image: ipfsUrls.length > 0 ? ipfsUrls[0] : "",
+      images: ipfsUrls,
       attributes: [
         { trait_type: "type", value: input.type },
         { trait_type: "address", value: input.address },

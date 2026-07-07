@@ -35,7 +35,7 @@ interface AddPropertyDialogProps {
     bathrooms: number
     pets: boolean
     garage: boolean
-    images: string[]
+    images: File[]
   }) => void
 }
 
@@ -51,7 +51,7 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
   const [bathrooms, setBathrooms] = useState("")
   const [pets, setPets] = useState(false)
   const [garage, setGarage] = useState(false)
-  const [imagesText, setImagesText] = useState("")
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [touched, setTouched] = useState(false)
 
   const reValid = ADDR_RE.test(realEstateToken)
@@ -76,18 +76,13 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
     setBathrooms("")
     setPets(false)
     setGarage(false)
-    setImagesText("")
+    setSelectedFiles([])
     setTouched(false)
   }
 
   function submit() {
     setTouched(true)
     if (!valid) return
-    
-    const images = imagesText
-      .split(",")
-      .map((x) => x.trim())
-      .filter((x) => x.length > 0)
 
     onSubmit({
       realEstateToken,
@@ -101,7 +96,7 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
       bathrooms: Number(bathrooms),
       pets,
       garage,
-      images,
+      images: selectedFiles,
     })
     reset()
     onClose()
@@ -206,14 +201,46 @@ export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialog
               label="Garage/Cochera"
             />
           </Box>
-          <TextField
-            label="CIDs o Referencias de imágenes IPFS (Separados por comas)"
-            value={imagesText}
-            onChange={(e) => setImagesText(e.target.value)}
-            placeholder="QmXoyp..., ipfs://Qm..."
-            helperText="Dejar vacío para usar foto de Google Maps asociada a la dirección"
-            fullWidth
-          />
+          <Box sx={{ border: "2px dashed", borderColor: "divider", borderRadius: 2, p: 2.5, textAlign: "center", bgcolor: "background.paper" }}>
+            <Button variant="contained" component="label" sx={{ mb: selectedFiles.length > 0 ? 1.5 : 0 }}>
+              Seleccionar imágenes
+              <input
+                type="file"
+                hidden
+                multiple
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files) {
+                    setSelectedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                  }
+                }}
+              />
+            </Button>
+            {selectedFiles.length > 0 && (
+              <Stack spacing={0.5} sx={{ mt: 1, maxHeight: 120, overflowY: "auto", textAlign: "left" }}>
+                {selectedFiles.map((file, i) => (
+                  <Box key={i} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 0.5, px: 1, bgcolor: "action.hover", borderRadius: 1 }}>
+                    <Typography variant="caption" noWrap sx={{ maxWidth: "80%" }}>
+                      {file.name}
+                    </Typography>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => {
+                        setSelectedFiles((prev) => prev.filter((_, idx) => idx !== i));
+                      }}
+                      sx={{ minWidth: "auto", p: 0.5 }}
+                    >
+                      Eliminar
+                    </Button>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              Subiremos las imágenes de manera segura a IPFS. Si no eliges ninguna, usaremos Google Maps.
+            </Typography>
+          </Box>
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>

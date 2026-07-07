@@ -77,4 +77,36 @@ export class PropertiesService {
       })
       .exec();
   }
+
+  async uploadImagesToPinata(files: any[]): Promise<string[]> {
+    const jwt = process.env.PINATA_JWT;
+    if (!jwt) {
+      throw new Error('PINATA_JWT environment variable is not defined.');
+    }
+
+    const ipfsUrls: string[] = [];
+
+    for (const file of files) {
+      const formData = new FormData();
+      const blob = new Blob([file.buffer], { type: file.mimetype });
+      formData.append('file', blob, file.originalname);
+
+      const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to upload to Pinata: ${response.statusText}`);
+      }
+
+      const result: any = await response.json();
+      ipfsUrls.push(`ipfs://${result.IpfsHash}`);
+    }
+
+    return ipfsUrls;
+  }
 }
