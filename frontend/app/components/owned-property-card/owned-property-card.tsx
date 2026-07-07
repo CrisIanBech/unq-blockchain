@@ -13,25 +13,31 @@ import {
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded"
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded"
-import type { OwnedProperty } from "@models/types"
+import type { Property } from "@models/types"
 import { dateLabel } from "@/lib/format"
 import { PaymentHistory } from "@components/payment-history/payment-history"
 import { PropertyCardHeader } from "./property-card-header"
 import { PropertyDetails } from "./property-details"
 import { PropertyMenu } from "./property-menu"
-
-const STATUS_CHIP = {
-  active: { label: "Contrato activo", color: "success" as const },
-  draft: { label: "Borrador", color: "warning" as const },
-  cancelled: { label: "Cancelado", color: "default" as const },
-}
+import { ManageContractDialog } from "./manage-contract-dialog"
+import {
+  getPropertyPayments,
+  isPropertyOverdue,
+  canPropertyWithdraw,
+  getPropertyAvailableToWithdraw,
+  getPropertyTenant,
+  getPropertyTenantSince,
+  getPropertyAgreementAddress,
+  getPropertyNextChargeDate,
+  getPropertyStatusDetails,
+} from "@models/property-utils"
 
 interface OwnedPropertyCardProps {
-  property: OwnedProperty
+  property: Property
   onWithdrawRent: (id: string) => void
   onSignContract: (id: string) => void
   onCancelContract: (id: string) => void
-  onCreateContract: (id: string, tenant: string, rent: number) => void
+  onUnlinkContract: (id: string) => void
 }
 
 export function OwnedPropertyCard({
@@ -39,20 +45,25 @@ export function OwnedPropertyCard({
   onWithdrawRent,
   onSignContract,
   onCancelContract,
-  onCreateContract,
+  onUnlinkContract,
 }: OwnedPropertyCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [manageContractOpen, setManageContractOpen] = useState(false)
   const [menuEl, setMenuEl] = useState<null | HTMLElement>(null)
 
-  const isOverdue = property.payments.some((p) => p.status === "overdue")
-  const canWithdraw = property.availableToWithdraw > 0
-  const s = STATUS_CHIP[property.contractStatus]
+  const payments = getPropertyPayments(property)
+  const isOverdue = isPropertyOverdue(property)
+  const canWithdraw = canPropertyWithdraw(property)
+  const statusDetails = getPropertyStatusDetails(property)
+  const tenant = getPropertyTenant(property)
+  const tenantSince = getPropertyTenantSince(property)
+  const agreementAddress = getPropertyAgreementAddress(property)
 
   function consultTenant() {
     setMenuEl(null)
     alert(
-      property.tenant
-        ? `Inquilino on-chain de "${property.name}":\n${property.tenant}\nDesde: ${dateLabel(property.tenantSince)}`
+      tenant
+        ? `Inquilino on-chain de "${property.name}":\n${tenant}\nDesde: ${dateLabel(tenantSince)}`
         : `"${property.name}" no tiene inquilino asignado.`,
     )
   }
@@ -64,25 +75,22 @@ export function OwnedPropertyCard({
       }}
     >
       <PropertyCardHeader
-        imageUrl={property.imageUrl ?? ""}
+        imageUrl={""} // Removed from model
         name={property.name}
         type={property.type}
         isOverdue={isOverdue}
-        statusColor={s.color}
-        statusLabel={
-          property.contractStatus === "draft" && property.landlordApproved
-            ? "Esperando al inquilino"
-            : s.label
-        }
+        statusColor={statusDetails.color}
+        statusLabel={statusDetails.label}
+        statusVariant={statusDetails.variant}
       />
 
       <CardContent>
         <PropertyDetails
           name={property.name}
-          address={property.address}
-          monthlyRent={property.monthlyRent}
-          nextChargeDate={property.nextChargeDate ?? ""}
-          availableToWithdraw={property.availableToWithdraw}
+          address={property.address ?? ""}
+          monthlyRent={property.monthlyRent ?? 0}
+          nextChargeDate={getPropertyNextChargeDate(property)}
+          availableToWithdraw={getPropertyAvailableToWithdraw(property)}
           canWithdraw={canWithdraw}
           onOpenMenu={(e) => setMenuEl(e.currentTarget)}
         />
@@ -94,7 +102,7 @@ export function OwnedPropertyCard({
                 variant="contained"
                 startIcon={<PaymentsRoundedIcon />}
                 disabled={!canWithdraw}
-                onClick={() => onWithdrawRent(property.id)}
+                onClick={() => agreementAddress && onWithdrawRent(property.id)}
               >
                 Retirar fondos
               </Button>
@@ -116,9 +124,10 @@ export function OwnedPropertyCard({
         menuEl={menuEl}
         onCloseMenu={() => setMenuEl(null)}
         onConsultTenant={consultTenant}
-        onCreateContract={onCreateContract}
+        onManageContract={() => setManageContractOpen(true)}
         onSignContract={onSignContract}
         onCancelContract={onCancelContract}
+        onUnlinkContract={onUnlinkContract}
       />
 
       {/* Drawer for Payment History (Side Sheet) */}
@@ -150,8 +159,15 @@ export function OwnedPropertyCard({
           </IconButton>
         </Box>
         <Divider sx={{ mb: 3 }} />
-        <PaymentHistory payments={property.payments} />
+        <PaymentHistory payments={payments} />
       </Drawer>
+
+      <ManageContractDialog
+        open={manageContractOpen}
+        onClose={() => setManageContractOpen(false)}
+        propertyId={Number(property.propertyId || property.id.replace("own-", ""))}
+        propertyName={property.name}
+      />
     </Card>
   )
 }

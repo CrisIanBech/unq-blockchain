@@ -7,10 +7,12 @@ export interface IPropertiesRepository {
   getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }>;
   getOwnedProperties(ownerAddress: string): Promise<number[]>;
   ownerOf(propertyId: number): Promise<string>;
+  getRentalNFTOwner(propertyId: number): Promise<string>;
+  getRentalNFTUser(propertyId: number): Promise<string>;
 }
 
 export class PropertiesRepository implements IPropertiesRepository {
-  async createProperty(recipient: string, metadataURI: string): Promise<ethers.TransactionReceipt> {
+  async createProperty(recipient: string, metadataURI: string, latitude: number, longitude: number): Promise<ethers.TransactionReceipt> {
     const signer = await getSigner();
     if (!signer) {
       throw new Error("No signer available. Connect MetaMask.");
@@ -18,9 +20,8 @@ export class PropertiesRepository implements IPropertiesRepository {
 
     const nftContract = getPropertyNFT(signer);
 
-    // Call mint(to, tokenURI, latitude, longitude)
-    // We pass 0, 0 for lat/lng for now as it's not strictly required by the basic UI yet
-    const tx = await nftContract.mint(recipient, metadataURI, 0, 0);
+    // Call mint(to, tokenURI, latitude, longitude) — lat/lng are Web Mercator meters
+    const tx = await nftContract.mint(recipient, metadataURI, latitude, longitude);
     return await tx.wait();
   }
 
@@ -83,5 +84,33 @@ export class PropertiesRepository implements IPropertiesRepository {
 
     const nftContract = getPropertyNFT(signer);
     return await nftContract.ownerOf(BigInt(propertyId));
+  }
+
+  async getRentalNFTOwner(propertyId: number): Promise<string> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const nftContract = getPropertyNFT(signer);
+    const rentalNFTAddress = await nftContract.rentalNFT();
+    const rentalContract = new ethers.Contract(
+      rentalNFTAddress,
+      ["function ownerOf(uint256 tokenId) view returns (address)"],
+      signer
+    );
+    return await rentalContract.ownerOf(BigInt(propertyId));
+  }
+
+  async getRentalNFTUser(propertyId: number): Promise<string> {
+    const signer = await getSigner();
+    if (!signer) throw new Error("No signer available.");
+
+    const nftContract = getPropertyNFT(signer);
+    const rentalNFTAddress = await nftContract.rentalNFT();
+    const rentalContract = new ethers.Contract(
+      rentalNFTAddress,
+      ["function userOf(uint256 tokenId) view returns (address)"],
+      signer
+    );
+    return await rentalContract.userOf(BigInt(propertyId));
   }
 }

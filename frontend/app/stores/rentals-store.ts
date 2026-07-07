@@ -236,7 +236,7 @@ export const useRentalsStore = create<RentalsState>()(
                 amount: Number(e.amount),
                 lateFee: Number(e.lateFee),
                 status: "paid" as const,
-                paidAt: new Date(e.blockNumber * 1000).toISOString(),
+                paidAt: new Date(e.timestamp * 1000).toISOString(),
                 txHash: e.txHash
               };
             });

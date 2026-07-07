@@ -42,7 +42,7 @@ export interface IRentalsRepository {
     amount: bigint;
     lateFee: bigint;
     txHash: string;
-    blockNumber: number;
+    timestamp: number;
   }>>;
   getRentalAgreementForProperty(propertyId: number): Promise<string | null>;
   getWithdrawableRent(agreementAddress: string): Promise<bigint>;
@@ -57,6 +57,8 @@ export class RentalsRepository implements IRentalsRepository {
     inflationBps: number;
     lateFeeBps: number;
     gracePeriod: number;
+    paymentPeriod: number;
+    inflationAdjustmentInterval: number;
     duration: number;
     deadline: number;
   }): Promise<ethers.TransactionReceipt> {
@@ -80,6 +82,8 @@ export class RentalsRepository implements IRentalsRepository {
       params.inflationBps,
       params.lateFeeBps,
       params.gracePeriod,
+      params.paymentPeriod,
+      params.inflationAdjustmentInterval,
       params.duration,
       params.deadline
     );
@@ -214,7 +218,7 @@ export class RentalsRepository implements IRentalsRepository {
     amount: bigint;
     lateFee: bigint;
     txHash: string;
-    blockNumber: number;
+    timestamp: number;
   }>> {
     const runner = getBrowserProvider();
     if (!runner) throw new Error("No provider available.");
@@ -225,13 +229,17 @@ export class RentalsRepository implements IRentalsRepository {
 
     const logs = await agreement.queryFilter(filter, 0, "latest");
 
-    return logs.map((log: any) => ({
-      periodIndex: Number(log.args[0]),
-      amount: log.args[1],
-      lateFee: log.args[2],
-      txHash: log.transactionHash,
-      blockNumber: log.blockNumber
+    const logsWithTime = await Promise.all(logs.map(async (log: any) => {
+      const block = await log.getBlock();
+      return {
+        periodIndex: Number(log.args[0]),
+        amount: log.args[1],
+        lateFee: log.args[2],
+        txHash: log.transactionHash,
+        timestamp: block.timestamp
+      };
     }));
+    return logsWithTime;
   }
 
   async getRentalAgreementForProperty(propertyId: number): Promise<string | null> {

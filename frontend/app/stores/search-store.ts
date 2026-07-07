@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import type { Listing } from "@models/types"
-import { initialListings } from "@models/mock-data"
 import { useUserStore } from "./user-store"
 
 const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`
@@ -11,7 +10,7 @@ interface SearchState {
 }
 
 export const useSearchStore = create<SearchState>((set) => ({
-  listings: initialListings,
+  listings: [],
 
   leaveReview: (listingId, rating, comment) => {
     set((s) => ({

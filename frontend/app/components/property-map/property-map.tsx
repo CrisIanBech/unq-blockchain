@@ -2,8 +2,7 @@ import { useMemo } from "react"
 import { GoogleMap, useJsApiLoader, MarkerF } from "@react-google-maps/api"
 import { Box, CircularProgress, useTheme } from "@mui/material"
 import type { Listing } from "@/models/types"
-import { MAP_CENTER } from "@/models/mock-data"
-
+const MAP_CENTER = { lat: -34.6037, lng: -58.3816 };
 const MAP_STYLE_LIGHT = [
   { elementType: "geometry", stylers: [{ color: "#f6fbf3" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#414941" }] },

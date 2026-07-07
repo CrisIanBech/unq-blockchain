@@ -45,12 +45,6 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   connectWallet: async () => {
     try {
-      const isMock = import.meta.env.VITE_USE_MOCKS === "true";
-      if (isMock) {
-        set({ wallet: "0xMockUser", balance: 3250 });
-        get().pushToast({ message: "Mock wallet conectada", severity: "success" });
-        return;
-      }
 
       const address = await WalletService.connect();
       if (address) {
@@ -81,7 +75,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   syncOnchainBalance: async () => {
     const address = get().wallet;
-    if (address && import.meta.env.VITE_USE_MOCKS !== "true") {
+    if (address) {
       try {
         const balance = await WalletService.getUSDCBalance(address);
         set({ balance });
@@ -94,8 +88,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 
 // Attempt to load current account on store load if already authorized
 if (typeof window !== "undefined") {
-  if (import.meta.env.VITE_USE_MOCKS !== "true") {
-    WalletService.getCurrentAccount().then(async (address) => {
+  WalletService.getCurrentAccount().then(async (address) => {
       if (address) {
         useUserStore.setState({ wallet: address });
         try {
@@ -132,7 +125,6 @@ if (typeof window !== "undefined") {
           }
         }
       });
-    }
   }
 }
 

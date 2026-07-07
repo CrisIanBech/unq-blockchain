@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { usePropertiesStore, type AddPropertyInput } from "@stores/properties-store"
 import { useUserStore } from "@stores/user-store"
 import { CURRENT_MONTH } from "@/lib/format"
@@ -7,25 +7,24 @@ import { getBrowserProvider } from "@/lib/blockchain-infra"
 export function useMyPropertiesPage() {
   const { wallet } = useUserStore()
   const {
+    isSyncing,
     ownedProperties,
     mintAndLoadProperty,
     withdrawRent,
     signContract,
     cancelContract,
-    createContract,
     syncOwnedProperties,
     importProperty,
+    unlinkContract,
   } = usePropertiesStore()
 
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     if (!wallet) return
 
-    setIsSyncing(true)
-    syncOwnedProperties().finally(() => setIsSyncing(false))
+    syncOwnedProperties()
 
     // Listen for new blocks to keep UI reactive in real-time
     const provider = getBrowserProvider()
@@ -40,65 +39,70 @@ export function useMyPropertiesPage() {
     }
   }, [wallet, syncOwnedProperties])
 
-  const stats = useMemo(() => {
-    const monthIncome = ownedProperties.reduce((sum, p) => {
-      const paid = p.payments.find((x) => x.month === CURRENT_MONTH && x.status === "paid")
+  const [monthIncome, setMonthIncome] = useState(0)
+  const [nextCharge, setNextCharge] = useState<string | undefined>(undefined)
+  const [occupancyStats, setOccupancyStats] = useState({ occupancy: 0, occupied: 0 })
+
+  useEffect(() => {
+    if (!ownedProperties.length) {
+      setMonthIncome(0)
+      setNextCharge(undefined)
+      setOccupancyStats({ occupancy: 0, occupied: 0 })
+      return
+    }
+
+    // Calcular ingreso del mes
+    const income = ownedProperties.reduce((sum, p) => {
+      const paid = p.contract?.payments.find((x) => x.month === CURRENT_MONTH && x.status === "paid")
       return sum + (paid?.amount ?? 0)
     }, 0)
+    setMonthIncome(income)
 
+    // Calcular próxima fecha de cobro
     const nextDates = ownedProperties
-      .map((p) => p.nextChargeDate)
+      .map((p) => p.contract?.nextChargeDate)
       .filter((d): d is string => Boolean(d))
       .sort()
-    const nextCharge = nextDates[0]
+    setNextCharge(nextDates[0])
 
-    const occupied = ownedProperties.filter((p) => p.tenant).length
-    const occupancy = ownedProperties.length ? Math.round((occupied / ownedProperties.length) * 100) : 0
-
-    return { monthIncome, nextCharge, occupancy, occupied }
+    // Calcular ocupación
+    const occupiedCount = ownedProperties.filter((p) => p.contract?.status === "active").length
+    const occupancyRate = Math.round((occupiedCount / ownedProperties.length) * 100)
+    setOccupancyStats({ occupancy: occupancyRate, occupied: occupiedCount })
   }, [ownedProperties])
 
-  function handleOpenAdd() {
-    setAddOpen(true)
-  }
-
-  function handleCloseAdd() {
-    setAddOpen(false)
-  }
-
-  function handleSubmitAdd(input: AddPropertyInput) {
-    mintAndLoadProperty(input)
-  }
-
-  function handleOpenImport() {
-    setImportOpen(true)
-  }
-
-  function handleCloseImport() {
-    setImportOpen(false)
-  }
-
-  function handleSubmitImport(propertyId: number) {
-    importProperty(propertyId)
+  const onWithdrawRent = (id: string) => withdrawRent(id)
+  const onSignContract = (id: string) => signContract(id)
+  const onCancelContract = (id: string) => cancelContract(id)
+  const onUnlinkContract = (id: string) => {
+    const propertyId = Number(id.replace("own-", ""));
+    unlinkContract(propertyId);
   }
 
   return {
+    isSyncing,
     ownedProperties,
     addOpen,
     importOpen,
-    stats,
-    isSyncing,
-    onOpenAdd: handleOpenAdd,
-    onCloseAdd: handleCloseAdd,
-    onSubmitAdd: handleSubmitAdd,
-    onOpenImport: handleOpenImport,
-    onCloseImport: handleCloseImport,
-    onSubmitImport: handleSubmitImport,
-    onWithdrawRent: withdrawRent,
-    onSignContract: signContract,
-    onCancelContract: cancelContract,
-    onCreateContract: createContract,
+    monthIncome,
+    nextCharge,
+    occupancyStats,
+    onOpenAdd: () => setAddOpen(true),
+    onCloseAdd: () => setAddOpen(false),
+    onSubmitAdd: async (input: AddPropertyInput) => {
+      await mintAndLoadProperty(input);
+      setAddOpen(false)
+    },
+    onOpenImport: () => setImportOpen(true),
+    onCloseImport: () => setImportOpen(false),
+    onSubmitImport: async (name: string, propertyId: number) => {
+      await importProperty(name, propertyId)
+      setImportOpen(false)
+    },
+    onWithdrawRent,
+    onSignContract,
+    onCancelContract,
+    onUnlinkContract,
   }
 }
 export type UseMyPropertiesPageReturn = ReturnType<typeof useMyPropertiesPage>
-

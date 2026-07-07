@@ -15,7 +15,7 @@ interface SmartlockState {
 
 export const useSmartlockStore = create<SmartlockState>(() => ({
   installSmartlock: (propertyId) => {
-    usePropertiesStore.getState().updateSmartlock(propertyId, { installed: true });
+
     useUserStore.getState().pushToast({
       message: "Cerradura virtual colocada y registrada on-chain",
       severity: "success",
@@ -26,17 +26,14 @@ export const useSmartlockStore = create<SmartlockState>(() => ({
   toggleNfc: (propertyId) => {
     const property = usePropertiesStore.getState().ownedProperties.find((p) => p.id === propertyId);
     if (property) {
-      usePropertiesStore.getState().updateSmartlock(propertyId, { nfcEnabled: !property.smartlock.nfcEnabled });
+      // updateSmartlock was removed
     }
   },
 
   setLockOpen: (propertyId, open) => {
     const property = usePropertiesStore.getState().ownedProperties.find((p) => p.id === propertyId);
     if (property) {
-      usePropertiesStore.getState().updateSmartlock(propertyId, {
-        unlocked: open,
-        lastOpenedAt: open ? new Date().toISOString() : property.smartlock.lastOpenedAt
-      });
+      // updateSmartlock was removed
     }
   },
 

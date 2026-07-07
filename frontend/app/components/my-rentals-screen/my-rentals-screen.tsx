@@ -34,8 +34,7 @@ export function MyRentalsScreen({
 
   const isAddressValid = 
     importAddress.trim() === "" || 
-    ethers.isAddress(importAddress.trim()) || 
-    importAddress.trim().startsWith("0xMock")
+    ethers.isAddress(importAddress.trim())
 
   function handleImport() {
     if (importName.trim() && importAddress.trim() && isAddressValid) {

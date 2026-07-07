@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { useUserStore } from "@stores/user-store"
 import { useRentalsStore } from "@stores/rentals-store"
 import type { Rental } from "../models/types"
-import { getBrowserProvider } from "@/lib/blockchain-infra"
 
 export function useMyRentalsPage() {
   const { balance } = useUserStore()

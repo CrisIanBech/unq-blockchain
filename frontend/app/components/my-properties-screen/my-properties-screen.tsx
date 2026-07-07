@@ -1,4 +1,4 @@
-import { Box, Typography, SpeedDial, SpeedDialIcon, SpeedDialAction } from "@mui/material"
+import { Box, Typography, SpeedDial, SpeedDialIcon, SpeedDialAction, Stack, CircularProgress } from "@mui/material"
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded"
 import EventRoundedIcon from "@mui/icons-material/EventRounded"
 import PieChartRoundedIcon from "@mui/icons-material/PieChartRounded"
@@ -9,16 +9,19 @@ import { StatCard } from "@components/stat-card/stat-card"
 import { OwnedPropertyCard } from "@components/owned-property-card/owned-property-card"
 import { AddPropertyDialog } from "@components/add-property-dialog/add-property-dialog"
 import { ImportPropertyDialog } from "@components/import-property-dialog/import-property-dialog"
-import { usdc, dateLabel } from "@/lib/format"
+import { usdc, dateLabel, monthLabel, CURRENT_MONTH } from "@/lib/format"
 import type { UseMyPropertiesPageReturn } from "@hooks/use-my-properties-page"
 
 const SafeSpeedDialAction = SpeedDialAction as any;
 
 export function MyPropertiesScreen({
+  isSyncing,
   ownedProperties,
   addOpen,
   importOpen,
-  stats,
+  monthIncome,
+  nextCharge,
+  occupancyStats,
   onOpenAdd,
   onCloseAdd,
   onSubmitAdd,
@@ -28,7 +31,7 @@ export function MyPropertiesScreen({
   onWithdrawRent,
   onSignContract,
   onCancelContract,
-  onCreateContract,
+  onUnlinkContract,
 }: UseMyPropertiesPageReturn) {
   return (
     <Box>
@@ -53,26 +56,30 @@ export function MyPropertiesScreen({
           tone="primary"
           icon={<TrendingUpRoundedIcon />}
           label="Ingreso de este mes"
-          value={usdc(stats.monthIncome)}
-          hint="Cobrado en junio 2026"
+          value={usdc(monthIncome)}
+          hint={`Cobrado en ${monthLabel(CURRENT_MONTH)}`}
         />
         <StatCard
           tone="tertiary"
           icon={<EventRoundedIcon />}
           label="Próximo cobro"
-          value={dateLabel(stats.nextCharge)}
+          value={dateLabel(nextCharge)}
           hint="Fecha más cercana"
         />
         <StatCard
           tone="secondary"
           icon={<PieChartRoundedIcon />}
           label="Ocupación"
-          value={`${stats.occupancy}%`}
-          hint={`${stats.occupied} de ${ownedProperties.length} alquiladas`}
+          value={`${occupancyStats.occupancy}%`}
+          hint={`${occupancyStats.occupied} de ${ownedProperties.length} alquiladas`}
         />
       </Box>
 
-      {ownedProperties.length === 0 ? (
+      {isSyncing && ownedProperties.length === 0 ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
+          <CircularProgress />
+        </Box>
+      ) : ownedProperties.length === 0 ? (
         <Box
           sx={{
             display: "flex",
@@ -114,7 +121,7 @@ export function MyPropertiesScreen({
               onWithdrawRent={onWithdrawRent}
               onSignContract={onSignContract}
               onCancelContract={onCancelContract}
-              onCreateContract={onCreateContract}
+              onUnlinkContract={onUnlinkContract}
             />
           ))}
         </Box>

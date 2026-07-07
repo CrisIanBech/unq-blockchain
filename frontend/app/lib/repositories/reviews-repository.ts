@@ -74,14 +74,22 @@ export class ReviewsRepository {
   }
 
   static async getActiveRental(propertyId: number): Promise<string> {
+    const ZERO = "0x0000000000000000000000000000000000000000";
     const provider = getBrowserProvider();
-    if (!provider) return "0x0000000000000000000000000000000000000000";
+    if (!provider) return ZERO;
     try {
       const factory = getRentalAgreementFactory(provider);
-      return await factory.activeRentals(propertyId);
+      // The factory is stateless — query the RentalAgreementCreated event log
+      // to find the most recently deployed agreement for this property.
+      const filter = factory.filters.RentalAgreementCreated(null, BigInt(propertyId));
+      const events = await factory.queryFilter(filter, 0, "latest");
+      if (events.length === 0) return ZERO;
+      const latest = events[events.length - 1];
+      if ("args" in latest && latest.args) return latest.args[0] as string;
+      return ZERO;
     } catch (error) {
       console.error("ReviewsRepository: Failed to fetch active rental", error);
-      return "0x0000000000000000000000000000000000000000";
+      return ZERO;
     }
   }
 

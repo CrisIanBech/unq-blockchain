@@ -10,7 +10,7 @@ import {
 } from "@mui/material"
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded"
-import type { Rental, OwnedProperty } from "@/models/types"
+import type { Rental, Property } from "@/models/types"
 import { usdc } from "@/lib/format"
 import { 
   getRentalAmountToPay,
@@ -22,7 +22,7 @@ import {
 } from "@/models/rental-utils"
 
 interface PayRentDialogProps {
-  rental: Rental | OwnedProperty | null
+  rental: Rental | Property | null
   open: boolean
   onClose: () => void
   onPay: (rentalId: string, month: string, amount?: number) => void
@@ -54,7 +54,7 @@ export function PayRentDialog({
   const periodLabel = getRentalPeriodLabel(rental)
 
   const amountToPay = getRentalAmountToPay(rental)
-  const baseRent = ("baseRent" in rental && rental.baseRent !== undefined) ? rental.baseRent : (rental as OwnedProperty).monthlyRent
+  const baseRent = ("baseRent" in rental && rental.baseRent !== undefined) ? rental.baseRent : (rental as Property).monthlyRent
   const isLate = isRentalLate(rental)
   const lateFeeAmount = ("lateFeeAmount" in rental) ? (rental.lateFeeAmount ?? 0) : 0
   const lateFeeBps = ("lateFeeBps" in rental) ? (rental.lateFeeBps ?? 0) : 0

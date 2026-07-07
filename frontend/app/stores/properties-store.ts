@@ -1,26 +1,29 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { OwnedProperty, Smartlock } from "@models/types";
+import type { Property, Smartlock } from "@models/types";
 import { useUserStore } from "./user-store";
 import { getServices } from "@/lib/services/service-registry";
-import { PropertyDashboardService, type AddPropertyInput } from "@/lib/services/property-dashboard-service";
+import { PropertyDashboardService, type AddPropertyInput, type CreateContractInput } from "@/lib/services/property-dashboard-service";
 import { loadOwnedProperties } from "@/lib/services/sync/owned-properties-sync";
 
 const propertyDashboardService = new PropertyDashboardService();
 
-export type { AddPropertyInput };
+export type { AddPropertyInput, CreateContractInput };
 
 interface PropertiesState {
-  ownedProperties: OwnedProperty[];
-  propertyImports: number[];
+  isSyncing: boolean;
+  ownedProperties: Property[];
+  propertyImports: { id: number; name: string }[];
+  customContracts: Record<number, string>;
   mintAndLoadProperty: (input: AddPropertyInput) => Promise<void>;
   withdrawRent: (propertyId: string) => Promise<void>;
-  createContract: (propertyId: string, tenant: string, rent: number) => Promise<void>;
+  createContract: (propertyId: string, input: Omit<CreateContractInput, "propertyId">) => Promise<void>;
+  linkContract: (propertyId: number, agreementAddress: string) => void;
   signContract: (propertyId: string) => Promise<void>;
   cancelContract: (propertyId: string) => Promise<void>;
-  importProperty: (propertyId: number) => Promise<void>;
-  syncOwnedProperties: () => Promise<void>;
-  updateSmartlock: (propertyId: string, updates: Partial<Smartlock>) => void;
+  unlinkContract: (propertyId: number) => void;
+  importProperty: (name: string, propertyId: number) => Promise<void>;
+  syncOwnedProperties: (background?: boolean) => Promise<void>;
 }
 
 export const usePropertiesStore = create<PropertiesState>()(
@@ -29,8 +32,10 @@ export const usePropertiesStore = create<PropertiesState>()(
       let ownedPropertiesSyncVersion = 0;
 
       return {
+        isSyncing: false,
         ownedProperties: [],
         propertyImports: [],
+        customContracts: {},
 
         mintAndLoadProperty: async (input) => {
           const userStore = useUserStore.getState();
@@ -45,7 +50,7 @@ export const usePropertiesStore = create<PropertiesState>()(
             const result = await propertyDashboardService.mintProperty(wallet, input);
 
             if (result.tokenId !== undefined) {
-              set((s) => ({ propertyImports: [...(s.propertyImports || []), result.tokenId!] }));
+              set((s) => ({ propertyImports: [...(s.propertyImports || []), { id: result.tokenId!, name: input.name }] }));
             }
 
             await get().syncOwnedProperties();
@@ -72,7 +77,7 @@ export const usePropertiesStore = create<PropertiesState>()(
           const property = get().ownedProperties.find((p) => p.id === propertyId);
           if (!property) return;
 
-          const targetAgreement = property.agreementAddress || property.rentalToken;
+          const targetAgreement = property.contract?.agreementAddress;
           if (!targetAgreement) {
             userStore.pushToast({ message: "No hay contrato en esta propiedad para retirar", severity: "error" });
             return;
@@ -88,16 +93,13 @@ export const usePropertiesStore = create<PropertiesState>()(
 
             set((state) => ({
               ownedProperties: state.ownedProperties.map((p) =>
-                p.id === propertyId ? { ...p, availableToWithdraw: 0 } : p
+                p.id === propertyId && p.contract ? { ...p, contract: { ...p.contract, availableToWithdraw: 0 } } : p
               )
             }));
 
             await get().syncOwnedProperties();
 
-            const isMock = import.meta.env.VITE_USE_MOCKS === "true";
-            if (!isMock) {
-              await userStore.syncOnchainBalance();
-            }
+            await userStore.syncOnchainBalance();
 
             userStore.pushToast({
               message: `Retiro exitoso de USDC de "${property.name}"`,
@@ -113,11 +115,37 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
         },
 
-        createContract: async (propertyId, tenant, rent) => {
+        linkContract: (propertyId, agreementAddress) => {
+          set((state) => ({
+            customContracts: {
+              ...state.customContracts,
+              [propertyId]: agreementAddress
+            }
+          }));
+          get().syncOwnedProperties();
+        },
+
+        unlinkContract: (propertyId) => {
+          set((state) => {
+            const newCustomContracts = { ...state.customContracts };
+            delete newCustomContracts[propertyId];
+            return {
+              customContracts: newCustomContracts,
+              ownedProperties: state.ownedProperties.map((p) =>
+                (p.propertyId === propertyId || String(p.id) === String(propertyId) || p.id === `own-${propertyId}`)
+                  ? { ...p, contract: null }
+                  : p
+              )
+            };
+          });
+          get().syncOwnedProperties();
+        },
+
+        createContract: async (propertyId, input) => {
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
 
-          const property = get().ownedProperties.find((p) => p.id === propertyId);
+          const property = get().ownedProperties.find((p) => String(p.id) === String(propertyId) || String(p.propertyId) === String(propertyId));
           if (!property) return;
 
           try {
@@ -127,11 +155,31 @@ export const usePropertiesStore = create<PropertiesState>()(
             });
 
             const dynamicPropertyId = property.propertyId || 1;
-            const result = await propertyDashboardService.createContract(wallet, dynamicPropertyId, tenant, rent);
+            const fullInput: CreateContractInput = {
+              ...input,
+              propertyId: dynamicPropertyId
+            };
+            const result = await propertyDashboardService.createContract(wallet, fullInput);
+
+            // Link it locally so we don't have to wait for the graph/events to catch up
+            set((state) => ({
+              customContracts: {
+                ...state.customContracts,
+                [dynamicPropertyId]: result.agreementAddress
+              }
+            }));
 
             set((s) => ({
               ownedProperties: s.ownedProperties.map((p) =>
-                p.id === propertyId ? { ...p, contractStatus: "draft", tenant, monthlyRent: rent, agreementAddress: result.agreementAddress } : p
+                p.id === propertyId ? { 
+                  ...p, 
+                  contract: {
+                    ...(p.contract || { payments: [], availableToWithdraw: 0 }),
+                    status: "draft", 
+                    tenant: input.tenant, 
+                    agreementAddress: result.agreementAddress 
+                  } 
+                } : p
               )
             }));
 
@@ -156,10 +204,10 @@ export const usePropertiesStore = create<PropertiesState>()(
           const wallet = userStore.wallet;
           const { rentalsService } = getServices(wallet);
 
-          const property = get().ownedProperties.find((p) => p.id === propertyId);
+          const property = get().ownedProperties.find((p) => String(p.id) === String(propertyId) || String(p.propertyId) === String(propertyId));
           if (!property) return;
 
-          const targetAgreement = property.agreementAddress || property.rentalToken;
+          const targetAgreement = property.contract?.agreementAddress;
           if (!targetAgreement) {
             userStore.pushToast({ message: "No hay contrato desplegado para firmar", severity: "error" });
             return;
@@ -178,12 +226,15 @@ export const usePropertiesStore = create<PropertiesState>()(
 
             set((s) => ({
               ownedProperties: s.ownedProperties.map((p) =>
-                p.id === propertyId
+                p.id === propertyId && p.contract
                   ? {
                     ...p,
-                    contractStatus: "active",
-                    tenantSince: new Date().toISOString().slice(0, 10),
-                    nextChargeDate: "2026-08-01",
+                    contract: {
+                      ...p.contract,
+                      status: "active",
+                      tenantSince: new Date().toISOString().slice(0, 10),
+                      nextChargeDate: "2026-08-01",
+                    }
                   }
                   : p
               )
@@ -210,10 +261,10 @@ export const usePropertiesStore = create<PropertiesState>()(
           const wallet = userStore.wallet;
           const { rentalsService } = getServices(wallet);
 
-          const property = get().ownedProperties.find((p) => p.id === propertyId);
+          const property = get().ownedProperties.find((p) => String(p.id) === String(propertyId) || String(p.propertyId) === String(propertyId));
           if (!property) return;
 
-          const targetAgreement = property.agreementAddress || property.rentalToken;
+          const targetAgreement = property.contract?.agreementAddress;
           if (!targetAgreement) {
             userStore.pushToast({ message: "No hay contrato para cancelar", severity: "error" });
             return;
@@ -229,9 +280,21 @@ export const usePropertiesStore = create<PropertiesState>()(
 
             set((s) => ({
               ownedProperties: s.ownedProperties.map((p) =>
-                p.id === propertyId ? { ...p, contractStatus: "cancelled", tenant: null, nextChargeDate: undefined } : p
+                p.id === propertyId && p.contract ? { 
+                  ...p, 
+                  contract: {
+                    ...p.contract,
+                    status: "cancelled", 
+                    tenant: null, 
+                    nextChargeDate: undefined 
+                  } 
+                } : p
               )
             }));
+
+            if (property.propertyId) {
+              get().unlinkContract(property.propertyId);
+            }
 
             await get().syncOwnedProperties();
 
@@ -249,7 +312,7 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
         },
 
-        importProperty: async (propertyId: number) => {
+        importProperty: async (name: string, propertyId: number) => {
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
           if (!wallet) return;
@@ -261,12 +324,12 @@ export const usePropertiesStore = create<PropertiesState>()(
             await propertyDashboardService.verifyPropertyOwnership(wallet, propertyId);
 
             const currentImports = get().propertyImports || [];
-            if (currentImports.includes(propertyId)) {
+            if (currentImports.some((i) => i.id === propertyId)) {
               userStore.pushToast({ id: toastId, message: "La propiedad ya está en tu lista", severity: "warning" });
               return;
             }
 
-            set({ propertyImports: [...currentImports, propertyId] });
+            set({ propertyImports: [...currentImports, { id: propertyId, name }] });
             await get().syncOwnedProperties();
 
             userStore.pushToast({ id: toastId, message: "Propiedad importada con éxito", severity: "success" });
@@ -280,32 +343,47 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
         },
 
-        syncOwnedProperties: async () => {
+        syncOwnedProperties: async (background = false) => {
           ownedPropertiesSyncVersion++;
           const currentVersion = ownedPropertiesSyncVersion;
+
+          if (!background) {
+            set({ isSyncing: true });
+          }
 
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
           if (!wallet) {
             if (currentVersion === ownedPropertiesSyncVersion) {
-              set({ ownedProperties: [] });
+              set({ ownedProperties: [], isSyncing: false });
             }
             return;
           }
 
           try {
-            const imports = get().propertyImports || [];
-            const existingProps = get().ownedProperties;
-            const loadedProps = await loadOwnedProperties(wallet, imports, existingProps);
+            const rawImports = get().propertyImports || [];
+            // Filter out any corrupted entries from localStorage (id undefined/null)
+            const imports = rawImports.filter(imp => imp && imp.id !== undefined && imp.id !== null);
+            const customContracts = get().customContracts || {};
+            
+            // loadOwnedProperties expects: wallet, imports, customContracts
+            const loadedProps = await loadOwnedProperties(wallet, imports, customContracts);
 
             if (currentVersion !== ownedPropertiesSyncVersion) {
               return;
             }
 
-            set({ ownedProperties: loadedProps });
+            if (!background) {
+              set({ ownedProperties: loadedProps, isSyncing: false });
+            } else {
+              set({ ownedProperties: loadedProps });
+            }
           } catch (error: any) {
             if (currentVersion !== ownedPropertiesSyncVersion) {
               return;
+            }
+            if (!background) {
+              set({ isSyncing: false });
             }
             console.error("Failed to sync owned properties:", error);
             userStore.pushToast({
@@ -315,18 +393,15 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
         },
 
-        updateSmartlock: (propertyId, updates) => {
-          set((s) => ({
-            ownedProperties: s.ownedProperties.map((p) =>
-              p.id === propertyId ? { ...p, smartlock: { ...p.smartlock, ...updates } } : p
-            )
-          }));
-        }
+
       };
     },
     {
       name: "properties-store-storage",
-      partialize: (state) => ({ propertyImports: state.propertyImports || [] })
+      partialize: (state) => ({
+        propertyImports: state.propertyImports || [],
+        customContracts: state.customContracts || {}
+      })
     }
   )
 );

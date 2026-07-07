@@ -9,7 +9,7 @@ async function main() {
     const connection = await (hre.network as any).getOrCreate(networkName);
     const { ethers } = connection;
 
-    const [deployer, landlord, tenant] = await ethers.getSigners();
+    const [landlord, tenant] = await ethers.getSigners();
     const landlordAddr = await landlord.getAddress();
     const tenantAddr = await tenant.getAddress();
 
@@ -55,16 +55,18 @@ async function main() {
     const inflationBps = 500;
     const lateFeeBps = 1000;
     const gracePeriod = 5 * 24 * 60 * 60;
+    const paymentPeriod = 30 * 24 * 60 * 60;
+    const inflationAdjustmentInterval = 12;
     const duration = 360 * 24 * 60 * 60;
 
     async function createAgreement(propId: number, dl: number) {
         const addr = await factory.connect(landlord).createRentalAgreement.staticCall(
             propertyNFTAddr, propId, tenantAddr, mockUSDCAddr, rentalNFTAddr,
-            baseRent, securityDeposit, inflationBps, lateFeeBps, gracePeriod, duration, dl
+            baseRent, securityDeposit, inflationBps, lateFeeBps, gracePeriod, paymentPeriod, inflationAdjustmentInterval, duration, dl
         );
         const tx = await factory.connect(landlord).createRentalAgreement(
             propertyNFTAddr, propId, tenantAddr, mockUSDCAddr, rentalNFTAddr,
-            baseRent, securityDeposit, inflationBps, lateFeeBps, gracePeriod, duration, dl
+            baseRent, securityDeposit, inflationBps, lateFeeBps, gracePeriod, paymentPeriod, inflationAdjustmentInterval, duration, dl
         );
         await tx.wait();
         return await ethers.getContractAt("RentalAgreement", addr);
@@ -181,9 +183,9 @@ async function main() {
 
     console.log("\n=== Accounts ===\n");
     console.log("Landlord:", landlordAddr);
-    console.log("Landlord PK: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+    console.log("Landlord PK: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // Hardhat Account #0
     console.log("Tenant:", tenantAddr);
-    console.log("Tenant PK: 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a");
+    console.log("Tenant PK: 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // Hardhat Account #1
 
     const envPath = path.resolve(process.cwd(), "../frontend/.env");
     if (fs.existsSync(envPath)) {

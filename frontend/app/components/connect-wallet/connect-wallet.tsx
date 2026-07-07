@@ -1,12 +1,10 @@
 import { Button, Box, Typography } from "@mui/material"
 import { useUserStore } from "@/stores/user-store"
 
-const MOCK_WALLET = "0x7A3f...91Cd"
-
 export function ConnectWallet() {
   const wallet = useUserStore((s) => s.wallet)
   const connectWallet = useUserStore((s) => s.connectWallet)
-  const isConnected = !!wallet && wallet !== MOCK_WALLET
+  const isConnected = !!wallet
 
   if (isConnected) {
     return (
