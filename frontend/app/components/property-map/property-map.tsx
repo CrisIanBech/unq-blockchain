@@ -4,7 +4,7 @@ import { Box, CircularProgress, useTheme } from "@mui/material"
 import type { Listing } from "@/models/types"
 import { useSearchStore } from "@stores/search-store"
 
-const MAP_CENTER = { lat: -34.6037, lng: -58.3816 };
+const MAP_CENTER = { lat: -34.6037, lng: -58.3816 }
 
 function toMercator(latDeg: number, lngDeg: number) {
   const x = Math.round((lngDeg * 20037508.34) / 180)

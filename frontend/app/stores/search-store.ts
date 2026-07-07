@@ -2,6 +2,7 @@ import { create } from "zustand"
 import type { Listing } from "@models/types"
 import { useUserStore } from "./user-store"
 import { formatPropertyImage } from "@/lib/format"
+import { ReviewsRepository } from "@/lib/repositories/reviews-repository"
 
 export const MAP_CENTER = { lat: -4126290, lng: -6485112 }
 
@@ -28,7 +29,9 @@ export const useSearchStore = create<SearchState>((set) => ({
       const response = await fetch(`${backendUrl}/properties?lat=${lat}&lng=${lng}&radius=${radius}`);
       if (response.ok) {
         const data = await response.json();
-        const fetchedListings: Listing[] = data.map((p: any) => {
+
+        // First pass: map backend fields (reviews empty for now)
+        const baseListings: Listing[] = data.map((p: any) => {
           const gps = mercatorToLatLon(p.location[1], p.location[0]);
           return {
             id: p.tokenId.toString(),
@@ -44,9 +47,30 @@ export const useSearchStore = create<SearchState>((set) => ({
             m2: p.surface || 0,
             reviews: [],
             user: p.user,
-            owner: p.owner
+            owner: p.owner,
+            contact: p.contact || '',
+            pets: Boolean(p.pets),
+            garage: Boolean(p.garage),
           };
         });
+
+        // Second pass: fetch on-chain reviews for all listings in parallel
+        const reviewsPerListing = await Promise.all(
+          baseListings.map((l) =>
+            ReviewsRepository.getAllReviews(Number(l.id)).catch(() => [])
+          )
+        );
+
+        const fetchedListings = baseListings.map((l, i) => ({
+          ...l,
+          reviews: reviewsPerListing[i].map((r, j) => ({
+            id: `${l.id}-${j}`,
+            author: r.author,
+            rating: r.rating,
+            comment: r.comment,
+            date: new Date(r.timestamp * 1000).toISOString().slice(0, 10),
+          })),
+        }));
 
         set(() => ({ listings: fetchedListings }));
       }

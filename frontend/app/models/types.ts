@@ -99,6 +99,9 @@ export interface Listing {
   m2: number
   user?: string
   owner?: string
+  contact?: string
+  pets?: boolean
+  garage?: boolean
 }
 
 export interface Toast {
