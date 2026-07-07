@@ -7,6 +7,7 @@ export function useSmartlockPage() {
   const { ownedProperties } = usePropertiesStore()
   const { rentals } = useRentalsStore()
   const {
+    locks,
     installSmartlock,
     toggleNfc,
     setLockOpen,
@@ -25,8 +26,9 @@ export function useSmartlockPage() {
   const selId = keyMode ? selRental : selOwned
   const setSel = keyMode ? setSelRental : setSelOwned
 
-  const active = keyMode ? !!rental?.hasKey : !!ownedProp?.smartlock.nfcEnabled
-  const installed = keyMode ? true : !!ownedProp?.smartlock.installed
+  const lock = locks[ownedProp?.id ?? ""]
+  const active = keyMode ? !!rental?.hasKey : !!lock?.nfcEnabled
+  const installed = keyMode ? true : !!lock?.installed
 
   const handlePower = () => {
     if (keyMode) {

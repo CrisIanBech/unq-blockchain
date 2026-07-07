@@ -1,11 +1,10 @@
 import { create } from "zustand";
-import { usePropertiesStore } from "./properties-store";
 import { useRentalsStore } from "./rentals-store";
 import { useUserStore } from "./user-store";
-
-const fakeTx = () => `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
+import type { Smartlock } from "@models/types";
 
 interface SmartlockState {
+  locks: Record<string, Smartlock>;
   installSmartlock: (propertyId: string) => void;
   toggleNfc: (propertyId: string) => void;
   setLockOpen: (propertyId: string, open: boolean) => void;
@@ -13,28 +12,58 @@ interface SmartlockState {
   toggleTenantNfc: (rentalId: string) => void;
 }
 
-export const useSmartlockStore = create<SmartlockState>(() => ({
-  installSmartlock: (propertyId) => {
+export const useSmartlockStore = create<SmartlockState>((set, get) => ({
+  locks: {},
 
+  installSmartlock: (propertyId) => {
+    set((state) => ({
+      locks: {
+        ...state.locks,
+        [propertyId]: { installed: true, nfcEnabled: true, open: false }
+      }
+    }));
     useUserStore.getState().pushToast({
-      message: "Cerradura virtual colocada y registrada on-chain",
-      severity: "success",
-      txHash: fakeTx()
+      message: "Smartlock activado en esta propiedad",
+      severity: "success"
     });
   },
 
   toggleNfc: (propertyId) => {
-    const property = usePropertiesStore.getState().ownedProperties.find((p) => p.id === propertyId);
-    if (property) {
-      // updateSmartlock was removed
-    }
+    set((state) => {
+      const lock = state.locks[propertyId];
+      if (!lock) return state;
+      
+      const newState = !lock.nfcEnabled;
+      
+      useUserStore.getState().pushToast({
+        message: newState ? "NFC encendido" : "NFC apagado",
+        severity: "info"
+      });
+
+      return {
+        locks: {
+          ...state.locks,
+          [propertyId]: { ...lock, nfcEnabled: newState }
+        }
+      };
+    });
   },
 
   setLockOpen: (propertyId, open) => {
-    const property = usePropertiesStore.getState().ownedProperties.find((p) => p.id === propertyId);
-    if (property) {
-      // updateSmartlock was removed
-    }
+    set((state) => {
+      const lock = state.locks[propertyId];
+      if (!lock) return state;
+      return {
+        locks: {
+          ...state.locks,
+          [propertyId]: { ...lock, open }
+        }
+      };
+    });
+    useUserStore.getState().pushToast({
+      message: open ? "Smartlock abierto" : "Smartlock cerrado",
+      severity: "success"
+    });
   },
 
   openTenantLock: (rentalId) => {
@@ -48,9 +77,8 @@ export const useSmartlockStore = create<SmartlockState>(() => ({
       return;
     }
     useUserStore.getState().pushToast({
-      message: `Smartlock abierto — ${rental.name}`,
-      severity: "success",
-      txHash: fakeTx()
+      message: `Smartlock abierto`,
+      severity: "success"
     });
   },
 
