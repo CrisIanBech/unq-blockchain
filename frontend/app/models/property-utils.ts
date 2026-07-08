@@ -1,15 +1,18 @@
 import type { Property } from "./types"
 
 export function getPropertyContract(property: Property) {
-  return property.contract
-}
-
-export function getPropertyPayments(property: Property) {
-  return property.contract?.payments || []
+  return property.rental?.currentContract || null
 }
 
 export function isPropertyOverdue(property: Property): boolean {
-  return getPropertyPayments(property).some((p) => p.status === "overdue")
+  const contract = getPropertyContract(property);
+  if (!contract || !contract.rentPaidUntil) return false;
+  
+  const now = Math.floor(Date.now() / 1000);
+  const grace = Number(contract.gracePeriod) || 0;
+  const paidUntil = Number(contract.rentPaidUntil);
+  
+  return now > (paidUntil + grace);
 }
 
 export function getPropertyAvailableToWithdraw(property: Property): number {
@@ -58,18 +61,18 @@ export function getPropertyNextChargeDate(property: Property): string {
 
 export function getPropertyStatusDetails(property: Property): { label: string; color: "success" | "warning" | "default" | "error", variant?: "filled" | "outlined" } {
   const status = getPropertyContractStatus(property)
-  
+
   if (status === "draft") {
     const landlordApproved = property.contract?.landlordApproved;
     const tenantApproved = property.contract?.tenantApproved;
-    
+
     if (!landlordApproved) {
       return { label: "Pendiente de firma del propietario", color: "warning" }
     } else if (!tenantApproved) {
       return { label: "Pendiente de firma del inquilino", color: "warning" }
     }
   }
-  
+
   switch (status) {
     case "active":
       return { label: "Contrato activo", color: "success", variant: "filled" }

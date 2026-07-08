@@ -67,7 +67,7 @@ export function ManageDepositDialog({ open, onClose, properties, contractHistory
     if (!finalContractAddress || !wallet) return
     setIsLoading(true)
     try {
-      const { rentalsService } = getServices(wallet)
+      const { rentalsService } = getServices()
       const details = await rentalsService.getRentalDetails(finalContractAddress)
       
       if (details.status === 2) {

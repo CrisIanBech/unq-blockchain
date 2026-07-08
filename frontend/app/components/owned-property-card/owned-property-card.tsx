@@ -15,7 +15,6 @@ import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded"
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded"
 import type { Property } from "@models/types"
 import { dateLabel } from "@/lib/format"
-import { PaymentHistory } from "@components/payment-history/payment-history"
 import { PropertyCardHeader } from "./property-card-header"
 import { PropertyDetails } from "./property-details"
 import { PropertyMenu } from "./property-menu"
@@ -24,7 +23,6 @@ import { ReviewDialog } from "@components/review-dialog/review-dialog"
 import { CancelPropertyAgreementDialog } from "./cancel-property-agreement-dialog"
 import { ReviewsService } from "@/lib/services/reviews-service"
 import {
-  getPropertyPayments,
   isPropertyOverdue,
   canPropertyWithdraw,
   getPropertyAvailableToWithdraw,
@@ -50,7 +48,6 @@ export function OwnedPropertyCard({
   onCancelContract,
   onUnlinkContract,
 }: OwnedPropertyCardProps) {
-  const [expanded, setExpanded] = useState(false)
   const [manageContractOpen, setManageContractOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -59,7 +56,7 @@ export function OwnedPropertyCard({
   const [ratingData, setRatingData] = useState({ average: 0, count: 0 })
 
   const isActive = property.contract?.status === "active"
-  const propertyId = Number(property.propertyId ?? property.id.replace("own-", ""))
+  const propertyId = Number(property.id)
 
   const fetchReviews = () => {
     ReviewsService.getAllReviews(propertyId).then(reviews => {
@@ -76,7 +73,6 @@ export function OwnedPropertyCard({
     fetchReviews()
   }, [propertyId])
 
-  const payments = getPropertyPayments(property)
   const isOverdue = isPropertyOverdue(property)
   const canWithdraw = canPropertyWithdraw(property)
   const statusDetails = getPropertyStatusDetails(property)
@@ -110,7 +106,7 @@ export function OwnedPropertyCard({
       }}
     >
       <PropertyCardHeader
-        imageUrl={property.imageUrl || `/images/prop-${((property.propertyId || 0) % 5) + 1}.png`}
+        imageUrl={property.imageUrl || `/images/prop-${((Number(property.id) || 0) % 5) + 1}.png`}
         name={property.name}
         type={property.type}
         isOverdue={isOverdue}
@@ -146,15 +142,6 @@ export function OwnedPropertyCard({
               </Button>
             </span>
           </Tooltip>
-
-          <Button
-            variant="text"
-            startIcon={<HistoryRoundedIcon />}
-            onClick={() => setExpanded(true)}
-            sx={{ ml: "auto" }}
-          >
-            Historial de pagos
-          </Button>
         </Box>
       </CardContent>
 
@@ -171,38 +158,6 @@ export function OwnedPropertyCard({
         }}
         onUnlinkContract={onUnlinkContract}
       />
-
-      {/* Drawer for Payment History (Side Sheet) */}
-      <Drawer
-        anchor="right"
-        open={expanded}
-        onClose={() => setExpanded(false)}
-        slotProps={{
-          paper: {
-            sx: {
-              width: { xs: "100%", sm: 400 },
-              bgcolor: "background.default",
-              p: 3,
-            },
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Historial de pagos
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {property.name}
-            </Typography>
-          </Box>
-          <IconButton onClick={() => setExpanded(false)} aria-label="cerrar">
-            <CloseRoundedIcon />
-          </IconButton>
-        </Box>
-        <Divider sx={{ mb: 3 }} />
-        <PaymentHistory payments={payments} />
-      </Drawer>
 
       <ManageContractDialog
         open={manageContractOpen}

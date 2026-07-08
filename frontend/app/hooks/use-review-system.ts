@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react"
-import { ReviewsService, type OnChainReview } from "@/lib/services/reviews-service"
+import { ReviewsService } from "@/lib/services/reviews-service"
 import { WalletService } from "@/lib/services/wallet-service"
+import { ReviewDTO } from "@models/contract-dtos"
 
-export type { OnChainReview }
+export type { ReviewDTO }
 
 export function useReviewSystem(propertyId: number) {
-  const [reviews, setReviews] = useState<OnChainReview[]>([])
+  const [reviews, setReviews] = useState<ReviewDTO[]>([])
   const [reviewCount, setReviewCount] = useState(0)
   const [canPostReview, setCanPostReview] = useState(false)
   const [isWriting, setIsWriting] = useState(false)

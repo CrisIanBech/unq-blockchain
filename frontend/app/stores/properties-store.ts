@@ -1,41 +1,33 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Property, Smartlock } from "@models/types";
+import type { Property, PropertyImport } from "@models/types";
 import { useUserStore } from "./user-store";
 import { getServices } from "@/lib/services/service-registry";
-import { PropertyDashboardService, type AddPropertyInput, type CreateContractInput } from "@/lib/services/property-dashboard-service";
-import { loadOwnedProperties } from "@/lib/services/sync/owned-properties-sync";
-import { getBrowserProvider } from "@/lib/blockchain-infra";
-
-const propertyDashboardService = new PropertyDashboardService();
+import { type AddPropertyInput, type CreateContractInput } from "@/lib/services/property-dashboard-service";
 
 export type { AddPropertyInput, CreateContractInput };
 
 interface PropertiesState {
   isSyncing: boolean;
   ownedProperties: Property[];
-  propertyImports: { id: number; name: string }[];
+  propertyImports: PropertyImport[];
   customContracts: Record<number, string>;
   contractHistory: Record<number, string[]>;
+  importProperty: (name: string, propertyId: number) => Promise<void>;
+  syncProperties: () => Promise<void>;
+  syncProperty: (propertyId: string) => Promise<void>;
   mintAndLoadProperty: (input: AddPropertyInput) => Promise<void>;
   withdrawRent: (propertyId: string) => Promise<void>;
-  releaseDeposit: (agreementAddress: string) => Promise<void>;
-  claimDeposit: (agreementAddress: string, amount: number, reason: string) => Promise<void>;
-  createContract: (propertyId: string, input: Omit<CreateContractInput, "propertyId">) => Promise<void>;
-  linkContract: (propertyId: number, agreementAddress: string) => void;
   signContract: (propertyId: string) => Promise<void>;
   cancelContract: (propertyId: string) => Promise<void>;
   unlinkContract: (propertyId: number) => void;
-  importProperty: (name: string, propertyId: number) => Promise<void>;
-  syncOwnedProperties: (background?: boolean) => Promise<void>;
+  releaseDeposit: (agreementAddress: string) => Promise<void>;
+  claimDeposit: (agreementAddress: string, amount: number, reason: string) => Promise<void>;
 }
 
 export const usePropertiesStore = create<PropertiesState>()(
   persist(
     (set, get) => {
-      let ownedPropertiesSyncVersion = 0;
-      let isListening = false;
-
       return {
         isSyncing: false,
         ownedProperties: [],
@@ -43,288 +35,144 @@ export const usePropertiesStore = create<PropertiesState>()(
         customContracts: {},
         contractHistory: {},
 
-        mintAndLoadProperty: async (input) => {
+        mintAndLoadProperty: async (input: AddPropertyInput) => {
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
+          if (!wallet) return;
 
+          let toastId: number | undefined;
           try {
-            userStore.pushToast({
-              message: "Minteando NFT de Propiedad en la blockchain...",
-              severity: "info"
-            });
-
+            toastId = userStore.pushToast({ message: "Creando propiedad...", severity: "info" });
+            const { propertyDashboardService } = getServices();
             const result = await propertyDashboardService.mintProperty(wallet, input);
 
             if (result.tokenId !== undefined) {
-              set((s) => ({ propertyImports: [...(s.propertyImports || []), { id: result.tokenId!, name: input.name }] }));
+              await get().importProperty(input.name, result.tokenId);
+              userStore.pushToast({ id: toastId, message: "Propiedad creada exitosamente", severity: "success" });
+            } else {
+              throw new Error("No se pudo obtener el ID de la propiedad creada.");
             }
-
-            userStore.pushToast({
-              message: `Tokens minteados y propiedad "${input.name}" cargada on-chain`,
-              severity: "success",
-              txHash: result.txHash,
-            });
-          } catch (err: any) {
-            console.error("Failed to mint property NFT:", err);
-            userStore.pushToast({
-              message: err.message || "Error al mintear propiedad en blockchain",
-              severity: "error"
-            });
+          } catch (error: any) {
+            console.error("Error al crear propiedad:", error);
+            userStore.pushToast({ id: toastId, message: error.message || "Error al crear propiedad", severity: "error" });
           }
         },
 
-        withdrawRent: async (propertyId) => {
+        withdrawRent: async (propertyId: string) => {
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
-          const { rentalsService } = getServices(wallet);
+          if (!wallet) return;
 
-          const property = get().ownedProperties.find((p) => p.id === propertyId);
-          if (!property) return;
-
-          const targetAgreement = property.contract?.agreementAddress;
-          if (!targetAgreement) {
-            userStore.pushToast({ message: "No hay contrato en esta propiedad para retirar", severity: "error" });
-            return;
-          }
-
+          let toastId: number | undefined;
           try {
-            userStore.pushToast({
-              message: "Retirando USDC acumulados de la blockchain...",
-              severity: "info"
-            });
+            toastId = userStore.pushToast({ message: "Retirando renta...", severity: "info" });
+            const prop = get().ownedProperties.find(p => p.id === String(propertyId));
+            const agreementAddress = prop?.rental?.currentContract?.agreementAddress;
+            if (!agreementAddress) throw new Error("No hay contrato activo para esta propiedad.");
 
-            const result = await rentalsService.withdrawRent(targetAgreement);
-
-            set((state) => ({
-              ownedProperties: state.ownedProperties.map((p) =>
-                p.id === propertyId && p.contract ? { ...p, contract: { ...p.contract, availableToWithdraw: 0 } } : p
-              )
-            }));
-
-            await get().syncOwnedProperties();
-
+            const { rentalsService } = getServices();
+            await rentalsService.withdrawRent(agreementAddress);
             await userStore.syncOnchainBalance();
-
-            userStore.pushToast({
-              message: `Retiro exitoso de USDC de "${property.name}"`,
-              severity: "success",
-              txHash: result.txHash
-            });
-          } catch (err: any) {
-            console.error("Failed to withdraw rent:", err);
-            userStore.pushToast({
-              message: err.message || "Error al retirar fondos de la blockchain",
-              severity: "error"
-            });
+            await get().syncProperty(propertyId);
+            userStore.pushToast({ id: toastId, message: "Renta retirada exitosamente", severity: "success" });
+          } catch (error: any) {
+            console.error("Error al retirar renta:", error);
+            userStore.pushToast({ id: toastId, message: error.message || "Error al retirar renta", severity: "error" });
           }
+        },
+
+        signContract: async (propertyId: string) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          if (!wallet) return;
+
+          let toastId: number | undefined;
+          try {
+            toastId = userStore.pushToast({ message: "Firmando contrato...", severity: "info" });
+            const prop = get().ownedProperties.find(p => p.id === String(propertyId));
+            const agreementAddress = prop?.rental?.currentContract?.agreementAddress;
+            if (!agreementAddress) throw new Error("No hay contrato activo para esta propiedad.");
+
+            const { rentalsService } = getServices();
+            await rentalsService.approveAgreement({ agreementAddress, isTenant: false });
+            await get().syncProperty(propertyId);
+            userStore.pushToast({ id: toastId, message: "Contrato firmado exitosamente", severity: "success" });
+          } catch (error: any) {
+            console.error("Error al firmar contrato:", error);
+            userStore.pushToast({ id: toastId, message: error.message || "Error al firmar contrato", severity: "error" });
+          }
+        },
+
+        cancelContract: async (propertyId: string) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          if (!wallet) return;
+
+          let toastId: number | undefined;
+          try {
+            toastId = userStore.pushToast({ message: "Cancelando contrato...", severity: "info" });
+            const prop = get().ownedProperties.find(p => p.id === String(propertyId));
+            const agreementAddress = prop?.rental?.currentContract?.agreementAddress;
+            if (!agreementAddress) throw new Error("No hay contrato activo para esta propiedad.");
+
+            const { rentalsService } = getServices();
+            await rentalsService.cancelAgreement(agreementAddress);
+            await get().syncProperty(propertyId);
+            userStore.pushToast({ id: toastId, message: "Contrato cancelado exitosamente", severity: "success" });
+          } catch (error: any) {
+            console.error("Error al cancelar contrato:", error);
+            userStore.pushToast({ id: toastId, message: error.message || "Error al cancelar contrato", severity: "error" });
+          }
+        },
+
+        unlinkContract: (propertyId: number) => {
+          const currentCustom = { ...get().customContracts };
+          delete currentCustom[propertyId];
+          set({ customContracts: currentCustom });
         },
 
         releaseDeposit: async (agreementAddress: string) => {
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
-          const { rentalsService } = getServices(wallet);
+          if (!wallet) return;
+
+          let toastId: number | undefined;
           try {
-            userStore.pushToast({ message: "Devolviendo depósito al inquilino...", severity: "info" });
-            const result = await rentalsService.releaseDeposit(agreementAddress);
-            userStore.pushToast({ message: `Depósito devuelto exitosamente.`, severity: "success", txHash: result.txHash });
-            await get().syncOwnedProperties();
-            await userStore.syncOnchainBalance();
-          } catch (err: any) {
-            console.error("Failed to release deposit:", err);
-            userStore.pushToast({ message: err.message || "Error al devolver el depósito", severity: "error" });
+            toastId = userStore.pushToast({ message: "Liberando depósito...", severity: "info" });
+            const { rentalsService } = getServices();
+            await rentalsService.releaseDeposit(agreementAddress);
+            
+            const prop = get().ownedProperties.find(p => p.rental?.currentContract?.agreementAddress?.toLowerCase() === agreementAddress.toLowerCase() || p.rental?.rentalNFTAddress?.toLowerCase() === agreementAddress.toLowerCase());
+            if (prop) {
+              await get().syncProperty(prop.id);
+            }
+            userStore.pushToast({ id: toastId, message: "Depósito liberado exitosamente", severity: "success" });
+          } catch (error: any) {
+            console.error("Error al liberar depósito:", error);
+            userStore.pushToast({ id: toastId, message: error.message || "Error al liberar depósito", severity: "error" });
           }
         },
 
         claimDeposit: async (agreementAddress: string, amount: number, reason: string) => {
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
-          const { rentalsService } = getServices(wallet);
+          if (!wallet) return;
+
+          let toastId: number | undefined;
           try {
-            userStore.pushToast({ message: "Reclamando depósito...", severity: "info" });
-            const result = await rentalsService.claimDeposit(agreementAddress, amount, reason);
-            userStore.pushToast({ message: `Depósito reclamado exitosamente.`, severity: "success", txHash: result.txHash });
-            await get().syncOwnedProperties();
+            toastId = userStore.pushToast({ message: "Reclamando depósito...", severity: "info" });
+            const { rentalsService } = getServices();
+            await rentalsService.claimDeposit(agreementAddress, amount, reason);
             await userStore.syncOnchainBalance();
-          } catch (err: any) {
-            console.error("Failed to claim deposit:", err);
-            userStore.pushToast({ message: err.message || "Error al reclamar el depósito", severity: "error" });
-          }
-        },
-
-        linkContract: (propertyId, agreementAddress) => {
-          set((state) => {
-            const currentHistory = state.contractHistory[propertyId] || [];
-            const historyWithoutNew = currentHistory.filter(addr => addr !== agreementAddress);
             
-            return {
-              customContracts: {
-                ...state.customContracts,
-                [propertyId]: agreementAddress
-              },
-              contractHistory: {
-                ...state.contractHistory,
-                [propertyId]: [...historyWithoutNew, agreementAddress]
-              }
-            };
-          });
-          get().syncOwnedProperties();
-        },
-
-        unlinkContract: (propertyId) => {
-          set((state) => {
-            const newCustomContracts = { ...state.customContracts };
-            delete newCustomContracts[propertyId];
-            return {
-              customContracts: newCustomContracts,
-              ownedProperties: state.ownedProperties.map((p) =>
-                (p.propertyId === propertyId || String(p.id) === String(propertyId) || p.id === `own-${propertyId}`)
-                  ? { ...p, contract: null }
-                  : p
-              )
-            };
-          });
-          get().syncOwnedProperties();
-        },
-
-        createContract: async (propertyId, input) => {
-          const userStore = useUserStore.getState();
-          const wallet = userStore.wallet;
-
-          const property = get().ownedProperties.find((p) => String(p.id) === String(propertyId) || String(p.propertyId) === String(propertyId));
-          if (!property) return;
-
-          try {
-            userStore.pushToast({
-              message: "Desplegando contrato de alquiler en blockchain...",
-              severity: "info"
-            });
-
-            const dynamicPropertyId = property.propertyId || 1;
-            const fullInput: CreateContractInput = {
-              ...input,
-              propertyId: dynamicPropertyId
-            };
-            const result = await propertyDashboardService.createContract(wallet, fullInput);
-
-            // Link it locally so we don't have to wait for the graph/events to catch up
-            set((state) => {
-              const currentHistory = state.contractHistory[dynamicPropertyId] || [];
-              const historyWithoutNew = currentHistory.filter(addr => addr !== result.agreementAddress);
-
-              return {
-                customContracts: {
-                  ...state.customContracts,
-                  [dynamicPropertyId]: result.agreementAddress
-                },
-                contractHistory: {
-                  ...state.contractHistory,
-                  [dynamicPropertyId]: [...historyWithoutNew, result.agreementAddress]
-                }
-              };
-            });
-
-            set((s) => ({
-              ownedProperties: s.ownedProperties.map((p) =>
-                p.id === propertyId ? {
-                  ...p,
-                  contract: {
-                    ...(p.contract || { payments: [], availableToWithdraw: 0 }),
-                    status: "draft",
-                    tenant: input.tenant,
-                    agreementAddress: result.agreementAddress
-                  }
-                } : p
-              )
-            }));
-
-            userStore.pushToast({
-              message: `Contrato de alquiler creado en ${result.agreementAddress}`,
-              severity: "success",
-              txHash: result.txHash
-            });
-          } catch (err: any) {
-            console.error("Failed to deploy rental agreement:", err);
-            userStore.pushToast({
-              message: err.message || "Error al desplegar contrato de alquiler en blockchain",
-              severity: "error"
-            });
-          }
-        },
-
-        signContract: async (propertyId) => {
-          const userStore = useUserStore.getState();
-          const wallet = userStore.wallet;
-          const { rentalsService } = getServices(wallet);
-
-          const property = get().ownedProperties.find((p) => String(p.id) === String(propertyId) || String(p.propertyId) === String(propertyId));
-          if (!property) return;
-
-          const targetAgreement = property.contract?.agreementAddress;
-          if (!targetAgreement) {
-            userStore.pushToast({ message: "No hay contrato desplegado para firmar", severity: "error" });
-            return;
-          }
-
-          try {
-            userStore.pushToast({
-              message: "Aprobando contrato de alquiler en blockchain...",
-              severity: "info"
-            });
-
-            const result = await rentalsService.approveAgreement({
-              agreementAddress: targetAgreement,
-              isTenant: false
-            });
-
-            userStore.pushToast({
-              message: "Contrato firmado exitosamente on-chain",
-              severity: "success",
-              txHash: result.txHash
-            });
-          } catch (err: any) {
-            console.error("Failed to sign contract:", err);
-            userStore.pushToast({
-              message: err.message || "Error al firmar contrato en blockchain",
-              severity: "error"
-            });
-          }
-        },
-
-        cancelContract: async (propertyId) => {
-          const userStore = useUserStore.getState();
-          const wallet = userStore.wallet;
-          const { rentalsService } = getServices(wallet);
-
-          const property = get().ownedProperties.find((p) => String(p.id) === String(propertyId) || String(p.propertyId) === String(propertyId));
-          if (!property) return;
-
-          const targetAgreement = property.contract?.agreementAddress;
-          if (!targetAgreement) {
-            userStore.pushToast({ message: "No hay contrato para cancelar", severity: "error" });
-            return;
-          }
-
-          try {
-            userStore.pushToast({
-              message: "Cancelando contrato en blockchain...",
-              severity: "info"
-            });
-
-            const result = await rentalsService.cancelAgreement(targetAgreement);
-
-            await get().syncOwnedProperties(true);
-
-            userStore.pushToast({
-              message: "Contrato cancelado cooperativamente on-chain",
-              severity: "info",
-              txHash: result.txHash
-            });
-          } catch (err: any) {
-            console.error("Failed to cancel contract:", err);
-            userStore.pushToast({
-              message: err.message || "Error al cancelar contrato en blockchain",
-              severity: "error"
-            });
+            const prop = get().ownedProperties.find(p => p.rental?.currentContract?.agreementAddress?.toLowerCase() === agreementAddress.toLowerCase() || p.rental?.rentalNFTAddress?.toLowerCase() === agreementAddress.toLowerCase());
+            if (prop) {
+              await get().syncProperty(prop.id);
+            }
+            userStore.pushToast({ id: toastId, message: "Depósito reclamado exitosamente", severity: "success" });
+          } catch (error: any) {
+            console.error("Error al reclamar depósito:", error);
+            userStore.pushToast({ id: toastId, message: error.message || "Error al reclamar depósito", severity: "error" });
           }
         },
 
@@ -337,16 +185,19 @@ export const usePropertiesStore = create<PropertiesState>()(
           try {
             toastId = userStore.pushToast({ message: "Verificando propiedad en la blockchain...", severity: "info" });
 
-            await propertyDashboardService.verifyPropertyOwnership(wallet, propertyId);
-
             const currentImports = get().propertyImports || [];
             if (currentImports.some((i) => i.id === propertyId)) {
               userStore.pushToast({ id: toastId, message: "La propiedad ya está en tu lista", severity: "warning" });
               return;
             }
 
-            set({ propertyImports: [...currentImports, { id: propertyId, name }] });
-            await get().syncOwnedProperties();
+            const { propertiesService } = getServices();
+            const prop = await propertiesService.fetchProperty({ id: propertyId, name });
+
+            set({
+              propertyImports: [...currentImports, { id: propertyId, name }],
+              ownedProperties: [...get().ownedProperties, prop]
+            });
 
             userStore.pushToast({ id: toastId, message: "Propiedad importada con éxito", severity: "success" });
           } catch (err: any) {
@@ -359,59 +210,41 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
         },
 
-        syncOwnedProperties: async (background = false) => {
-          if (!isListening) {
-            const provider = getBrowserProvider();
-            if (provider) {
-              isListening = true;
-              provider.on("block", () => {
-                get().syncOwnedProperties(true);
-              });
-            }
-          }
-
-          ownedPropertiesSyncVersion++;
-          const currentVersion = ownedPropertiesSyncVersion;
-
-          if (!background) {
-            set({ isSyncing: true });
-          }
+        syncProperties: async () => {
+          set({ isSyncing: true });
 
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
           if (!wallet) {
-            if (currentVersion === ownedPropertiesSyncVersion) {
-              set({ ownedProperties: [], isSyncing: false });
-            }
+            set({ ownedProperties: [], isSyncing: false });
             return;
           }
 
           try {
             const rawImports = get().propertyImports || [];
-            // Filter out any corrupted entries from localStorage (id undefined/null)
             const imports = rawImports.filter(imp => imp && imp.id !== undefined && imp.id !== null);
-            const customContracts = get().customContracts || {};
 
-            // loadOwnedProperties expects: wallet, imports, customContracts
-            const loadedProps = await loadOwnedProperties(wallet, imports, customContracts);
+            const { propertiesService } = getServices();
+            const propertyPromises = imports.map(async (imp) => {
+              try {
+                return await propertiesService.fetchProperty(imp);
+              } catch (e: any) {
+                console.warn(`Error fetching property ${imp.name}:`, e);
+                userStore.pushToast({
+                  message: `No se pudo cargar la propiedad: ${imp.name}`,
+                  severity: "warning"
+                });
+                return null;
+              }
+            });
 
-            if (currentVersion !== ownedPropertiesSyncVersion) {
-              return;
-            }
+            const results = await Promise.all(propertyPromises);
+            const loadedProps: Property[] = results.filter((p: Property | null): p is Property => p !== null);
 
-            if (!background) {
-              set({ ownedProperties: loadedProps, isSyncing: false });
-            } else {
-              set({ ownedProperties: loadedProps });
-            }
+            set({ ownedProperties: loadedProps, isSyncing: false });
           } catch (error: any) {
-            if (currentVersion !== ownedPropertiesSyncVersion) {
-              return;
-            }
-            if (!background) {
-              set({ isSyncing: false });
-            }
-            console.error("Failed to sync owned properties:", error);
+            set({ isSyncing: false });
+            console.error("Failed to sync properties:", error);
             userStore.pushToast({
               message: "Error al sincronizar propiedades: " + (error.message || error.toString()),
               severity: "error"
@@ -419,7 +252,25 @@ export const usePropertiesStore = create<PropertiesState>()(
           }
         },
 
+        syncProperty: async (propertyId: string) => {
+          const state = get();
+          const prop = state.ownedProperties.find(p => p.id === String(propertyId));
 
+          if (!prop) return; // Si la propiedad no está cargada actualmente, no hacemos nada
+
+          const imp = state.propertyImports.find(i => String(i.id) === prop.id);
+          if (!imp) return;
+
+          try {
+            const { propertiesService } = getServices();
+            const updatedProp = await propertiesService.fetchProperty(imp);
+            set((s) => ({
+              ownedProperties: s.ownedProperties.map(p => p.id === prop.id ? updatedProp : p)
+            }));
+          } catch (e: any) {
+            console.error(`Failed to sync property ${propertyId}:`, e);
+          }
+        },
       };
     },
     {

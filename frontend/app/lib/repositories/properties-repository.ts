@@ -1,14 +1,15 @@
 import { ethers } from "ethers";
 import { getSigner, getPropertyNFT, fetchEventsInChunks } from "../blockchain-infra";
+import { LocationDTO, RentalNFTDataDTO } from "../../models/contract-dtos";
 
 export interface IPropertiesRepository {
   createProperty(recipient: string, metadataURI: string, latitude: number, longitude: number): Promise<any>;
   getPropertyMetadataURI(propertyId: number): Promise<string>;
-  getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }>;
+  getPropertyLocation(propertyId: number): Promise<LocationDTO>;
   getOwnedProperties(ownerAddress: string): Promise<number[]>;
   ownerOf(propertyId: number): Promise<string>;
   getRentalNFTOwner(propertyId: number): Promise<string>;
-  getRentalNFTUser(propertyId: number): Promise<string>;
+  getRentalNFTData(propertyId: number): Promise<RentalNFTDataDTO>;
 }
 
 export class PropertiesRepository implements IPropertiesRepository {
@@ -33,7 +34,7 @@ export class PropertiesRepository implements IPropertiesRepository {
     return await nftContract.tokenURI(BigInt(propertyId));
   }
 
-  async getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }> {
+  async getPropertyLocation(propertyId: number): Promise<LocationDTO> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
@@ -101,7 +102,7 @@ export class PropertiesRepository implements IPropertiesRepository {
     return await rentalContract.ownerOf(BigInt(propertyId));
   }
 
-  async getRentalNFTUser(propertyId: number): Promise<string> {
+  async getRentalNFTData(propertyId: number): Promise<RentalNFTDataDTO> {
     const signer = await getSigner();
     if (!signer) throw new Error("No signer available.");
 
@@ -109,9 +110,20 @@ export class PropertiesRepository implements IPropertiesRepository {
     const rentalNFTAddress = await nftContract.rentalNFT();
     const rentalContract = new ethers.Contract(
       rentalNFTAddress,
-      ["function userOf(uint256 tokenId) view returns (address)"],
+      [
+        "function userOf(uint256 tokenId) view returns (address)",
+        "function userExpires(uint256 tokenId) view returns (uint256)"
+      ],
       signer
     );
-    return await rentalContract.userOf(BigInt(propertyId));
+    
+    const user = await rentalContract.userOf(BigInt(propertyId));
+    const expires = await rentalContract.userExpires(BigInt(propertyId));
+
+    return {
+      rentalNFTAddress,
+      user,
+      expires: Number(expires)
+    };
   }
 }

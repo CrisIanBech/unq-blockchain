@@ -1,8 +1,7 @@
-import { ReviewsRepository, type OnChainReview } from "../repositories/reviews-repository";
+import { ReviewsRepository } from "../repositories/reviews-repository";
 import { translateError } from "../errors/translator";
 import { getReview, getPropertyNFT, getReadProvider } from "../blockchain-infra";
-
-export type { OnChainReview };
+import { ReviewDTO } from "../../models/contract-dtos";
 
 export class ReviewsService {
   static async getReviewCount(propertyId: number): Promise<number> {
@@ -13,7 +12,7 @@ export class ReviewsService {
     }
   }
 
-  static async getAllReviews(propertyId: number): Promise<OnChainReview[]> {
+  static async getAllReviews(propertyId: number): Promise<ReviewDTO[]> {
     try {
       return await ReviewsRepository.getAllReviews(propertyId);
     } catch (error) {

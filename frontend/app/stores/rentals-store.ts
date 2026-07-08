@@ -3,129 +3,25 @@ import { persist } from "zustand/middleware";
 import type { Rental } from "@models/types";
 import { useUserStore } from "./user-store";
 import { getServices } from "@/lib/services/service-registry";
-import { loadRentals } from "@/lib/services/sync/rentals-sync";
 import { getBrowserProvider } from "@/lib/blockchain-infra";
-import { getRentalPeriodLabelByIndex } from "@/models/rental-utils";
 
 interface RentalsState {
   rentals: Rental[];
   rentalImports: { name: string; address: string }[];
   isSyncing: boolean;
-  payMonthlyRent: (rentalId: string, month: string) => Promise<void>;
-  signAgreement: (rentalId: string) => Promise<void>;
-  cancelAgreement: (rentalId: string) => Promise<void>;
   importRental: (name: string, agreementAddress: string) => Promise<void>;
   removeRental: (rentalId: string) => void;
   syncRentals: (background?: boolean) => Promise<void>;
-  updateRentalKey: (rentalId: string, hasKey: boolean) => void;
-  fetchPaymentHistory: (rentalId: string) => Promise<import("@models/types").PaymentRecord[]>;
 }
 
 export const useRentalsStore = create<RentalsState>()(
   persist(
     (set, get) => {
-      let rentalsSyncVersion = 0;
-      let isListening = false;
 
       return {
         rentals: [],
         rentalImports: [],
         isSyncing: true,
-
-        payMonthlyRent: async (rentalId, month) => {
-          const userStore = useUserStore.getState();
-          const wallet = userStore.wallet;
-
-          const r = get().rentals.find((x) => x.id === rentalId);
-          if (!r) return;
-
-          const history = await get().fetchPaymentHistory(rentalId);
-          const already = history.find((p) => p.month === month && p.status === "paid");
-          if (already) {
-            userStore.pushToast({ message: "El periodo ya estaba pagado", severity: "warning" });
-            return;
-          }
-
-          const targetAgreement = r.id;
-          if (!targetAgreement) {
-            userStore.pushToast({ message: "No hay contrato en esta propiedad para pagar", severity: "error" });
-            return;
-          }
-
-          try {
-            userStore.pushToast({
-              message: "Enviando pago de alquiler a la blockchain...",
-              severity: "info"
-            });
-
-            const amountToPay = r.amountToPay;
-            const { rentalsService } = getServices(wallet);
-            const result = await rentalsService.payRent(targetAgreement, amountToPay);
-
-            await userStore.syncOnchainBalance();
-
-            userStore.pushToast({
-              message: "Pago procesado con éxito",
-              severity: "success",
-              txHash: result.txHash
-            });
-          } catch (err: any) {
-            console.error("Failed to pay monthly rent:", err);
-            userStore.pushToast({
-              message: err.message || "Error al procesar pago de alquiler en la blockchain",
-              severity: "error"
-            });
-          }
-        },
-
-        signAgreement: async (rentalId) => {
-          const userStore = useUserStore.getState();
-          const wallet = userStore.wallet;
-
-          const r = get().rentals.find((x) => x.id === rentalId);
-          if (!r || !r.id) return;
-
-          try {
-            const depositAmount = r.securityDeposit;
-            const isTenant = r.tenant?.toLowerCase() === wallet?.toLowerCase();
-            
-            userStore.pushToast({ message: "Aprobando contrato en la blockchain...", severity: "info" });
-            const { rentalsService } = getServices(wallet);
-            const tx = await rentalsService.approveAgreement({ agreementAddress: r.id, depositAmount, isTenant });
-            userStore.pushToast({ message: "Contrato firmado con éxito", severity: "success", txHash: tx.txHash });
-            
-            await userStore.syncOnchainBalance();
-          } catch (err: any) {
-            console.error("Failed to sign agreement:", err);
-            userStore.pushToast({
-              message: err.message || "Error al firmar el contrato",
-              severity: "error"
-            });
-            throw err;
-          }
-        },
-
-        cancelAgreement: async (rentalId) => {
-          const userStore = useUserStore.getState();
-          const wallet = userStore.wallet;
-
-          const r = get().rentals.find((x) => x.id === rentalId);
-          if (!r || !r.id) return;
-
-          try {
-            userStore.pushToast({ message: "Cancelando contrato en la blockchain...", severity: "info" });
-            const { rentalsService } = getServices(wallet);
-            const tx = await rentalsService.cancelAgreement(r.id);
-            userStore.pushToast({ message: "Cancelación procesada con éxito", severity: "success", txHash: tx.txHash });
-          } catch (err: any) {
-            console.error("Failed to cancel agreement:", err);
-            userStore.pushToast({
-              message: err.message || "Error al cancelar el contrato",
-              severity: "error"
-            });
-            throw err;
-          }
-        },
 
         importRental: async (name, agreementAddress) => {
           const userStore = useUserStore.getState();
@@ -169,87 +65,44 @@ export const useRentalsStore = create<RentalsState>()(
           userStore.pushToast({ message: "Se ha eliminado tu contrato de tu listado", severity: "success" });
         },
 
-        syncRentals: async (background = false) => {
-          if (!isListening) {
-            const provider = getBrowserProvider();
-            if (provider) {
-              isListening = true;
-              provider.on("block", () => {
-                get().syncRentals(true);
-              });
-            }
-          }
-
-          rentalsSyncVersion++;
-          const currentVersion = rentalsSyncVersion;
-          if (!background) {
-            set({ isSyncing: true });
-          }
+        syncRentals: async () => {
+          set({ isSyncing: true });
 
           const userStore = useUserStore.getState();
           const wallet = userStore.wallet;
           const imports = get().rentalImports;
 
           try {
-            const loadedRentals = await loadRentals(wallet, imports);
+            const { rentalsService } = getServices();
+            const rentalPromises = imports.map(async (imp) => {
+              try {
+                return await rentalsService.fetchRental(wallet, imp);
+              } catch (e: any) {
+                console.warn(`Error fetching rental ${imp.name}:`, e);
+                userStore.pushToast({
+                  message: `Error al cargar alquiler ${imp.name}: ` + (e.message || e.toString()),
+                  severity: "error"
+                });
+                return null;
+              }
+            });
 
-            if (currentVersion !== rentalsSyncVersion) {
-              return;
-            }
+            const results = await Promise.all(rentalPromises);
+            const loadedRentals: Rental[] = results.filter((r: Rental | null): r is Rental => r !== null);
+            const userRentals = loadedRentals.filter(r =>
+              wallet && r.landlord.toLowerCase() === wallet.toLowerCase()
+            );
 
-            if (!background) {
-              set({ rentals: loadedRentals, isSyncing: false });
-            } else {
-              set({ rentals: loadedRentals });
-            }
+            set({ rentals: userRentals, isSyncing: false });
           } catch (error: any) {
-            if (currentVersion !== rentalsSyncVersion) {
-              return;
-            }
-            if (!background) {
-              set({ isSyncing: false });
-            }
+            set({ isSyncing: false });
+
             console.error("Failed to sync rentals concurrently:", error);
             userStore.pushToast({
               message: "Error al cargar alquileres: " + (error.message || error.toString()),
               severity: "error"
             });
           }
-        },
-
-        fetchPaymentHistory: async (rentalId) => {
-          const userStore = useUserStore.getState();
-          const wallet = userStore.wallet;
-          const { rentalsService } = getServices(wallet);
-          
-          const r = get().rentals.find((x) => x.id === rentalId);
-          if (!r) return [];
-          
-          try {
-            const history = await rentalsService.getPaymentHistory(rentalId);
-            return history.map((e) => {
-              const periodLabel = getRentalPeriodLabelByIndex(r, e.periodIndex);
-
-              return {
-                month: String(e.periodIndex),
-                periodLabel,
-                amount: Number(e.amount),
-                lateFee: Number(e.lateFee),
-                status: "paid" as const,
-                paidAt: new Date(e.timestamp * 1000).toISOString(),
-                txHash: e.txHash
-              };
-            });
-          } catch (error) {
-            console.error("Failed to fetch payment history:", error);
-            return [];
-          }
-        },
-
-        updateRentalKey: (rentalId, hasKey) => {
-          set((s) => ({
-            rentals: s.rentals.map((r) => (r.id === rentalId ? { ...r, hasKey } : r))
-          }));
         }
       };
     },

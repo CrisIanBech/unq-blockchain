@@ -1,12 +1,5 @@
 import { getReview, getRentalAgreementFactory, getRentalAgreement, getReadProvider, getSigner, fetchEventsInChunks } from "../blockchain-infra";
-
-export interface OnChainReview {
-  author: string;
-  agreement: string;
-  rating: number;
-  comment: string;
-  timestamp: number;
-}
+import { ReviewDTO } from "../../models/contract-dtos";
 
 export class ReviewsRepository {
   static async getReviewCount(propertyId: number): Promise<number> {
@@ -21,7 +14,7 @@ export class ReviewsRepository {
     }
   }
 
-  static async getReview(propertyId: number, index: number): Promise<OnChainReview | null> {
+  static async getReview(propertyId: number, index: number): Promise<ReviewDTO | null> {
     const provider = getReadProvider();
     try {
       const rs = getReview(provider);
@@ -39,10 +32,10 @@ export class ReviewsRepository {
     }
   }
 
-  static async getAllReviews(propertyId: number): Promise<OnChainReview[]> {
+  static async getAllReviews(propertyId: number): Promise<ReviewDTO[]> {
     const count = await this.getReviewCount(propertyId);
     if (count === 0) return [];
-    const reviews: OnChainReview[] = [];
+    const reviews: ReviewDTO[] = [];
     for (let i = 0; i < count; i++) {
       const review = await this.getReview(propertyId, i);
       if (review) reviews.push(review);

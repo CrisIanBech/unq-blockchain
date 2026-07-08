@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { usePropertiesStore, type AddPropertyInput } from "@stores/properties-store"
 import { useUserStore } from "@stores/user-store"
-import { CURRENT_MONTH } from "@/lib/format"
-import { getBrowserProvider } from "@/lib/blockchain-infra"
+
+import { isPropertyOverdue, isPropertyContractActive } from "@models/property-utils"
 
 export function useMyPropertiesPage() {
   const { wallet } = useUserStore()
@@ -13,7 +13,7 @@ export function useMyPropertiesPage() {
     withdrawRent,
     signContract,
     cancelContract,
-    syncOwnedProperties,
+    syncProperties,
     importProperty,
     unlinkContract,
     contractHistory,
@@ -28,20 +28,8 @@ export function useMyPropertiesPage() {
   useEffect(() => {
     if (!wallet) return
 
-    syncOwnedProperties()
-
-    // Listen for new blocks to keep UI reactive in real-time
-    const provider = getBrowserProvider()
-    if (provider) {
-      const listener = () => {
-        syncOwnedProperties()
-      }
-      provider.on("block", listener)
-      return () => {
-        provider.off("block", listener)
-      }
-    }
-  }, [wallet, syncOwnedProperties])
+    syncProperties()
+  }, [wallet, syncProperties])
 
   const [monthIncome, setMonthIncome] = useState(0)
   const [nextCharge, setNextCharge] = useState<string | undefined>(undefined)
@@ -57,8 +45,10 @@ export function useMyPropertiesPage() {
 
     // Calcular ingreso del mes
     const income = ownedProperties.reduce((sum, p) => {
-      const paid = p.contract?.payments.find((x) => x.month === CURRENT_MONTH && x.status === "paid")
-      return sum + (paid?.amount ?? 0)
+      if (isPropertyContractActive(p) && !isPropertyOverdue(p)) {
+        return sum + (p.rental?.currentContract?.baseRent ?? 0)
+      }
+      return sum
     }, 0)
     setMonthIncome(income)
 

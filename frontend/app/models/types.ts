@@ -15,16 +15,34 @@ export interface PaymentRecord {
   txHash?: string
 }
 
-export interface PropertyContract {
+export interface RentalAgreementData {
   agreementAddress: string
-  tenant: string | null
-  tenantSince?: string
-  nextChargeDate?: string
-  payments: PaymentRecord[]
-  availableToWithdraw: number
-  status: "draft" | "active" | "cancelled"
-  landlordApproved?: boolean
-  tenantApproved?: boolean
+  propertyId: number
+  tenant: string
+  landlord: string
+  baseRent: number
+  securityDeposit: number
+  inflationBps: number
+  lateFeeBps: number
+  gracePeriod: number
+  paymentPeriod: number
+  duration: number
+  deadline: number
+  startTime: number
+  rentPaidUntil: number
+  status: string // e.g. "PendingSignatures" | "Active" | "Cancelled" | "Expired" | "Completed" | "Defaulted"
+  landlordApproved: boolean
+  tenantApproved: boolean
+  landlordCancelled: boolean
+  tenantCancelled: boolean
+}
+
+export interface RentalData {
+  rentalNFTAddress: string
+  user: string
+  expires: number
+  currentContract: RentalAgreementData | null
+  availableToWithdraw?: number
 }
 
 export interface Smartlock {
@@ -33,53 +51,25 @@ export interface Smartlock {
   open: boolean
 }
 
-/** A property the current user OWNS (is the landlord). */
+export interface RentalMetadata {
+  type?: PropertyType
+  surface?: number
+  rooms?: number
+  bathrooms?: number
+  pets?: boolean
+  garage?: boolean
+  contact?: string
+  images?: string[]
+}
+
 export interface Property {
   id: string
   name: string
-  type: PropertyType
-  address?: string
-  propertyId?: number
-  /** Web Mercator Y (latitude axis) in meters, as stored on-chain */
-  latitude?: number
-  /** Web Mercator X (longitude axis) in meters, as stored on-chain */
-  longitude?: number
-  monthlyRent?: number
-  imageUrl?: string
-  contract: PropertyContract | null
-}
-
-export interface Rental {
-  id: string; // Used as the agreement address
-  propertyId: number;
-  name: string;
-  type: PropertyType;
-  address: string;
-  imageUrl: string;
-  landlord: string;
-  tenant?: string;
-  hasKey?: boolean;
-  rentalNFTAddress?: string;
-
-  // Contract Details (optional if it's just a listing without contract)
-  baseRent: number;
-  securityDeposit: number;
-  inflationBps: number;
-  inflationAdjustmentInterval?: number;
-  lateFeeBps: number;
-  gracePeriod: number;
-  paymentPeriod: number;
-  duration: number;
-  deadline: number;
-  startTime: number;
-  rentPaidUntil: number;
-  amountToPay: number;
-  lateFeeAmount: number;
-  status: number;
-  landlordApproved: boolean;
-  tenantApproved: boolean;
-  landlordCancelled: boolean;
-  tenantCancelled: boolean;
+  address: string
+  latitude: number
+  longitude: number
+  metadata: RentalMetadata
+  rental: RentalData | null
 }
 
 export interface Review {
@@ -115,4 +105,9 @@ export interface Toast {
   message: string
   severity: "success" | "info" | "warning" | "error"
   txHash?: string
+}
+
+export interface PropertyImport {
+  id: number
+  name: string
 }

@@ -74,7 +74,7 @@ export class PropertyDashboardService {
 
 
   async mintProperty(wallet: string, input: AddPropertyInput): Promise<{ tokenId?: number; txHash: string }> {
-    const { propertiesService } = getServices(wallet);
+    const { propertiesService } = getServices();
 
     // Pass the IPFS (or other) URI directly to the contract — no base64 wrapping
     const result = await propertiesService.mintProperty(wallet, input.tokenURI, input.latitude, input.longitude);
@@ -85,7 +85,7 @@ export class PropertyDashboardService {
   }
 
   async verifyPropertyOwnership(wallet: string, propertyId: number): Promise<void> {
-    const { propertiesService } = getServices(wallet);
+    const { propertiesService } = getServices();
     const owner = await propertiesService.getPropertyOwner(propertyId);
     if (owner.toLowerCase() !== wallet.toLowerCase()) {
       throw new Error("No eres el propietario de este Token ID.");
@@ -96,7 +96,7 @@ export class PropertyDashboardService {
     wallet: string,
     input: CreateContractInput
   ): Promise<{ agreementAddress: string; txHash: string }> {
-    const { rentalsService } = getServices(wallet);
+    const { rentalsService } = getServices();
     const oneDaySeconds = 24 * 60 * 60;
     const thirtyDaysSeconds = 30 * oneDaySeconds;
 

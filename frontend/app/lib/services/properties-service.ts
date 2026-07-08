@@ -1,167 +1,98 @@
 import { IPropertiesRepository } from "../repositories/properties-repository";
 import { IGeocodingRepository } from "../repositories/geocoding-repository";
-import { translateError } from "../errors/translator";
-import { formatPropertyImage } from "@/lib/format";
-
-export interface PropertyMintResult {
-  txHash: string;
-  contractAddress: string;
-}
+import { Property, PropertyImport, RentalAgreementData } from "@models/types";
+import { RentalsService } from "./rentals-service";
+import { reverseGeocode } from "@/lib/services/geocoding-service";
+import { MetadataService } from "./metadata-service";
 
 export class PropertiesService {
   constructor(
     private repo: IPropertiesRepository,
-    private geocodingRepo: IGeocodingRepository
+    private geocodingRepo: IGeocodingRepository,
+    private metadataService: MetadataService,
+    private rentalsService: RentalsService
   ) { }
 
-  /**
-   * Mints a new property NFT and returns plain domain transaction details.
-   */
-  async mintProperty(recipient: string, metadataURI: string, latitude: number, longitude: number): Promise<PropertyMintResult & { tokenId?: number }> {
-    try {
-      const receipt = await this.repo.createProperty(recipient, metadataURI, latitude, longitude);
+  async fetchProperty(
+    imp: PropertyImport
+  ): Promise<Property> {
+    const tokenId = imp.id;
 
-      let tokenId: number | undefined;
-      if (receipt && receipt.logs) {
-        for (const log of receipt.logs) {
-          try {
-            if (log.topics[0] === "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") {
-              const parsedTokenId = Number(BigInt(log.topics[3]));
-              if (!isNaN(parsedTokenId)) {
-                tokenId = parsedTokenId;
-                break;
-              }
-            }
-          } catch (_e) {
-            // Ignore
-          }
-        }
-      }
+    // Traer el property (metadata)
+    const uri = await this.repo.getPropertyMetadataURI(tokenId);
+    const rawMetadata = await this.metadataService.fetchMetadata(uri);
 
-      return {
-        txHash: receipt.hash || receipt.transactionHash || "",
-        contractAddress: receipt.contractAddress || "",
-        tokenId
+    const location = await this.repo.getPropertyLocation(tokenId);
+    const latitude = location.lat;
+    const longitude = location.lng;
+
+    let addrAttr = "Dirección desconocida";
+    if (latitude !== 0 || longitude !== 0) {
+      addrAttr = (await reverseGeocode(latitude, longitude)) || `${latitude}, ${longitude}`;
+    }
+
+    const metadataObj = {
+      type: rawMetadata.attributes?.find((a: any) => a.trait_type === "type")?.value || rawMetadata.type,
+      surface: rawMetadata.surface,
+      rooms: rawMetadata.rooms,
+      bathrooms: rawMetadata.bathrooms,
+      pets: rawMetadata.pets,
+      garage: rawMetadata.garage,
+      contact: rawMetadata.contact,
+      images: rawMetadata.images
+    };
+
+    // Traer el rental a partir del property
+    const rentalData = await this.repo.getRentalNFTData(tokenId);
+    const rentalUser = rentalData.user;
+    const propertyOwner = await this.repo.ownerOf(tokenId);
+
+    // El contrato actual si el rental user es distinto al owner del property y es una address válida
+    let currentContract: RentalAgreementData | null = null;
+    let availableToWithdraw = 0;
+    const EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+    if (rentalUser && rentalUser !== EMPTY_ADDRESS && rentalUser.toLowerCase() !== propertyOwner.toLowerCase()) {
+      const details = await this.rentalsService.getRentalDetails(rentalUser);
+      availableToWithdraw = await this.rentalsService.getWithdrawableRent(rentalUser);
+
+      currentContract = {
+        agreementAddress: rentalUser,
+        propertyId: Number(details.propertyId),
+        tenant: details.tenant,
+        landlord: details.landlord,
+        baseRent: details.baseRent,
+        securityDeposit: details.securityDeposit,
+        inflationBps: details.inflationBps,
+        lateFeeBps: details.lateFeeBps,
+        gracePeriod: details.gracePeriod,
+        paymentPeriod: details.paymentPeriod,
+        duration: details.duration,
+        deadline: details.deadline,
+        startTime: details.startTime,
+        rentPaidUntil: details.rentPaidUntil,
+        status: ["draft", "active", "cancelled", "expired", "completed", "defaulted"][details.status] || "cancelled",
+        landlordApproved: details.landlordApproved,
+        tenantApproved: details.tenantApproved,
+        landlordCancelled: details.landlordCancelled,
+        tenantCancelled: details.tenantCancelled
       };
-    } catch (error) {
-      throw translateError(error);
     }
-  }
 
-  async getPropertyOwner(propertyId: number): Promise<string> {
-    return this.repo.ownerOf(propertyId);
-  }
-
-  async getRentalNFTOwner(propertyId: number): Promise<string> {
-    return this.repo.getRentalNFTOwner(propertyId);
-  }
-
-  async getRentalNFTUser(propertyId: number): Promise<string> {
-    return this.repo.getRentalNFTUser(propertyId);
-  }
-
-  async getPropertyLocation(propertyId: number): Promise<{ lat: number; lng: number }> {
-    return this.repo.getPropertyLocation(propertyId);
-  }
-
-  async getPropertyMetadata(propertyId: number): Promise<any> {
-    try {
-      const uri = await this.repo.getPropertyMetadataURI(propertyId);
-      const location = await this.repo.getPropertyLocation(propertyId);
-
-      let fetchUrl = uri;
-      if (uri.startsWith("ipfs://")) {
-        fetchUrl = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
+    return {
+      id: String(tokenId),
+      name: imp.name,
+      address: addrAttr,
+      latitude,
+      longitude,
+      metadata: metadataObj,
+      rental: {
+        rentalNFTAddress: rentalData.rentalNFTAddress,
+        user: rentalData.user,
+        expires: rentalData.expires,
+        currentContract,
+        availableToWithdraw
       }
-
-      let metadata: any = {};
-
-      if (fetchUrl.startsWith("data:")) {
-        try {
-          const base64Data = fetchUrl.split(",")[1];
-          const jsonStr = decodeURIComponent(
-            atob(base64Data)
-              .split("")
-              .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-              .join("")
-          );
-          metadata = JSON.parse(jsonStr);
-        } catch (e) {
-          console.error("Failed to parse data URI metadata", e);
-          metadata = {};
-        }
-      } else if (fetchUrl) {
-        try {
-          const response = await fetch(fetchUrl);
-          if (!response.ok) {
-            console.warn(`Failed to fetch metadata JSON (status ${response.status}) for url: ${fetchUrl}`);
-          } else {
-            metadata = await response.json();
-          }
-        } catch (e) {
-          console.warn(`Error fetching metadata JSON for url ${fetchUrl}:`, e);
-        }
-      }
-
-      if (location.lat !== 0 || location.lng !== 0) {
-        const address = await this.geocodingRepo.reverseGeocodeMercator(location.lat, location.lng);
-
-        if (address) {
-          // Push address attribute
-          if (!metadata.attributes) metadata.attributes = [];
-
-          // Remove existing address if any
-          metadata.attributes = metadata.attributes.filter((a: any) => a.trait_type !== "address");
-          metadata.attributes.push({ trait_type: "address", value: address });
-        }
-      } else {
-        console.log(`[Property ${propertyId}] Se salteó el geocoding porque las coordenadas son 0,0`);
-      }
-
-      return metadata;
-    } catch (error) {
-      throw translateError(error);
-    }
-  }
-
-  async getOwnedProperties(ownerAddress: string): Promise<any[]> {
-    try {
-      const tokenIds = await this.repo.getOwnedProperties(ownerAddress);
-
-      const properties = await Promise.all(
-        tokenIds.map(async (tokenId) => {
-          try {
-            const metadata = await this.getPropertyMetadata(tokenId);
-
-            const typeAttr = metadata.attributes?.find((a: any) => a.trait_type === "type")?.value || "departamento";
-            const addrAttr = metadata.attributes?.find((a: any) => a.trait_type === "address")?.value || metadata.address || "Dirección desconocida";
-            const rentAttr = Number(metadata.attributes?.find((a: any) => a.trait_type === "monthlyRent")?.value || metadata.monthlyRent || 0);
-
-            return {
-              propertyId: tokenId,
-              name: metadata.name || `Propiedad #${tokenId}`,
-              type: typeAttr,
-              address: addrAttr,
-              imageUrl: formatPropertyImage(metadata.images || metadata.image, addrAttr),
-              monthlyRent: rentAttr,
-            };
-          } catch (err) {
-            console.error(`Failed to fetch metadata for token ${tokenId}`, err);
-            return {
-              propertyId: tokenId,
-              name: `Propiedad #${tokenId}`,
-              type: "departamento",
-              address: "Dirección no disponible",
-              imageUrl: `/images/prop-${(tokenId % 5) + 1}.png`,
-              monthlyRent: 0,
-            };
-          }
-        })
-      );
-
-      return properties;
-    } catch (error) {
-      throw translateError(error);
-    }
+    };
   }
 }
