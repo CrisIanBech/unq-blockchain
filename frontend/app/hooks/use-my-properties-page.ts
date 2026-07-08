@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { usePropertiesStore, type AddPropertyInput } from "@stores/properties-store"
 import { useUserStore } from "@stores/user-store"
 
-import { isPropertyOverdue, isPropertyContractActive } from "@models/property-utils"
+import { isPropertyOverdue, isPropertyContractActive, getPropertyNextChargeDate } from "@models/property-utils"
 
 export function useMyPropertiesPage() {
   const { wallet } = useUserStore()
@@ -54,13 +54,13 @@ export function useMyPropertiesPage() {
 
     // Calcular próxima fecha de cobro
     const nextDates = ownedProperties
-      .map((p) => p.contract?.nextChargeDate)
+      .map((p) => getPropertyNextChargeDate(p))
       .filter((d): d is string => Boolean(d))
       .sort()
     setNextCharge(nextDates[0])
 
     // Calcular ocupación
-    const occupiedCount = ownedProperties.filter((p) => p.contract?.status === "active").length
+    const occupiedCount = ownedProperties.filter((p) => isPropertyContractActive(p)).length
     const occupancyRate = Math.round((occupiedCount / ownedProperties.length) * 100)
     setOccupancyStats({ occupancy: occupancyRate, occupied: occupiedCount })
   }, [ownedProperties])
@@ -85,10 +85,6 @@ export function useMyPropertiesPage() {
     occupancyStats,
     onOpenAdd: () => setAddOpen(true),
     onCloseAdd: () => setAddOpen(false),
-    onSubmitAdd: async (input: AddPropertyInput) => {
-      await mintAndLoadProperty(input);
-      setAddOpen(false)
-    },
     onOpenImport: () => setImportOpen(true),
     onCloseImport: () => setImportOpen(false),
     onSubmitImport: async (name: string, propertyId: number) => {

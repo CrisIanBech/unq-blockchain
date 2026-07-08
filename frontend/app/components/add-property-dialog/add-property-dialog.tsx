@@ -1,4 +1,3 @@
-import { useState, useRef, useCallback } from "react"
 import {
   Dialog,
   DialogTitle,
@@ -16,7 +15,6 @@ import {
   MenuItem,
   FormControlLabel,
   Switch,
-  IconButton,
   Chip,
 } from "@mui/material"
 import TokenRoundedIcon from "@mui/icons-material/TokenRounded"
@@ -24,12 +22,7 @@ import RoomRoundedIcon from "@mui/icons-material/RoomRounded"
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded"
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded"
 import InsertPhotoRoundedIcon from "@mui/icons-material/InsertPhotoRounded"
-import type { AddPropertyInput } from "@/lib/services/property-dashboard-service"
-import { PropertyDashboardService } from "@/lib/services/property-dashboard-service"
-
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""
-const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete"
-const IPFS_RE = /^(ipfs:\/\/.+|https?:\/\/.+|data:.+)$/
+import { useCreateProperty, PlaceOption } from "./use-create-property"
 
 const PROPERTY_TYPES = [
   { value: "departamento", label: "Departamento" },
@@ -39,233 +32,55 @@ const PROPERTY_TYPES = [
   { value: "oficina", label: "Oficina" },
 ] as const
 
-/** Convert WGS84 degrees → Web Mercator meters */
-function toMercator(latDeg: number, lngDeg: number) {
-  const x = Math.round((lngDeg * 20037508.34) / 180)
-  const y = Math.round(
-    (Math.log(Math.tan(((90 + latDeg) * Math.PI) / 360)) / Math.PI) * 20037508.34
-  )
-  return { x, y }
-}
-
-interface PlaceOption {
-  placeId: string
-  label: string
-}
-
-interface CoordResult {
-  description: string
-  latMercator: number
-  lngMercator: number
-}
-
 interface AddPropertyDialogProps {
   open: boolean
   onClose: () => void
-  onSubmit: (input: AddPropertyInput) => void
 }
 
-const dashboardService = new PropertyDashboardService()
-
-export function AddPropertyDialog({ open, onClose, onSubmit }: AddPropertyDialogProps) {
-  // ── Tab mode ──────────────────────────────────────────────────────────────
-  const [tabIndex, setTabIndex] = useState(0)
-
-  // ── Common fields ─────────────────────────────────────────────────────────
-  const [name, setName] = useState("")
-  const [touched, setTouched] = useState(false)
-
-  // ── Location (shared by both tabs) ────────────────────────────────────────
-  const [options, setOptions] = useState<PlaceOption[]>([])
-  const [inputValue, setInputValue] = useState("")
-  const [selectedCoords, setSelectedCoords] = useState<CoordResult | null>(null)
-  const [loadingOptions, setLoadingOptions] = useState(false)
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const detailsAbortRef = useRef<AbortController | null>(null)
-
-  // ── Manual URI tab ────────────────────────────────────────────────────────
-  const [tokenURI, setTokenURI] = useState("")
-
-  // ── Upload metadata tab ───────────────────────────────────────────────────
-  const [propertyType, setPropertyType] = useState("departamento")
-  const [surface, setSurface] = useState("")
-  const [rooms, setRooms] = useState("")
-  const [bathrooms, setBathrooms] = useState("")
-  const [pets, setPets] = useState(false)
-  const [garage, setGarage] = useState(false)
-  const [contact, setContact] = useState("")
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [isUploading, setIsUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // ── Places API (New) – Autocomplete ──────────────────────────────────────
-  const fetchOptions = useCallback(async (input: string) => {
-    if (input.trim().length < 3) {
-      setOptions([])
-      return
-    }
-    setLoadingOptions(true)
-    try {
-      const res = await fetch(AUTOCOMPLETE_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": API_KEY,
-          "X-Goog-FieldMask":
-            "suggestions.placePrediction.placeId,suggestions.placePrediction.text",
-        },
-        body: JSON.stringify({ input, languageCode: "es" }),
-      })
-      const data = await res.json()
-      const suggestions: PlaceOption[] = (data.suggestions ?? []).map((s: any) => ({
-        placeId: s.placePrediction.placeId,
-        label: s.placePrediction.text.text,
-      }))
-      setOptions(suggestions)
-    } catch (e) {
-      console.error("Places autocomplete error", e)
-      setOptions([])
-    } finally {
-      setLoadingOptions(false)
-    }
-  }, [])
-
-  function handleInputChange(_: React.SyntheticEvent, value: string) {
-    setInputValue(value)
-    // Cancel any in-flight place-details request so stale coords never land
-    if (detailsAbortRef.current) {
-      detailsAbortRef.current.abort()
-      detailsAbortRef.current = null
-    }
-    setSelectedCoords(null)
-    if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    debounceTimer.current = setTimeout(() => fetchOptions(value), 300)
-  }
-
-  // ── Places API (New) – Place Details ─────────────────────────────────────
-  async function handleChange(_: React.SyntheticEvent, option: PlaceOption | null) {
-    if (!option) {
-      setSelectedCoords(null)
-      return
-    }
-    // Abort any previous in-flight details request
-    if (detailsAbortRef.current) detailsAbortRef.current.abort()
-    const controller = new AbortController()
-    detailsAbortRef.current = controller
-    try {
-      const res = await fetch(
-        `https://places.googleapis.com/v1/places/${option.placeId}`,
-        {
-          signal: controller.signal,
-          headers: {
-            "X-Goog-Api-Key": API_KEY,
-            "X-Goog-FieldMask": "location",
-          },
-        }
-      )
-      const data = await res.json()
-      const lat: number = data.location?.latitude
-      const lng: number = data.location?.longitude
-      if (lat !== undefined && lng !== undefined) {
-        const { x, y } = toMercator(lat, lng)
-        setSelectedCoords({ description: option.label, latMercator: y, lngMercator: x })
-      }
-    } catch (e: any) {
-      if (e?.name !== "AbortError") console.error("Place details error", e)
-    } finally {
-      if (detailsAbortRef.current === controller) detailsAbortRef.current = null
-    }
-  }
-
-  // ── File handling ─────────────────────────────────────────────────────────
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || [])
-    setSelectedFiles((prev) => [...prev, ...files])
-    if (fileInputRef.current) fileInputRef.current.value = ""
-  }
-
-  function removeFile(index: number) {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  // ── Validation ────────────────────────────────────────────────────────────
-  const nameValid = name.trim().length > 1
-  const locationValid = selectedCoords !== null
-
-  // Manual tab validation
-  const uriValid = IPFS_RE.test(tokenURI.trim())
-  const manualValid = nameValid && uriValid && locationValid
-
-  // Upload tab validation
-  const surfaceValid = Number(surface) > 0 && !isNaN(Number(surface))
-  const roomsValid = Number(rooms) > 0 && Number.isInteger(Number(rooms))
-  const bathroomsValid = bathrooms !== "" && Number(bathrooms) >= 0 && Number.isInteger(Number(bathrooms))
-  const uploadValid = nameValid && locationValid && surfaceValid && roomsValid && bathroomsValid
-
-  const valid = tabIndex === 0 ? uploadValid : manualValid
-
-  function reset() {
-    setName("")
-    setTokenURI("")
-    setInputValue("")
-    setOptions([])
-    setSelectedCoords(null)
-    setTouched(false)
-    setPropertyType("departamento")
-    setSurface("")
-    setRooms("")
-    setBathrooms("")
-    setPets(false)
-    setGarage(false)
-    setContact("")
-    setSelectedFiles([])
-    setIsUploading(false)
-  }
-
-  async function submit() {
-    setTouched(true)
-    if (!valid || !selectedCoords) return
-
-    if (tabIndex === 0) {
-      // Upload metadata to IPFS via backend, then mint
-      setIsUploading(true)
-      try {
-        const resolvedTokenURI = await dashboardService.preparePropertyMetadata({
-          name: name.trim(),
-          type: propertyType,
-          address: selectedCoords.description,
-          surface: Number(surface),
-          rooms: Number(rooms),
-          bathrooms: Number(bathrooms),
-          pets,
-          garage,
-          contact: contact.trim(),
-          images: selectedFiles,
-        })
-        onSubmit({
-          name: name.trim(),
-          tokenURI: resolvedTokenURI,
-          latitude: selectedCoords.latMercator,
-          longitude: selectedCoords.lngMercator,
-        })
-        reset()
-        onClose()
-      } catch (err) {
-        console.error("Failed to upload metadata to IPFS:", err)
-        setIsUploading(false)
-      }
-    } else {
-      // Manual URI mode — existing behavior
-      onSubmit({
-        name: name.trim(),
-        tokenURI: tokenURI.trim(),
-        latitude: selectedCoords.latMercator,
-        longitude: selectedCoords.lngMercator,
-      })
-      reset()
-      onClose()
-    }
-  }
+export function AddPropertyDialog({ open, onClose }: AddPropertyDialogProps) {
+  const {
+    tabIndex,
+    setTabIndex,
+    name,
+    setName,
+    touched,
+    setTouched,
+    options,
+    inputValue,
+    selectedCoords,
+    loadingOptions,
+    tokenURI,
+    setTokenURI,
+    propertyType,
+    setPropertyType,
+    surface,
+    setSurface,
+    rooms,
+    setRooms,
+    bathrooms,
+    setBathrooms,
+    pets,
+    setPets,
+    garage,
+    setGarage,
+    contact,
+    setContact,
+    selectedFiles,
+    isUploading,
+    fileInputRef,
+    handleInputChange,
+    handleChange,
+    handleFileSelect,
+    removeFile,
+    nameValid,
+    locationValid,
+    surfaceValid,
+    roomsValid,
+    bathroomsValid,
+    uriValid,
+    submit,
+    valid,
+  } = useCreateProperty(onClose)
 
   // ── Location Autocomplete (shared between both tabs) ──────────────────────
   const locationAutocomplete = (

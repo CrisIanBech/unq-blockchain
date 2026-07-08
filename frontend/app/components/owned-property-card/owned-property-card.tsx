@@ -14,7 +14,7 @@ import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded"
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded"
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded"
 import type { Property } from "@models/types"
-import { dateLabel } from "@/lib/format"
+import { dateLabel, resolveIpfsUrl } from "@/lib/format"
 import { PropertyCardHeader } from "./property-card-header"
 import { PropertyDetails } from "./property-details"
 import { PropertyMenu } from "./property-menu"
@@ -55,7 +55,7 @@ export function OwnedPropertyCard({
   const [menuEl, setMenuEl] = useState<null | HTMLElement>(null)
   const [ratingData, setRatingData] = useState({ average: 0, count: 0 })
 
-  const isActive = property.contract?.status === "active"
+  const isActive = property.rental?.currentContract?.status === "active"
   const propertyId = Number(property.id)
 
   const fetchReviews = () => {
@@ -106,9 +106,9 @@ export function OwnedPropertyCard({
       }}
     >
       <PropertyCardHeader
-        imageUrl={property.imageUrl || `/images/prop-${((Number(property.id) || 0) % 5) + 1}.png`}
+        imageUrl={resolveIpfsUrl(property.metadata?.images?.[0] || "") || `/images/prop-${((Number(property.id) || 0) % 5) + 1}.png`}
         name={property.name}
-        type={property.type}
+        type={property.metadata?.type || "departamento"}
         isOverdue={isOverdue}
         statusColor={statusDetails.color}
         statusLabel={statusDetails.label}
@@ -119,7 +119,7 @@ export function OwnedPropertyCard({
         <PropertyDetails
           name={property.name}
           address={property.address ?? ""}
-          monthlyRent={property.monthlyRent ?? 0}
+          monthlyRent={property.rental?.currentContract?.baseRent ?? 0}
           nextChargeDate={getPropertyNextChargeDate(property)}
           availableToWithdraw={getPropertyAvailableToWithdraw(property)}
           canWithdraw={canWithdraw}

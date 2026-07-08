@@ -10,16 +10,23 @@ export function getServices() {
   const metadataService = new MetadataService();
   const geocodingRepo = new GeocodingRepository();
 
-  const rentalsService = new RentalsService(new RentalsRepository());
+  const rentalsRepo = new RentalsRepository();
+
+  const rentalsService = new RentalsService(
+    rentalsRepo,
+    propertiesRepo,
+    metadataService
+  );
+
   const propertiesService = new PropertiesService(
     propertiesRepo,
-    geocodingRepo,
+    rentalsRepo,
     metadataService,
     rentalsService
   );
 
   return {
-    propertiesService,
-    rentalsService
+    rentalsService,
+    propertiesService
   };
 }

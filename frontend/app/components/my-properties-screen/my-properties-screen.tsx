@@ -28,7 +28,6 @@ export function MyPropertiesScreen({
   occupancyStats,
   onOpenAdd,
   onCloseAdd,
-  onSubmitAdd,
   onOpenImport,
   onCloseImport,
   onSubmitImport,
@@ -157,7 +156,7 @@ export function MyPropertiesScreen({
         />
       </SpeedDial>
 
-      <AddPropertyDialog open={addOpen} onClose={onCloseAdd} onSubmit={onSubmitAdd} />
+      <AddPropertyDialog open={addOpen} onClose={onCloseAdd} />
       <ImportPropertyDialog open={importOpen} onClose={onCloseImport} onSubmit={onSubmitImport} />
       <ManageDepositDialog
         open={depositOpen}

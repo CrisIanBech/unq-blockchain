@@ -16,7 +16,7 @@ export function isPropertyOverdue(property: Property): boolean {
 }
 
 export function getPropertyAvailableToWithdraw(property: Property): number {
-  return property.contract?.availableToWithdraw || 0
+  return property.rental?.availableToWithdraw || 0
 }
 
 export function canPropertyWithdraw(property: Property): boolean {
@@ -24,7 +24,7 @@ export function canPropertyWithdraw(property: Property): boolean {
 }
 
 export function getPropertyContractStatus(property: Property): string {
-  return property.contract?.status || "cancelled"
+  return getPropertyContract(property)?.status || "cancelled"
 }
 
 export function isPropertyContractDraft(property: Property): boolean {
@@ -40,31 +40,33 @@ export function isPropertyContractCancelled(property: Property): boolean {
 }
 
 export function isPropertyLandlordApproved(property: Property): boolean {
-  return property.contract?.landlordApproved || false
+  return getPropertyContract(property)?.landlordApproved || false
 }
 
 export function getPropertyTenant(property: Property): string | null {
-  return property.contract?.tenant || null
+  return getPropertyContract(property)?.tenant || null
 }
 
 export function getPropertyTenantSince(property: Property): string | undefined {
-  return property.contract?.tenantSince
+  const contract = getPropertyContract(property)
+  return contract?.startTime ? new Date(contract.startTime * 1000).toISOString() : undefined
 }
 
 export function getPropertyAgreementAddress(property: Property): string | undefined {
-  return property.contract?.agreementAddress
+  return getPropertyContract(property)?.agreementAddress
 }
 
 export function getPropertyNextChargeDate(property: Property): string {
-  return property.contract?.nextChargeDate ?? ""
+  const contract = getPropertyContract(property)
+  return contract?.rentPaidUntil ? new Date(contract.rentPaidUntil * 1000).toISOString() : ""
 }
 
 export function getPropertyStatusDetails(property: Property): { label: string; color: "success" | "warning" | "default" | "error", variant?: "filled" | "outlined" } {
   const status = getPropertyContractStatus(property)
 
   if (status === "draft") {
-    const landlordApproved = property.contract?.landlordApproved;
-    const tenantApproved = property.contract?.tenantApproved;
+    const landlordApproved = getPropertyContract(property)?.landlordApproved;
+    const tenantApproved = getPropertyContract(property)?.tenantApproved;
 
     if (!landlordApproved) {
       return { label: "Pendiente de firma del propietario", color: "warning" }

@@ -111,3 +111,24 @@ export interface PropertyImport {
   id: number
   name: string
 }
+
+export interface AddPropertyInput {
+  name: string;
+  tokenURI: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface CreateContractInput {
+  propertyId: number;
+  tenant: string;
+  baseRent: number;
+  securityDeposit: number;
+  durationMonths: number;
+  gracePeriodDays: number;
+  lateFeeBps: number;
+  inflationBps: number;
+  paymentPeriodDays: number;
+  inflationAdjustmentInterval: number;
+  deadlineDays: number;
+}

@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Property, PropertyImport } from "@models/types";
+import type { Property, PropertyImport, AddPropertyInput, CreateContractInput } from "@models/types";
 import { useUserStore } from "./user-store";
 import { getServices } from "@/lib/services/service-registry";
-import { type AddPropertyInput, type CreateContractInput } from "@/lib/services/property-dashboard-service";
 
 export type { AddPropertyInput, CreateContractInput };
 
@@ -20,6 +19,8 @@ interface PropertiesState {
   withdrawRent: (propertyId: string) => Promise<void>;
   signContract: (propertyId: string) => Promise<void>;
   cancelContract: (propertyId: string) => Promise<void>;
+  createContract: (propertyId: string, input: Omit<CreateContractInput, "propertyId">) => Promise<void>;
+  linkContract: (propertyId: number, agreementAddress: string) => void;
   unlinkContract: (propertyId: number) => void;
   releaseDeposit: (agreementAddress: string) => Promise<void>;
   claimDeposit: (agreementAddress: string, amount: number, reason: string) => Promise<void>;
@@ -43,11 +44,20 @@ export const usePropertiesStore = create<PropertiesState>()(
           let toastId: number | undefined;
           try {
             toastId = userStore.pushToast({ message: "Creando propiedad...", severity: "info" });
-            const { propertyDashboardService } = getServices();
-            const result = await propertyDashboardService.mintProperty(wallet, input);
+            const { propertiesService } = getServices();
+            const result = await propertiesService.mintProperty(wallet, input.tokenURI, input.latitude, input.longitude);
 
             if (result.tokenId !== undefined) {
-              await get().importProperty(input.name, result.tokenId);
+              const currentImports = get().propertyImports || [];
+              if (!currentImports.some((i) => i.id === result.tokenId)) {
+                const newImport = { id: result.tokenId, name: input.name };
+                const prop = await propertiesService.fetchProperty(newImport);
+                
+                set({
+                  propertyImports: [...currentImports, newImport],
+                  ownedProperties: [...get().ownedProperties, prop]
+                });
+              }
               userStore.pushToast({ id: toastId, message: "Propiedad creada exitosamente", severity: "success" });
             } else {
               throw new Error("No se pudo obtener el ID de la propiedad creada.");
@@ -70,11 +80,11 @@ export const usePropertiesStore = create<PropertiesState>()(
             const agreementAddress = prop?.rental?.currentContract?.agreementAddress;
             if (!agreementAddress) throw new Error("No hay contrato activo para esta propiedad.");
 
-            const { rentalsService } = getServices();
-            await rentalsService.withdrawRent(agreementAddress);
+            const { propertiesService } = getServices();
+            await propertiesService.withdrawRent(agreementAddress);
+            userStore.pushToast({ id: toastId, message: "Renta retirada exitosamente", severity: "success" });
             await userStore.syncOnchainBalance();
             await get().syncProperty(propertyId);
-            userStore.pushToast({ id: toastId, message: "Renta retirada exitosamente", severity: "success" });
           } catch (error: any) {
             console.error("Error al retirar renta:", error);
             userStore.pushToast({ id: toastId, message: error.message || "Error al retirar renta", severity: "error" });
@@ -93,8 +103,8 @@ export const usePropertiesStore = create<PropertiesState>()(
             const agreementAddress = prop?.rental?.currentContract?.agreementAddress;
             if (!agreementAddress) throw new Error("No hay contrato activo para esta propiedad.");
 
-            const { rentalsService } = getServices();
-            await rentalsService.approveAgreement({ agreementAddress, isTenant: false });
+            const { propertiesService } = getServices();
+            await propertiesService.approveAgreement({ agreementAddress, isTenant: false });
             await get().syncProperty(propertyId);
             userStore.pushToast({ id: toastId, message: "Contrato firmado exitosamente", severity: "success" });
           } catch (error: any) {
@@ -115,13 +125,56 @@ export const usePropertiesStore = create<PropertiesState>()(
             const agreementAddress = prop?.rental?.currentContract?.agreementAddress;
             if (!agreementAddress) throw new Error("No hay contrato activo para esta propiedad.");
 
-            const { rentalsService } = getServices();
-            await rentalsService.cancelAgreement(agreementAddress);
+            const { propertiesService } = getServices();
+            await propertiesService.cancelAgreement(agreementAddress);
             await get().syncProperty(propertyId);
             userStore.pushToast({ id: toastId, message: "Contrato cancelado exitosamente", severity: "success" });
           } catch (error: any) {
             console.error("Error al cancelar contrato:", error);
             userStore.pushToast({ id: toastId, message: error.message || "Error al cancelar contrato", severity: "error" });
+          }
+        },
+
+        linkContract: (propertyId: number, agreementAddress: string) => {
+          set((state) => ({
+            customContracts: { ...state.customContracts, [propertyId]: agreementAddress }
+          }));
+        },
+
+        createContract: async (propertyId: string, input: Omit<CreateContractInput, "propertyId">) => {
+          const userStore = useUserStore.getState();
+          const wallet = userStore.wallet;
+          if (!wallet) return;
+
+          let toastId: number | undefined;
+          try {
+            toastId = userStore.pushToast({ message: "Creando contrato...", severity: "info" });
+            const { propertiesService } = getServices();
+            
+            const SECONDS_PER_DAY = 24 * 60 * 60;
+            const params = {
+              propertyId: BigInt(propertyId),
+              tenant: input.tenant,
+              baseRent: input.baseRent,
+              securityDeposit: input.securityDeposit,
+              duration: input.durationMonths * 30 * SECONDS_PER_DAY,
+              gracePeriod: input.gracePeriodDays * SECONDS_PER_DAY,
+              paymentPeriod: input.paymentPeriodDays * SECONDS_PER_DAY,
+              deadline: Math.floor(Date.now() / 1000) + (input.deadlineDays * SECONDS_PER_DAY),
+              inflationBps: input.inflationBps,
+              lateFeeBps: input.lateFeeBps,
+              inflationAdjustmentInterval: input.inflationAdjustmentInterval * 30 * SECONDS_PER_DAY
+            };
+            
+            const result = await propertiesService.createRental(params);
+            
+            get().linkContract(Number(propertyId), result.agreementAddress);
+            await get().syncProperty(propertyId);
+            
+            userStore.pushToast({ id: toastId, message: "Contrato creado exitosamente", severity: "success" });
+          } catch (error: any) {
+            console.error("Error al crear contrato:", error);
+            userStore.pushToast({ id: toastId, message: error.message || "Error al crear contrato", severity: "error" });
           }
         },
 
@@ -139,9 +192,9 @@ export const usePropertiesStore = create<PropertiesState>()(
           let toastId: number | undefined;
           try {
             toastId = userStore.pushToast({ message: "Liberando depósito...", severity: "info" });
-            const { rentalsService } = getServices();
-            await rentalsService.releaseDeposit(agreementAddress);
-            
+            const { propertiesService } = getServices();
+            await propertiesService.releaseDeposit(agreementAddress);
+
             const prop = get().ownedProperties.find(p => p.rental?.currentContract?.agreementAddress?.toLowerCase() === agreementAddress.toLowerCase() || p.rental?.rentalNFTAddress?.toLowerCase() === agreementAddress.toLowerCase());
             if (prop) {
               await get().syncProperty(prop.id);
@@ -161,10 +214,10 @@ export const usePropertiesStore = create<PropertiesState>()(
           let toastId: number | undefined;
           try {
             toastId = userStore.pushToast({ message: "Reclamando depósito...", severity: "info" });
-            const { rentalsService } = getServices();
-            await rentalsService.claimDeposit(agreementAddress, amount, reason);
+            const { propertiesService } = getServices();
+            await propertiesService.claimDeposit(agreementAddress, amount, reason);
             await userStore.syncOnchainBalance();
-            
+
             const prop = get().ownedProperties.find(p => p.rental?.currentContract?.agreementAddress?.toLowerCase() === agreementAddress.toLowerCase() || p.rental?.rentalNFTAddress?.toLowerCase() === agreementAddress.toLowerCase());
             if (prop) {
               await get().syncProperty(prop.id);
@@ -192,7 +245,8 @@ export const usePropertiesStore = create<PropertiesState>()(
             }
 
             const { propertiesService } = getServices();
-            const prop = await propertiesService.fetchProperty({ id: propertyId, name });
+            const customContract = get().customContracts[propertyId];
+            const prop = await propertiesService.fetchProperty({ id: propertyId, name }, customContract);
 
             set({
               propertyImports: [...currentImports, { id: propertyId, name }],
@@ -227,7 +281,8 @@ export const usePropertiesStore = create<PropertiesState>()(
             const { propertiesService } = getServices();
             const propertyPromises = imports.map(async (imp) => {
               try {
-                return await propertiesService.fetchProperty(imp);
+                const customContract = get().customContracts[imp.id];
+                return await propertiesService.fetchProperty(imp, customContract);
               } catch (e: any) {
                 console.warn(`Error fetching property ${imp.name}:`, e);
                 userStore.pushToast({
@@ -263,7 +318,8 @@ export const usePropertiesStore = create<PropertiesState>()(
 
           try {
             const { propertiesService } = getServices();
-            const updatedProp = await propertiesService.fetchProperty(imp);
+            const customContract = state.customContracts[imp.id];
+            const updatedProp = await propertiesService.fetchProperty(imp, customContract);
             set((s) => ({
               ownedProperties: s.ownedProperties.map(p => p.id === prop.id ? updatedProp : p)
             }));
