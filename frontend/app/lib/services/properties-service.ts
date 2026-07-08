@@ -119,6 +119,7 @@ export class PropertiesService {
       address: addrAttr,
       latitude,
       longitude,
+      owner: propertyOwner,
       metadata: metadataObj,
       rental: {
         rentalNFTAddress: rentalData.rentalNFTAddress,

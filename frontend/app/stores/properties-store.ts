@@ -52,7 +52,7 @@ export const usePropertiesStore = create<PropertiesState>()(
               if (!currentImports.some((i) => i.id === result.tokenId)) {
                 const newImport = { id: result.tokenId, name: input.name };
                 const prop = await propertiesService.fetchProperty(newImport);
-                
+
                 set({
                   propertyImports: [...currentImports, newImport],
                   ownedProperties: [...get().ownedProperties, prop]
@@ -150,7 +150,7 @@ export const usePropertiesStore = create<PropertiesState>()(
           try {
             toastId = userStore.pushToast({ message: "Creando contrato...", severity: "info" });
             const { propertiesService } = getServices();
-            
+
             const SECONDS_PER_DAY = 24 * 60 * 60;
             const params = {
               propertyId: BigInt(propertyId),
@@ -165,12 +165,12 @@ export const usePropertiesStore = create<PropertiesState>()(
               lateFeeBps: input.lateFeeBps,
               inflationAdjustmentInterval: input.inflationAdjustmentInterval * 30 * SECONDS_PER_DAY
             };
-            
+
             const result = await propertiesService.createRental(params);
-            
+
             get().linkContract(Number(propertyId), result.agreementAddress);
             await get().syncProperty(propertyId);
-            
+
             userStore.pushToast({ id: toastId, message: "Contrato creado exitosamente", severity: "success" });
           } catch (error: any) {
             console.error("Error al crear contrato:", error);
@@ -295,8 +295,9 @@ export const usePropertiesStore = create<PropertiesState>()(
 
             const results = await Promise.all(propertyPromises);
             const loadedProps: Property[] = results.filter((p: Property | null): p is Property => p !== null);
+            const ownedProps = loadedProps.filter(p => p.owner.toLowerCase() === wallet.toLowerCase());
 
-            set({ ownedProperties: loadedProps, isSyncing: false });
+            set({ ownedProperties: ownedProps, isSyncing: false });
           } catch (error: any) {
             set({ isSyncing: false });
             console.error("Failed to sync properties:", error);
@@ -340,3 +341,9 @@ export const usePropertiesStore = create<PropertiesState>()(
 );
 
 export type UsePropertiesStoreReturn = ReturnType<typeof usePropertiesStore>;
+
+useUserStore.subscribe((state, prevState) => {
+  if (state.wallet !== prevState.wallet) {
+    usePropertiesStore.getState().syncProperties();
+  }
+});

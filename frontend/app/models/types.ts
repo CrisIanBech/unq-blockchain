@@ -68,6 +68,7 @@ export interface Property {
   address: string
   latitude: number
   longitude: number
+  owner: string
   metadata: RentalMetadata
   rental: RentalData | null
 }
